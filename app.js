@@ -61,6 +61,7 @@
   const tapsEl = document.getElementById("tapsVal");
   const bombsEl = document.getElementById("bombsVal");
   const noticeEl = document.getElementById("notice");
+  const challengeBanner = document.getElementById("challengeBanner");
 
   const pauseBtn = document.getElementById("pauseBtn");
   const pauseIcon = document.getElementById("pauseIcon");
@@ -73,6 +74,7 @@
   const bestScoreEl = document.getElementById("bestScore");
   const globalScoreEl = document.getElementById("globalScore");
   const restartBtn = document.getElementById("restartBtn");
+  const shareBtn = document.getElementById("shareBtn");
   const restartFromSettingsBtn = document.getElementById("restartFromSettingsBtn");
 
   const settingsBtn = document.getElementById("settingsBtn");
@@ -580,6 +582,53 @@
     resetGame();
   });
 
+  // ---------- share ----------
+  function shareUrl(score) {
+    const url = new URL(location.href);
+    url.search = "";
+    url.hash = "";
+    url.searchParams.set("score", String(score));
+    return url.toString();
+  }
+
+  async function handleShare() {
+    const score = state.score;
+    const url = shareUrl(score);
+    const text = `I scored ${score} popping bubbles in tapwhenbored — dodge the hidden bombs and beat me:`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "tapwhenbored", text, url });
+      } catch (e) {
+        // user cancelled the share sheet — nothing to do
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      const original = shareBtn.textContent;
+      shareBtn.textContent = "LINK COPIED";
+      setTimeout(() => {
+        shareBtn.textContent = original;
+      }, 1600);
+    } catch (e) {
+      // clipboard unavailable — nothing more we can do silently
+    }
+  }
+  shareBtn.addEventListener("click", handleShare);
+
+  // ---------- challenge banner ----------
+  function checkChallengeLink() {
+    const params = new URLSearchParams(location.search);
+    const raw = params.get("score");
+    const challengeScore = Number(raw);
+    if (!raw || !Number.isFinite(challengeScore) || challengeScore <= 0) return;
+    challengeBanner.textContent = `A FRIEND SCORED ${pad(Math.round(challengeScore), 5)} — TAP TO DISMISS AND BEAT IT`;
+    challengeBanner.classList.remove("hidden");
+    challengeBanner.addEventListener("click", () => {
+      challengeBanner.classList.add("hidden");
+    });
+  }
+
   // ---------- settings ----------
   function syncToggle(el, on) {
     el.classList.toggle("on", on);
@@ -623,6 +672,7 @@
   measurePlayfield();
   updateStats();
   refreshNotice();
+  checkChallengeLink();
   topUpBubbles();
   startLoop();
 })();
