@@ -338,6 +338,26 @@ html, body {
 }
 .legend-item:first-child { border-left: none; padding-left: 0; }
 
+.seo-info {
+  padding: 0 20px 8px;
+  font-size: 9px;
+  color: var(--ink-soft);
+}
+.seo-info summary {
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  list-style: none;
+}
+.seo-info summary::-webkit-details-marker { display: none; }
+.seo-info summary::after { content: " ▾"; }
+.seo-info[open] summary::after { content: " ▴"; }
+.seo-info p {
+  margin: 4px 0 0;
+  line-height: 1.5;
+  max-width: 640px;
+}
+
 .bomb-glyph {
   width: 20px;
   height: 20px;
@@ -510,11 +530,16 @@ html, body {
   }
 
   .legend {
-    padding: 6px 14px max(10px, env(safe-area-inset-bottom));
+    padding: 6px 14px 4px;
   }
   .legend-item { gap: 6px; padding-left: 10px; font-size: 8.5px; line-height: 1.2; }
   .legend-item svg { width: 14px; height: 14px; }
   .bomb-glyph { width: 14px; height: 14px; min-width: 14px; }
 
   .challenge { margin: 0 auto 6px; padding: 6px 12px; font-size: 9.5px; }
+
+  .seo-info {
+    padding: 0 14px max(6px, env(safe-area-inset-bottom));
+    font-size: 8px;
+  }
 }
