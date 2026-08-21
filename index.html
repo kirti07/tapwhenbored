@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#e7e2d8">
+<title>tapwhenbored</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <h1 class="title">TAPWHENBORED</h1>
+    <div class="controls">
+      <button id="pauseBtn" class="icon-btn" aria-label="Pause">
+        <svg id="pauseIcon" viewBox="0 0 24 24" width="18" height="18"><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/></svg>
+        <svg id="playIcon" viewBox="0 0 24 24" width="18" height="18" style="display:none"><path d="M7 5l12 7-12 7V5z" fill="currentColor"/></svg>
+      </button>
+      <button id="settingsBtn" class="icon-btn" aria-label="Settings">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7zm7.4-3.5c0 .3 0 .6-.05.9l1.9 1.5-1.9 3.3-2.2-.9c-.5.4-1 .7-1.6 1l-.3 2.3H9.75l-.3-2.3c-.6-.3-1.1-.6-1.6-1l-2.2.9-1.9-3.3 1.9-1.5A7 7 0 014.6 12c0-.3 0-.6.05-.9l-1.9-1.5 1.9-3.3 2.2.9c.5-.4 1-.7 1.6-1l.3-2.3h4.5l.3 2.3c.6.3 1.1.6 1.6 1l2.2-.9 1.9 3.3-1.9 1.5c.05.3.05.6.05.9z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-label">SCORE</span>
+      <span class="stat-value" id="scoreVal">00000</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">TAPS</span>
+      <span class="stat-value" id="tapsVal">00</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">BOMBS SKIPPED</span>
+      <span class="stat-value" id="bombsVal">00</span>
+      <span class="stat-sub">+10 PTS PER SKIP</span>
+    </div>
+  </div>
+
+  <div class="notice" id="notice">A BUBBLE WILL HIDE A BOMB AFTER AT LEAST 5 TAPS</div>
+
+  <main class="playfield" id="playfield"></main>
+
+  <footer class="legend">
+    <div class="legend-item">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="1.4" d="M9 12.5V6a1.4 1.4 0 012.8 0v4.2M11.8 10V4.6a1.4 1.4 0 012.8 0V10M14.6 10.2V6a1.4 1.4 0 012.8 0v6.5M9 12.5c0-1-1-1.6-1.8-1.1-.7.4-.9 1.2-.5 2l1.6 3c.6 1.2 1.8 2 3.2 2h2.6c1.6 0 3-1.1 3.3-2.7l.5-3"/><path stroke="currentColor" stroke-width="1.1" stroke-linecap="round" d="M3 6l1.3 1M3 12h1.7M4.5 17.5l1.2-1"/></svg>
+      <span>TAP BUBBLES<br>TO POP</span>
+    </div>
+    <div class="legend-item">
+      <span class="bomb-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="14" r="7" fill="currentColor"/><path d="M11 7 L13.2 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/><circle cx="13.6" cy="2.6" r="1.5" fill="currentColor"/></svg></span>
+      <span>SOME BUBBLES HIDE A BOMB<br>GAME OVER IF TAPPED</span>
+    </div>
+  </footer>
+
+  <!-- Pause overlay -->
+  <div id="pauseOverlay" class="overlay hidden">
+    <div class="overlay-card">
+      <h2>PAUSED</h2>
+      <button class="btn" id="resumeBtn">RESUME</button>
+    </div>
+  </div>
+
+  <!-- Game over overlay -->
+  <div id="gameOverOverlay" class="overlay hidden">
+    <div class="overlay-card">
+      <span class="bomb-glyph big" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="14" r="7" fill="currentColor"/><path d="M11 7 L13.2 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/><circle cx="13.6" cy="2.6" r="1.5" fill="currentColor"/></svg></span>
+      <h2>BOOM.</h2>
+      <p class="go-line">FINAL SCORE</p>
+      <p class="go-score" id="finalScore">0</p>
+      <p class="go-sub" id="bestScore">BEST 0</p>
+      <p class="go-sub go-global hidden" id="globalScore">GLOBAL BEST …</p>
+      <button class="btn" id="restartBtn">PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <!-- Settings panel -->
+  <div id="settingsPanel" class="panel hidden">
+    <div class="panel-card">
+      <div class="panel-row-title">
+        <h2>SETTINGS</h2>
+        <button class="icon-btn" id="closeSettingsBtn" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="16" height="16"><path stroke="currentColor" stroke-width="1.6" stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div class="panel-row">
+        <span>SOUND</span>
+        <button class="toggle" id="soundToggle" role="switch"><span class="toggle-dot"></span></button>
+      </div>
+      <div class="panel-row">
+        <span>CALM MODE</span>
+        <button class="toggle" id="motionToggle" role="switch"><span class="toggle-dot"></span></button>
+      </div>
+      <button class="btn ghost" id="restartFromSettingsBtn">RESTART GAME</button>
+    </div>
+  </div>
+
+</div>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
