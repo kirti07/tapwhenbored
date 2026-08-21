@@ -391,16 +391,13 @@
     maybeArmBomb();
   }
 
-  // Bomb waves escalate the longer you survive: starts at 5, then 10,
-  // then climbing further. Capped at a share of the on-screen bubble count so
-  // there are always safe bubbles left to tap.
+  // Bomb count is a share of whatever's on screen, not a fixed number — a
+  // phone with 20 bubbles and a desktop with 80 should feel equally
+  // dangerous. Starts at 5% of the bubble count and climbs 3 points per wave
+  // up to a 70% ceiling, rounded to the nearest bubble.
   function bombCountForRound(round) {
-    let base;
-    if (round <= 8) base = 5;
-    else if (round <= 18) base = 10;
-    else base = 10 + (Math.floor((round - 18) / 8) + 1) * 5;
-    const cap = Math.max(1, Math.floor(targetBubbleCount() * 0.7));
-    return Math.min(base, cap);
+    const pct = Math.min(70, 5 + (round - 1) * 3);
+    return Math.max(1, Math.round((pct / 100) * targetBubbleCount()));
   }
 
   function maybeArmBomb() {

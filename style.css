@@ -459,3 +459,35 @@ html, body {
 }
 .toggle.on { background: var(--ink); }
 .toggle.on .toggle-dot { left: 22px; }
+
+/* Phones: the header/stats/notice/legend chrome was eating close to half the
+   screen, leaving too little room to actually tap bubbles. Shrink all of it
+   and respect notch/home-indicator safe areas so the playfield (flex: 1)
+   gets almost everything instead. */
+@media (max-width: 640px) {
+  .topbar {
+    padding: max(8px, env(safe-area-inset-top)) 14px 6px;
+  }
+  .title { font-size: 13px; letter-spacing: 0.2em; }
+  .icon-btn { width: 30px; height: 30px; border-radius: 8px; }
+  .icon-btn svg { width: 15px; height: 15px; }
+
+  .stats { padding: 4px 14px; }
+  .stat-label { font-size: 8.5px; letter-spacing: 0.08em; }
+  .stat-value { font-size: 16px; margin-top: 1px; }
+  .stat-sub { display: none; }
+
+  .notice {
+    margin: 2px 14px 6px;
+    padding: 4px 10px;
+    font-size: 9.5px;
+    letter-spacing: 0.05em;
+  }
+
+  .legend {
+    padding: 6px 14px max(10px, env(safe-area-inset-bottom));
+  }
+  .legend-item { gap: 6px; padding-left: 10px; font-size: 8.5px; line-height: 1.2; }
+  .legend-item svg { width: 14px; height: 14px; }
+  .bomb-glyph { width: 14px; height: 14px; min-width: 14px; }
+}
