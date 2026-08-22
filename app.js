@@ -41,7 +41,6 @@
     baseValue: 10,
     valueIncrement: 10,
     bombThresholdRange: [5, 6],
-    bombLifeRangeMs: [4200, 6200],
     speedRange: [0.022, 0.06],
     // bubble count is never a fixed number — it's derived from screen area
     // (bigger screen = more room = more bubbles) and grows as you play, up to
@@ -53,6 +52,11 @@
     bonusChance: 0.1,
     comboWindowMs: 900,
     maxCombo: 12,
+    // subtle bomb "tells" — a faint grey tint (CSS) plus a slower, faintly
+    // wobbly drift. Learnable with attention, easy to miss once the field
+    // gets crowded and fast in later waves.
+    bombSpeedMul: 0.6,
+    bombWobbleAmp: 1.6,
   };
 
   // ---------- dom ----------
@@ -100,7 +104,6 @@
     bubbleValue: CONFIG.baseValue,
     tapsSinceBomb: 0,
     bombThreshold: randInt(...CONFIG.bombThresholdRange),
-    bombActive: false,
     bombRound: 0,
     paused: false,
     gameOver: false,
@@ -182,18 +185,18 @@
 
   // ---------- notice ----------
   function baseNoticeText() {
-    if (state.bombActive) {
-      const liveBombs = bubbles.filter((b) => b.isBomb && !b.dead).length;
-      return liveBombs === 1 ? "A BOMB IS HIDDEN NEARBY" : `${liveBombs} BOMBS ARE HIDDEN NEARBY`;
-    }
+    const liveBombs = bubbles.filter((b) => b.isBomb && !b.dead).length;
     const remaining = Math.max(1, state.bombThreshold - state.tapsSinceBomb);
+    if (liveBombs > 0) {
+      return `${liveBombs} BOMB${liveBombs === 1 ? "" : "S"} HIDDEN — ${remaining} MORE TAP${remaining === 1 ? "" : "S"} TO CLEAR THEM`;
+    }
     const nextCount = bombCountForRound(state.bombRound + 1);
     const bombWord = nextCount === 1 ? "A BOMB" : `${nextCount} BOMBS`;
     return `${bombWord} APPEAR${nextCount === 1 ? "S" : ""} AFTER ${remaining} MORE TAP${remaining === 1 ? "" : "S"}`;
   }
   function refreshNotice() {
     noticeEl.textContent = baseNoticeText();
-    noticeEl.classList.toggle("warn", state.bombActive);
+    noticeEl.classList.toggle("warn", bubbles.some((b) => b.isBomb && !b.dead));
     noticeEl.classList.remove("good");
   }
   function flashNotice(text, cls, holdMs) {
@@ -265,14 +268,15 @@
   function createBubble(kind) {
     const isBomb = kind === "bomb";
     const isBonus = kind === "bonus";
-    // bombs are sized exactly like normal bubbles — they must be visually
-    // indistinguishable from the outside; only tapping reveals what's inside.
+    // bombs are sized exactly like normal bubbles — no free tell there.
+    // The only tells are a faint grey tint (CSS) and a slower, faintly
+    // wobbly drift, both subtle enough to require real attention.
     const size = isBonus ? rand(CONFIG.maxSize - 8, CONFIG.maxSize + 18) : rand(CONFIG.minSize, CONFIG.maxSize);
     const pos = pickSpawnPos(size);
     const calmMul = state.calmMode ? 0.35 : 1;
     const progressMul = 1 + Math.min(1, state.taps / 500) * 0.2;
     const angle = rand(0, Math.PI * 2);
-    const speed = rand(...CONFIG.speedRange) * calmMul * progressMul;
+    const speed = rand(...CONFIG.speedRange) * calmMul * progressMul * (isBomb ? CONFIG.bombSpeedMul : 1);
 
     const el = document.createElement("div");
     el.className = "bubble spawning" + (isBomb ? " bomb" : "") + (isBonus ? " bonus" : "");
@@ -302,7 +306,8 @@
       vy: Math.sin(angle) * speed,
       isBomb,
       isBonus,
-      life: isBomb ? rand(...CONFIG.bombLifeRangeMs) : 0,
+      age: 0,
+      wobblePhase: rand(0, Math.PI * 2),
       dead: false,
     };
     if (isBonus) state.bonusActive = true;
@@ -314,7 +319,13 @@
   }
 
   function applyTransform(b) {
-    const tf = `translate(${b.x}px, ${b.y}px)`;
+    let x = b.x;
+    let y = b.y;
+    if (b.isBomb) {
+      x += Math.sin(b.age * 0.004 + b.wobblePhase) * CONFIG.bombWobbleAmp;
+      y += Math.cos(b.age * 0.0037 + b.wobblePhase) * CONFIG.bombWobbleAmp;
+    }
+    const tf = `translate(${x}px, ${y}px)`;
     b.el.style.setProperty("--tf", tf);
     b.el.style.transform = tf;
   }
@@ -402,38 +413,41 @@
     return Math.max(1, Math.round((pct / 100) * targetBubbleCount()));
   }
 
-  function maybeArmBomb() {
-    if (state.bombActive) return;
-    if (state.tapsSinceBomb >= state.bombThreshold) {
-      state.bombActive = true;
-      state.bombRound++;
-      const count = bombCountForRound(state.bombRound);
-      for (let i = 0; i < count; i++) createBubble("bomb");
-      refreshNotice();
+  // A bomb wave has no timer of its own — it just stays hidden among the
+  // bubbles for the whole stretch until the next threshold is hit. That's
+  // the moment the old wave gets swept (each one still counts as a skip)
+  // and the next, bigger wave immediately takes its place.
+  function sweepBombWave() {
+    const liveBombs = bubbles.filter((b) => b.isBomb && !b.dead);
+    if (!liveBombs.length) return;
+    for (const b of liveBombs) {
+      b.dead = true;
+      b.el.classList.add("defusing");
+      removeBubbleEl(b, 520);
     }
-  }
-
-  function defuseBomb(b) {
-    b.dead = true;
-    b.el.classList.add("defusing");
+    bubbles = bubbles.filter((b) => !liveBombs.includes(b));
+    state.bombsSkipped += liveBombs.length;
+    state.bubbleValue += CONFIG.valueIncrement * liveBombs.length;
     ensureAudio();
     playDefuse();
-    bubbles = bubbles.filter((x) => x !== b);
-    removeBubbleEl(b, 520);
-    state.bombsSkipped++;
-    state.bubbleValue += CONFIG.valueIncrement;
     updateStats();
-    flashNotice(`BOMB DEFUSED — BUBBLES NOW WORTH ${state.bubbleValue}`, "good", 1600);
+    flashNotice(
+      `DODGED ${liveBombs.length} BOMB${liveBombs.length === 1 ? "" : "S"} — BUBBLES NOW WORTH ${state.bubbleValue}`,
+      "good",
+      2200
+    );
     setTimeout(topUpBubbles, 260);
+  }
 
-    const liveBombs = bubbles.filter((x) => x.isBomb && !x.dead).length;
-    if (liveBombs === 0) {
-      // wave fully cleared — reset for the next one. Notice text updates once
-      // the "BOMB DEFUSED" flash above reverts, via its own timer.
-      state.tapsSinceBomb = 0;
-      state.bombThreshold = randInt(...CONFIG.bombThresholdRange);
-      state.bombActive = false;
-    }
+  function maybeArmBomb() {
+    if (state.tapsSinceBomb < state.bombThreshold) return;
+    sweepBombWave();
+    state.bombRound++;
+    const count = bombCountForRound(state.bombRound);
+    for (let i = 0; i < count; i++) createBubble("bomb");
+    state.tapsSinceBomb = 0;
+    state.bombThreshold = randInt(...CONFIG.bombThresholdRange);
+    refreshNotice();
   }
 
   function triggerBomb(b) {
@@ -483,10 +497,7 @@
       else if (b.y > maxY) { b.y = maxY; b.vy *= -1; }
       applyTransform(b);
 
-      if (b.isBomb) {
-        b.life -= dt;
-        if (b.life <= 0) defuseBomb(b);
-      }
+      if (b.isBomb) b.age += dt;
     }
   }
 
@@ -559,7 +570,6 @@
     state.bubbleValue = CONFIG.baseValue;
     state.tapsSinceBomb = 0;
     state.bombThreshold = randInt(...CONFIG.bombThresholdRange);
-    state.bombActive = false;
     state.bombRound = 0;
     state.paused = false;
     state.gameOver = false;

@@ -195,8 +195,13 @@ html, body {
   filter: blur(1px);
 }
 
-/* bombs share the exact same glass look as normal bubbles — the only tell
-   is the bomb-icon below, which stays hidden until the moment it's tapped */
+/* bombs share the same glass shell as normal bubbles, plus one faint tell:
+   a slightly greyed, desaturated tint — easy to miss in a crowded, fast
+   field, learnable with attention when things are calmer */
+.bubble.bomb {
+  filter: saturate(0.82) brightness(0.98);
+}
+
 .bomb-icon {
   position: absolute;
   inset: 0;
