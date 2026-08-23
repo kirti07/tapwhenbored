@@ -28,6 +28,8 @@
   var howtoBackdrop = document.getElementById("howtoBackdrop");
   var shareBtn = document.getElementById("shareBtn");
   var shareNote = document.getElementById("shareNote");
+  var hintBanner = document.getElementById("hintBanner");
+  var hintBannerClose = document.getElementById("hintBannerClose");
 
   var board = [];        // 0 = empty hole, 1 = marble, null = not a cell
   var holeEls = {};      // "r,c" -> hole div
@@ -35,6 +37,12 @@
   var selected = null;   // [r,c] or null
   var history = [];      // [{from, to, mid}]
   var ended = false;
+
+  var HINT_STORAGE_KEY = "marbleNostalgiaPlayed";
+  var hintsActive = false;
+  try {
+    hintsActive = !localStorage.getItem(HINT_STORAGE_KEY);
+  } catch (e) { hintsActive = false; }
 
   // ---------- audio (tiny, procedural, no files) ----------
   var actx = null;
@@ -124,6 +132,12 @@
         }
       }
     }
+    if (hintsActive) {
+      updateHints();
+      showHintBanner();
+    } else {
+      hideHintBanner();
+    }
   }
 
   function addMarbleEl(r, c) {
@@ -173,6 +187,44 @@
     return false;
   }
 
+  function updateHints() {
+    if (!hintsActive) return;
+    for (var r = 0; r < SIZE; r++) {
+      for (var c = 0; c < SIZE; c++) {
+        var el = marbleEls[key(r, c)];
+        if (!el) continue;
+        var isSelected = selected && selected[0] === r && selected[1] === c;
+        if (!isSelected && validMoves(r, c).length) {
+          el.classList.add("hint-bounce");
+        } else {
+          el.classList.remove("hint-bounce");
+        }
+      }
+    }
+  }
+
+  function clearHints() {
+    Object.keys(marbleEls).forEach(function (k) {
+      marbleEls[k].classList.remove("hint-bounce");
+    });
+  }
+
+  function showHintBanner() {
+    if (hintBanner) hintBanner.classList.add("show");
+  }
+
+  function hideHintBanner() {
+    if (hintBanner) hintBanner.classList.remove("show");
+  }
+
+  function stopHinting() {
+    if (!hintsActive) return;
+    hintsActive = false;
+    clearHints();
+    hideHintBanner();
+    try { localStorage.setItem(HINT_STORAGE_KEY, "1"); } catch (e) { /* ignore */ }
+  }
+
   function marbleCount() {
     var n = 0;
     for (var r = 0; r < SIZE; r++) {
@@ -196,6 +248,7 @@
       holeEls[k].classList.remove("valid-target");
     });
     selected = null;
+    updateHints();
   }
 
   function selectMarble(r, c) {
@@ -212,6 +265,7 @@
     }
     selected = [r, c];
     marbleEls[key(r, c)].classList.add("selected");
+    marbleEls[key(r, c)].classList.remove("hint-bounce");
     moves.forEach(function (mv) {
       holeEls[key(mv.to[0], mv.to[1])].classList.add("valid-target");
     });
@@ -231,6 +285,7 @@
   }
 
   function doMove(from, mid, to, record) {
+    stopHinting();
     var fromCellEl = marbleCellEl(from[0], from[1]);
     var toCellEl = marbleCellEl(to[0], to[1]);
     var midEl = marbleEls[key(mid[0], mid[1])];
@@ -392,6 +447,7 @@
   howtoBtn.addEventListener("click", openHowto);
   howtoBackdrop.addEventListener("click", closeHowto);
   shareBtn.addEventListener("click", shareResult);
+  if (hintBannerClose) hintBannerClose.addEventListener("click", stopHinting);
 
   buildBoard();
   buildDom();

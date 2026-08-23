@@ -145,6 +145,51 @@ html, body {
   flex-shrink: 0;
 }
 
+/* ---- first-time hint banner ---- */
+
+.hint-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2vw;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  margin: 0 auto;
+  padding: 0 4vw;
+  border-radius: 999px;
+  background: rgba(22, 132, 209, 0.12);
+  border: 1.5px solid rgba(22, 132, 209, 0.35);
+  color: var(--ink);
+  font-size: clamp(11px, 1.6vh, 13px);
+  letter-spacing: 0.02em;
+  text-align: center;
+  transition: max-height 0.35s ease, opacity 0.3s ease, margin 0.35s ease, padding 0.35s ease;
+  flex-shrink: 0;
+}
+
+.hint-banner.show {
+  max-height: 8vh;
+  opacity: 1;
+  margin: 1.4vh auto 0;
+  padding: 1vh 4vw;
+}
+
+.hint-banner-text {
+  flex: 1;
+}
+
+.hint-banner-close {
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0 0 1vw;
+  flex-shrink: 0;
+}
+
 /* ---- board area ---- */
 
 .board-area {
@@ -305,6 +350,16 @@ html, body {
 
 .marble.shake {
   animation: shake 0.25s ease;
+}
+
+.marble.hint-bounce {
+  animation: hint-bounce 1.3s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * -0.15s);
+}
+
+@keyframes hint-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12%); }
 }
 
 @keyframes shake {
