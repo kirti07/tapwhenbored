@@ -604,10 +604,10 @@
   async function handleShare() {
     const score = state.score;
     const url = shareUrl(score);
-    const text = `I scored ${score} popping bubbles in tapwhenbored — dodge the hidden bombs and beat me:`;
+    const text = `I scored ${score} popping bubbles in Tap When Bored — dodge the hidden bombs and beat me:`;
     if (navigator.share) {
       try {
-        await navigator.share({ title: "tapwhenbored", text, url });
+        await navigator.share({ title: "Tap When Bored", text, url });
       } catch (e) {
         // user cancelled the share sheet — nothing to do
       }

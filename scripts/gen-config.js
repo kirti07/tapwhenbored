@@ -1,8 +1,8 @@
 // Runs as the Vercel Build Command. Reads SUPABASE_URL / SUPABASE_ANON_KEY
 // from the host's environment variables (set in the Vercel dashboard, never
-// committed) and writes them into config.js so app.js can read them at
-// runtime via window.TWB_CONFIG. Locally, config.js is just hand-edited
-// instead (see config.example.js) and this script never runs.
+// committed) and writes them into bubble-tap/config.js so app.js can read
+// them at runtime via window.TWB_CONFIG. Locally, config.js is just
+// hand-edited instead (see config.example.js) and this script never runs.
 const fs = require("fs");
 const path = require("path");
 
@@ -15,5 +15,5 @@ const content = `window.TWB_CONFIG = {
 };
 `;
 
-fs.writeFileSync(path.join(__dirname, "..", "config.js"), content);
+fs.writeFileSync(path.join(__dirname, "..", "bubble-tap", "config.js"), content);
 console.log("config.js generated from environment variables");

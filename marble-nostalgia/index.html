@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#f2ece0">
+<title>Marble Nostalgia — Tap When Bored</title>
+<meta name="description" content="A classic peg-solitaire marble board, free to play online. Jump marbles to capture, finish with one — undo anytime, no signup.">
+<link rel="canonical" href="https://tapwhenbored.com/marble-nostalgia/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Marble Nostalgia — Tap When Bored">
+<meta property="og:description" content="A classic peg-solitaire marble board, free to play online. Jump marbles to capture, finish with one.">
+<meta property="og:url" content="https://tapwhenbored.com/marble-nostalgia/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Marble Nostalgia — Tap When Bored">
+<meta name="twitter:description" content="A classic peg-solitaire marble board, free to play online. Jump marbles to capture, finish with one.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Game",
+  "name": "Marble Nostalgia",
+  "url": "https://tapwhenbored.com/marble-nostalgia/",
+  "description": "A free online peg-solitaire marble board game. Jump marbles to capture, finish with one.",
+  "genre": "Puzzle",
+  "playMode": "SinglePlayer",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+<link rel="stylesheet" href="style.css">
+<script defer src="/_vercel/insights/script.js"></script>
+</head>
+<body>
+  <div class="stage">
+    <header class="topbar">
+      <div class="brand">
+        <a class="back-link" href="/">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <span>Games</span>
+        </a>
+        <h1 class="title">MARBLE NOSTALGIA</h1>
+        <div class="brand-divider"><span></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span></span></div>
+        <p class="subtitle">CLASSIC</p>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" id="undoBtn" title="Undo" aria-label="Undo">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 8 4 12l5 4"/><path d="M4 12h10a6 6 0 0 1 0 12h-1"/></svg>
+        </button>
+        <button class="icon-btn" id="restartBtn" title="Restart" aria-label="Restart">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.9-6.16"/><path d="M20 4v5h-5"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <p class="tagline">Try to remove as many marbles as you can.</p>
+
+    <div class="board-area">
+      <div class="board-wrap" id="boardWrap">
+        <div class="board-rim"></div>
+        <div class="board-circle"></div>
+        <div class="holes-grid" id="holesGrid"></div>
+        <div class="marbles-grid" id="marblesGrid"></div>
+      </div>
+
+      <div class="counter-box">
+        <span class="counter-label">Marbles left</span>
+        <span class="counter-value">&mdash; <span id="count">32</span> &mdash;</span>
+      </div>
+    </div>
+
+    <button class="howto-link" id="howtoBtn">How to play</button>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="overlay-content">
+      <p class="overlay-title" id="overlayTitle">SOLVED</p>
+      <div class="overlay-marble"></div>
+      <p class="overlay-sub" id="overlaySub">1 marble left</p>
+      <div class="overlay-actions">
+        <button class="again-btn" id="againBtn">Again</button>
+        <button class="share-btn" id="shareBtn">Share</button>
+      </div>
+      <p class="share-note" id="shareNote">Link copied</p>
+    </div>
+  </div>
+
+  <div class="howto-backdrop" id="howtoBackdrop"></div>
+  <div class="howto-sheet" id="howtoSheet">
+    <div class="howto-handle"></div>
+    <p class="howto-title">How to play</p>
+    <ul class="howto-list">
+      <li>Tap a marble to select it.</li>
+      <li>Glowing holes show where it can jump.</li>
+      <li>Tap a glowing hole to jump &mdash; the marble in between is captured.</li>
+      <li>No mistakes: use undo &#8630; anytime.</li>
+      <li>Goal: finish with one marble.</li>
+    </ul>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>

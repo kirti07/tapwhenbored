@@ -2,139 +2,60 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#f1f2ef">
-<title>tapwhenbored — the bubble wrap popping game for when you're bored</title>
-<meta name="description" content="Bored? Pop endless bubble wrap online — the same satisfying burst as popping a pimple or real bubble wrap, minus the mess. Free, no download, no signup.">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#e7dcc7">
+<title>Tap When Bored — tiny games, big breaks</title>
+<meta name="description" content="A small shelf of free, single-player browser games — Bubble Tap and Marble Nostalgia. No download, no signup, nothing to load but the game you pick.">
 <link rel="canonical" href="https://tapwhenbored.com/">
 <meta property="og:type" content="website">
-<meta property="og:title" content="tapwhenbored — the bubble wrap popping game for when you're bored">
-<meta property="og:description" content="Pop endless bubble wrap online. Some bubbles hide a bomb — tap one and it's game over.">
+<meta property="og:title" content="Tap When Bored — tiny games, big breaks">
+<meta property="og:description" content="A small shelf of free, single-player browser games. Pick one, it opens instantly.">
 <meta property="og:url" content="https://tapwhenbored.com/">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="tapwhenbored — the bubble wrap popping game for when you're bored">
-<meta name="twitter:description" content="Pop endless bubble wrap online. Some bubbles hide a bomb — tap one and it's game over.">
+<meta name="twitter:title" content="Tap When Bored — tiny games, big breaks">
+<meta name="twitter:description" content="A small shelf of free, single-player browser games. Pick one, it opens instantly.">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='7'%20fill='%23f1f2ef'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='11'%20fill='none'%20stroke='%232c2c2b'%20stroke-width='2'/%3E%3Ccircle%20cx='11.5'%20cy='11'%20r='3.2'%20fill='%232c2c2b'/%3E%3C/svg%3E">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "Game",
-  "name": "tapwhenbored",
+  "@type": "WebSite",
+  "name": "Tap When Bored",
   "url": "https://tapwhenbored.com/",
-  "description": "A free online bubble wrap popping game. Tap bubbles to score points, but watch out — some hide a bomb.",
-  "genre": "Casual",
-  "playMode": "SinglePlayer",
-  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  "description": "A small shelf of free, single-player browser games."
 }
 </script>
 <link rel="stylesheet" href="style.css">
 <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
-<div class="app">
 
-  <header class="topbar">
-    <h1 class="title">TAPWHENBORED</h1>
-    <div class="controls">
-      <button id="pauseBtn" class="icon-btn" aria-label="Pause">
-        <svg id="pauseIcon" viewBox="0 0 24 24" width="18" height="18"><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/></svg>
-        <svg id="playIcon" viewBox="0 0 24 24" width="18" height="18" style="display:none"><path d="M7 5l12 7-12 7V5z" fill="currentColor"/></svg>
-      </button>
-      <button id="settingsBtn" class="icon-btn" aria-label="Settings">
-        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7zm7.4-3.5c0 .3 0 .6-.05.9l1.9 1.5-1.9 3.3-2.2-.9c-.5.4-1 .7-1.6 1l-.3 2.3H9.75l-.3-2.3c-.6-.3-1.1-.6-1.6-1l-2.2.9-1.9-3.3 1.9-1.5A7 7 0 014.6 12c0-.3 0-.6.05-.9l-1.9-1.5 1.9-3.3 2.2.9c.5-.4 1-.7 1.6-1l.3-2.3h4.5l.3 2.3c.6.3 1.1.6 1.6 1l2.2-.9 1.9 3.3-1.9 1.5c.05.3.05.6.05.9z"/></svg>
-      </button>
+<div class="hub">
+  <header class="hub-header">
+    <div class="brand">
+      <h1 class="brand-name">Tap When Bored</h1>
+      <p class="tagline">Tiny games. Big breaks.</p>
     </div>
   </header>
 
-  <div class="stats">
-    <div class="stat">
-      <span class="stat-label">SCORE</span>
-      <span class="stat-value" id="scoreVal">00000</span>
-    </div>
-    <div class="stat">
-      <span class="stat-label">TAPS</span>
-      <span class="stat-value" id="tapsVal">00</span>
-    </div>
-    <div class="stat">
-      <span class="stat-label">BOMBS SKIPPED</span>
-      <span class="stat-value" id="bombsVal">00</span>
-      <span class="stat-sub">+10 PTS PER SKIP</span>
-    </div>
-  </div>
-
-  <div class="notice" id="notice">A BUBBLE WILL HIDE A BOMB AFTER AT LEAST 5 TAPS</div>
-
-  <button class="challenge hidden" id="challengeBanner" type="button"></button>
-
-  <main class="playfield" id="playfield"></main>
-
-  <footer class="legend">
-    <div class="legend-item">
-      <svg viewBox="0 0 24 24" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="1.4" d="M9 12.5V6a1.4 1.4 0 012.8 0v4.2M11.8 10V4.6a1.4 1.4 0 012.8 0V10M14.6 10.2V6a1.4 1.4 0 012.8 0v6.5M9 12.5c0-1-1-1.6-1.8-1.1-.7.4-.9 1.2-.5 2l1.6 3c.6 1.2 1.8 2 3.2 2h2.6c1.6 0 3-1.1 3.3-2.7l.5-3"/><path stroke="currentColor" stroke-width="1.1" stroke-linecap="round" d="M3 6l1.3 1M3 12h1.7M4.5 17.5l1.2-1"/></svg>
-      <span>TAP BUBBLES<br>TO POP</span>
-    </div>
-    <div class="legend-item">
-      <span class="bomb-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="14" r="7" fill="currentColor"/><path d="M11 7 L13.2 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/><circle cx="13.6" cy="2.6" r="1.5" fill="currentColor"/></svg></span>
-      <span>SOME BUBBLES HIDE A BOMB<br>GAME OVER IF TAPPED</span>
-    </div>
-  </footer>
-
-  <details class="seo-info">
-    <summary>What is this?</summary>
-    <p>
-      tapwhenbored is a free online bubble wrap popping game for whenever you're bored.
-      It's the same oddly satisfying burst as popping a pimple or real bubble wrap —
-      pure nostalgic time-pass, no mess, no plastic wasted. Tap bubbles to score points,
-      but some hide a bomb — pop one and it's game over. No download, no signup, just
-      endless bubbles whenever boredom hits.
-    </p>
-  </details>
-
-  <!-- Pause overlay -->
-  <div id="pauseOverlay" class="overlay hidden">
-    <div class="overlay-card">
-      <h2>PAUSED</h2>
-      <button class="btn" id="resumeBtn">RESUME</button>
-    </div>
-  </div>
-
-  <!-- Game over overlay -->
-  <div id="gameOverOverlay" class="overlay hidden">
-    <div class="overlay-card">
-      <span class="bomb-glyph big" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="14" r="7" fill="currentColor"/><path d="M11 7 L13.2 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/><circle cx="13.6" cy="2.6" r="1.5" fill="currentColor"/></svg></span>
-      <h2>BOOM.</h2>
-      <p class="go-line">FINAL SCORE</p>
-      <p class="go-score" id="finalScore">0</p>
-      <p class="go-sub" id="bestScore">BEST 0</p>
-      <p class="go-sub go-global hidden" id="globalScore">GLOBAL BEST …</p>
-      <button class="btn" id="restartBtn">PLAY AGAIN</button>
-      <button class="btn ghost" id="shareBtn">SHARE SCORE</button>
-    </div>
-  </div>
-
-  <!-- Settings panel -->
-  <div id="settingsPanel" class="panel hidden">
-    <div class="panel-card">
-      <div class="panel-row-title">
-        <h2>SETTINGS</h2>
-        <button class="icon-btn" id="closeSettingsBtn" aria-label="Close">
-          <svg viewBox="0 0 24 24" width="16" height="16"><path stroke="currentColor" stroke-width="1.6" stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
+  <main class="shelf" aria-label="Games">
+    <a class="card" href="/bubble-tap/">
+      <img class="thumb" src="assets/bubble-tap-thumb.webp" width="640" height="640" alt="" aria-hidden="true">
+      <div class="card-body">
+        <h2 class="card-name">Bubble Tap</h2>
+        <p class="card-desc">Tap · Relax</p>
       </div>
-      <div class="panel-row">
-        <span>SOUND</span>
-        <button class="toggle" id="soundToggle" role="switch"><span class="toggle-dot"></span></button>
-      </div>
-      <div class="panel-row">
-        <span>CALM MODE</span>
-        <button class="toggle" id="motionToggle" role="switch"><span class="toggle-dot"></span></button>
-      </div>
-      <button class="btn ghost" id="restartFromSettingsBtn">RESTART GAME</button>
-    </div>
-  </div>
+    </a>
 
+    <a class="card" href="/marble-nostalgia/">
+      <img class="thumb" src="assets/marble-nostalgia-thumb.webp" width="640" height="640" alt="" aria-hidden="true">
+      <div class="card-body">
+        <h2 class="card-name">Marble Nostalgia</h2>
+        <p class="card-desc">Think · Move</p>
+      </div>
+    </a>
+  </main>
+
+  <footer class="hub-footer">More tiny games coming soon.</footer>
 </div>
-<script src="config.js"></script>
-<script src="app.js"></script>
 </body>
 </html>
