@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#eef1ee">
+<title>Slide N Order — Tap When Bored</title>
+<meta name="description" content="A free online 15-puzzle. Slide the numbered tiles back into order 1 to 15 — no timer, no signup, undo-free thinking at your own pace.">
+<link rel="canonical" href="https://tapwhenbored.com/slide-n-order/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Slide N Order — Tap When Bored">
+<meta property="og:description" content="A free online 15-puzzle. Slide the numbered tiles back into order 1 to 15 — no timer, just moves.">
+<meta property="og:url" content="https://tapwhenbored.com/slide-n-order/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Slide N Order — Tap When Bored">
+<meta name="twitter:description" content="A free online 15-puzzle. Slide the numbered tiles back into order 1 to 15 — no timer, just moves.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Game",
+  "name": "Slide N Order",
+  "url": "https://tapwhenbored.com/slide-n-order/",
+  "description": "A free online sliding number puzzle (15-puzzle). Arrange tiles 1 to 15 in order around one empty slot.",
+  "genre": "Puzzle",
+  "playMode": "SinglePlayer",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+<link rel="stylesheet" href="style.css">
+<script defer src="/_vercel/insights/script.js"></script>
+</head>
+<body>
+  <div class="stage">
+    <header class="topbar">
+      <div class="brand">
+        <a class="back-link" href="/">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <span>Games</span>
+        </a>
+        <h1 class="title">SLIDE N ORDER</h1>
+        <div class="brand-divider"><span></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span></span></div>
+        <p class="subtitle">PUZZLE</p>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" id="restartBtn" title="Restart" aria-label="Restart">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.9-6.16"/><path d="M20 4v5h-5"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <p class="tagline">Slide the tiles back into order, 1 to 15.</p>
+
+    <button class="challenge-banner" id="challengeBanner" type="button" role="status"></button>
+
+    <div class="board-area">
+      <div class="board-wrap" id="boardWrap">
+        <div class="tray"></div>
+        <div class="slots-grid" id="slotsGrid"></div>
+        <div class="tiles-grid" id="tilesGrid"></div>
+      </div>
+
+      <div class="counter-box">
+        <span class="counter-label">Moves</span>
+        <span class="counter-value" id="movesVal">0</span>
+        <span class="counter-best" id="bestVal"></span>
+      </div>
+    </div>
+
+    <button class="howto-link" id="howtoBtn">How to play</button>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="overlay-content">
+      <p class="overlay-title" id="overlayTitle">SOLVED</p>
+      <div class="overlay-tile">1</div>
+      <p class="overlay-sub" id="overlaySub">24 moves</p>
+      <div class="overlay-actions">
+        <button class="again-btn" id="againBtn">Again</button>
+        <button class="share-btn" id="shareBtn">Share</button>
+      </div>
+      <p class="share-note" id="shareNote">Link copied</p>
+    </div>
+  </div>
+
+  <div class="howto-backdrop" id="howtoBackdrop"></div>
+  <div class="howto-sheet" id="howtoSheet">
+    <div class="howto-handle"></div>
+    <p class="howto-title">How to play</p>
+    <ul class="howto-list">
+      <li>Tap a tile next to the empty slot to slide it in.</li>
+      <li>Arrange every number, 1 through 15, in order.</li>
+      <li>No timer &mdash; take as long as you like.</li>
+      <li>Tiles glow softly once they land in the right spot.</li>
+      <li>Goal: all 15 tiles in order, empty slot last.</li>
+    </ul>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+  <defs>
+    <linearGradient id="tray" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f6e6bd"/>
+      <stop offset="18%" stop-color="#f0dcae"/>
+      <stop offset="55%" stop-color="#c99f5e"/>
+      <stop offset="82%" stop-color="#97702f"/>
+      <stop offset="100%" stop-color="#5c3f1f"/>
+    </linearGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="55%" stop-color="#f7f2e7"/>
+      <stop offset="100%" stop-color="#e8e0cc"/>
+    </linearGradient>
+    <linearGradient id="tileGold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8e9bb"/>
+      <stop offset="55%" stop-color="#d9ad4e"/>
+      <stop offset="100%" stop-color="#a8781f"/>
+    </linearGradient>
+    <radialGradient id="slot" cx="38%" cy="32%" r="75%">
+      <stop offset="0%" stop-color="#543c1a"/>
+      <stop offset="70%" stop-color="#38270f"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="640" height="640" fill="#f2ede1"/>
+  <rect x="32" y="32" width="576" height="576" rx="46" fill="url(#tray)"/>
+
+  <!-- 4x4 grid: 16 slots, 15 tiles, one gap (bottom-right) -->
+  <g font-family="-apple-system,Helvetica,Arial,sans-serif" font-weight="700" fill="#2a2419" text-anchor="middle">
+    <!-- row 1 -->
+    <rect x="64" y="64" width="122" height="122" rx="20" fill="url(#slot)"/>
+    <rect x="64" y="64" width="122" height="122" rx="20" fill="url(#tileGold)"/>
+    <text x="125" y="146" font-size="56" fill="#3a2408">1</text>
+    <text x="164" y="90" font-size="26" fill="#3a2408" opacity="0.55">&#10003;</text>
+
+    <rect x="200" y="64" width="122" height="122" rx="20" fill="url(#slot)"/>
+    <rect x="200" y="64" width="122" height="122" rx="20" fill="url(#tile)"/>
+    <text x="261" y="146" font-size="56">2</text>
+
+    <rect x="336" y="64" width="122" height="122" rx="20" fill="url(#slot)"/>
+    <rect x="336" y="64" width="122" height="122" rx="20" fill="url(#tile)"/>
+    <text x="397" y="146" font-size="56">3</text>
+
+    <rect x="472" y="64" width="122" height="122" rx="20" fill="url(#slot)"/>
+    <rect x="472" y="64" width="122" height="122" rx="20" fill="url(#tile)"/>
+    <text x="533" y="146" font-size="56">4</text>
+
+    <!-- row 2 -->
+    <rect x="64" y="200" width="122" height="122" rx="20" fill="url(#slot)"/>
+    <rect x="64" y="200" width="122" height="122" rx="20" fill="url(#tile)"/>
+    <text x="125" y="282" font-size="56">5</text>
+
+    <rect x="200" y="200" width="122" height="122" rx="20" fill="url(#slot)"/>
+    <rect x="200" y="200" width="122" height="122" rx="20" fill="url(#tile)"/>
+    <text x="261" y="282" font-size="56">6</text>
+
+    <rect x="336" y="200" width="122" height="122" rx="20" fill="url(#slot)"/>
+    <rect x="336" y="200" width="122" height="122" rx="20" fill="url(#tile)"/>
+    <text x="397" y="282" font-size="56">7</text>
+
+    <rect x="472" y="200" width="122" height="122" rx="20" fill="url(#slot)"/>
+    <rect x="472" y="200" width="122" height="122" rx="20" fill="url(#tile)"/>
+    <text x="533" y="282" font-size="56">8</text>
+
+    <!-- row 3 -->
+    <rect x="64" y="336" width="122" height="122" rx="20" fill="url(#slot)"/>
+    <rect x="64" y="336" width="122" height="122" rx="20" fill="url(#tile)"/>
+    <text x="125" y="418" font-size="56">9</text>
+
+    <rect x="200" y="336" width="122" height="122" rx="20" fill="url(#slot)"/>
+    <rect x="200" y="336" width="122" height="122" rx="20" fill="url(#tile)"/>
+    <text x="261" y="418" font-size="46">10</text>
+
+    <rect x="336" y="336" width="122" height="122" rx="20" fill="url(#slot)"/>
+    <rect x="336" y="336" width="122" height="122" rx="20" fill="url(#tile)"/>
+    <text x="397" y="418" font-size="46">11</text>
+
+    <rect x="472" y="336" width="122" height="122" rx="20" fill="url(#slot)"/>
+    <rect x="472" y="336" width="122" height="122" rx="20" fill="url(#tile)"/>
+    <text x="533" y="418" font-size="46">12</text>
+
+    <!-- row 4 -->
+    <rect x="64" y="472" width="122" height="122" rx="20" fill="url(#slot)"/>
+    <rect x="64" y="472" width="122" height="122" rx="20" fill="url(#tile)"/>
+    <text x="125" y="554" font-size="46">13</text>
+
+    <rect x="200" y="472" width="122" height="122" rx="20" fill="url(#slot)"/>
+    <rect x="200" y="472" width="122" height="122" rx="20" fill="url(#tile)"/>
+    <text x="261" y="554" font-size="46">14</text>
+
+    <rect x="336" y="472" width="122" height="122" rx="20" fill="url(#slot)"/>
+    <rect x="336" y="472" width="122" height="122" rx="20" fill="url(#tile)"/>
+    <text x="397" y="554" font-size="46">15</text>
+
+    <!-- empty slot, bottom-right -->
+    <rect x="472" y="472" width="122" height="122" rx="20" fill="url(#slot)"/>
+  </g>
+</svg>
