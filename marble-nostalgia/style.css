@@ -32,6 +32,9 @@
 html, body {
   margin: 0;
   height: 100%;
+  height: 100dvh; /* iOS Safari sizes vh against the chrome-hidden viewport, so a plain
+                     100% here can be taller than what's actually visible on load and
+                     push the board into overlapping the hint banner above it */
   background: var(--bg);
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
@@ -148,6 +151,10 @@ html, body {
 /* ---- first-time hint banner ---- */
 
 .hint-banner {
+  position: relative; /* lifts it into its own paint layer so it always draws above
+                          the board even if the board overflows its flex box on short
+                          viewports — see the html,body dvh note above */
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;

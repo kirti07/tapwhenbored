@@ -6,6 +6,15 @@
   var SHUFFLE_MOVES = 160;
   var BEST_KEY = "slideNOrderBest";
 
+  // ---------- drag-to-slide tuning ----------
+  var DRAG_COMMIT_FRACTION = 0.5;   // past halfway toward the gap commits the slide
+  var DRAG_FLING_VELOCITY = 0.5;    // px/ms — a quick flick commits even short of halfway
+  var TAP_MAX_MOVE = 6;             // px — under this, a press+release is a plain tap
+  var TAP_MAX_MS = 400;
+  var TAP_SETTLE_MS = 200;          // fixed settle for a tap (no drag velocity to base it on)
+  var DRAG_MIN_SETTLE_MS = 110;
+  var DRAG_MAX_SETTLE_MS = 240;
+
   var slotsGrid = document.getElementById("slotsGrid");
   var tilesGrid = document.getElementById("tilesGrid");
   var movesVal = document.getElementById("movesVal");
@@ -189,6 +198,151 @@
     el.style.transform = "";
   }
 
+  function shakeTile(el) {
+    el.classList.add("shake");
+    sndThud();
+    setTimeout(function () { el.classList.remove("shake"); }, 240);
+  }
+
+  // ---------- drag-to-slide ----------
+  // Tiles only ever move one cell, straight toward the gap, so the whole
+  // gesture is a single axis-constrained drag: track the pointer 1:1 along
+  // that axis, rubber-band past either end, and decide commit-vs-spring-back
+  // on release from how far and how fast it moved — same shape as a
+  // bottom-sheet drag, just squeezed into one grid cell.
+  var drag = null;
+  var pendingShakeEl = null;
+
+  function rubberband(overshoot, dimension) {
+    var constant = 0.55;
+    return (overshoot * dimension * constant) / (dimension + constant * Math.abs(overshoot));
+  }
+
+  function beginDrag(e, tileEl, i) {
+    var r = Math.floor(i / SIZE), c = i % SIZE;
+    var br = Math.floor(blankIndex / SIZE), bc = blankIndex % SIZE;
+    var axis = (r === br) ? "x" : "y";
+    var fromRect = tileCellEl(i).getBoundingClientRect();
+    var toRect = tileCellEl(blankIndex).getBoundingClientRect();
+    var travel = axis === "x" ? (toRect.left - fromRect.left) : (toRect.top - fromRect.top);
+
+    drag = {
+      el: tileEl,
+      index: i,
+      axis: axis,
+      dir: travel >= 0 ? 1 : -1,
+      distance: Math.abs(travel),
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      startT: e.timeStamp,
+      maxAbsRaw: 0,
+      progress: 0,
+      lastProgress: 0,
+      lastT: e.timeStamp,
+      velocity: 0,
+    };
+
+    tileEl.classList.remove("movable");
+    tileEl.classList.remove("bounce");
+    tileEl.style.transition = "none";
+    try { tileEl.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+  }
+
+  function updateDrag(e) {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    var raw = drag.axis === "x" ? (e.clientX - drag.startX) : (e.clientY - drag.startY);
+    drag.maxAbsRaw = Math.max(drag.maxAbsRaw, Math.abs(raw));
+
+    var progress = raw * drag.dir; // positive = moving toward the gap
+    var clamped;
+    if (progress < 0) clamped = rubberband(progress, drag.distance);
+    else if (progress > drag.distance) clamped = drag.distance + rubberband(progress - drag.distance, drag.distance);
+    else clamped = progress;
+
+    var dt = e.timeStamp - drag.lastT;
+    if (dt > 0) {
+      drag.velocity = (clamped - drag.lastProgress) / dt;
+      drag.lastT = e.timeStamp;
+      drag.lastProgress = clamped;
+    }
+    drag.progress = clamped;
+
+    var screenDelta = clamped * drag.dir;
+    drag.el.style.transform = drag.axis === "x"
+      ? "translateX(" + screenDelta + "px)"
+      : "translateY(" + screenDelta + "px)";
+  }
+
+  function endDrag(e, cancelled) {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    var d = drag;
+    drag = null;
+
+    var dt = e.timeStamp - d.startT;
+    var isTap = !cancelled && d.maxAbsRaw < TAP_MAX_MOVE && dt < TAP_MAX_MS;
+    var fraction = d.distance > 0 ? d.progress / d.distance : 0;
+    var commit = !cancelled && (isTap
+      || fraction > DRAG_COMMIT_FRACTION
+      || (fraction > 0.12 && d.velocity > DRAG_FLING_VELOCITY));
+
+    settleDrag(d, commit, isTap);
+  }
+
+  function settleDrag(d, commit, isTap) {
+    var el = d.el;
+    var targetProgress = commit ? d.distance : 0;
+    var remaining = Math.abs(targetProgress - d.progress);
+    var duration;
+    if (isTap) {
+      duration = TAP_SETTLE_MS;
+    } else {
+      var speed = Math.max(0.35, Math.abs(d.velocity));
+      duration = Math.min(DRAG_MAX_SETTLE_MS, Math.max(DRAG_MIN_SETTLE_MS, remaining / speed));
+    }
+
+    el.style.transition = "transform " + duration.toFixed(0) + "ms cubic-bezier(0.22, 1, 0.36, 1)";
+    var finalDelta = targetProgress * d.dir;
+    el.style.transform = d.axis === "x" ? "translateX(" + finalDelta + "px)" : "translateY(" + finalDelta + "px)";
+
+    var settled = false;
+    var fallbackTimer;
+    var done = function () {
+      if (settled) return; // transitionend and the fallback timer can both fire otherwise
+      settled = true;
+      clearTimeout(fallbackTimer);
+      el.removeEventListener("transitionend", done);
+      el.style.transition = "";
+      el.style.transform = "";
+      if (commit) commitSlide(d.index);
+      else updateMovable();
+    };
+    el.addEventListener("transitionend", done);
+    fallbackTimer = setTimeout(done, duration + 60); // safety net if transitionend doesn't fire
+  }
+
+  function commitSlide(i) {
+    var toCell = tileCellEl(blankIndex);
+    var el = tileEls[i];
+    var oldBlank = blankIndex;
+
+    tiles[oldBlank] = tiles[i];
+    tiles[i] = null;
+    blankIndex = i;
+
+    delete tileEls[i];
+    toCell.appendChild(el);
+    el.dataset.index = oldBlank;
+    tileEls[oldBlank] = el;
+
+    sndSlide();
+    moves += 1;
+    updateMovesHud();
+    updateCorrectness();
+    updateMovable();
+    checkWin();
+  }
+
   function slideTile(i) {
     var fromCell = tileCellEl(i);
     var toCell = tileCellEl(blankIndex);
@@ -225,14 +379,15 @@
   }
 
   function onTileClick(e) {
+    // Pointer-driven taps and drags are fully handled by the pointerdown/move/up
+    // listeners below; this stays only for keyboard activation (Enter/Space on a
+    // focused tile), which browsers fire as a click with detail === 0.
+    if (e.detail !== 0) return;
     e.stopPropagation();
     if (ended) return;
     var i = parseInt(this.dataset.index, 10);
     if (neighborIndices(blankIndex).indexOf(i) === -1) {
-      var el = this;
-      el.classList.add("shake");
-      sndThud();
-      setTimeout(function () { el.classList.remove("shake"); }, 240);
+      shakeTile(this);
       return;
     }
     slideTile(i);
@@ -325,6 +480,35 @@
   howtoBtn.addEventListener("click", openHowto);
   howtoBackdrop.addEventListener("click", closeHowto);
   shareBtn.addEventListener("click", shareResult);
+
+  tilesGrid.addEventListener("pointerdown", function (e) {
+    if (ended || drag || pendingShakeEl) return;
+    var tileEl = e.target.closest(".tile");
+    if (!tileEl) return;
+    var i = parseInt(tileEl.dataset.index, 10);
+    if (neighborIndices(blankIndex).indexOf(i) !== -1) {
+      beginDrag(e, tileEl, i);
+    } else {
+      pendingShakeEl = { el: tileEl, pointerId: e.pointerId, x: e.clientX, y: e.clientY };
+      try { tileEl.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    }
+  });
+  tilesGrid.addEventListener("pointermove", function (e) {
+    if (drag) updateDrag(e);
+  });
+  tilesGrid.addEventListener("pointerup", function (e) {
+    if (drag) {
+      endDrag(e);
+    } else if (pendingShakeEl && e.pointerId === pendingShakeEl.pointerId) {
+      var moved = Math.hypot(e.clientX - pendingShakeEl.x, e.clientY - pendingShakeEl.y);
+      if (moved < TAP_MAX_MOVE) shakeTile(pendingShakeEl.el);
+      pendingShakeEl = null;
+    }
+  });
+  tilesGrid.addEventListener("pointercancel", function (e) {
+    if (drag) endDrag(e, true);
+    pendingShakeEl = null;
+  });
 
   buildDom();
   shuffleBoard();

@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+  <defs>
+    <radialGradient id="bg" cx="28%" cy="20%" r="95%">
+      <stop offset="0%" stop-color="#fbf6ea"/>
+      <stop offset="45%" stop-color="#f3ecd9"/>
+      <stop offset="100%" stop-color="#e2d1ac"/>
+    </radialGradient>
+    <radialGradient id="glass" cx="32%" cy="26%" r="78%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="32%" stop-color="#eef1ef"/>
+      <stop offset="62%" stop-color="#d3d8d3"/>
+      <stop offset="100%" stop-color="#aeb5ad"/>
+    </radialGradient>
+    <radialGradient id="bomb" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#3d3a35"/>
+      <stop offset="65%" stop-color="#100e0b"/>
+      <stop offset="100%" stop-color="#040302"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="640" height="640" fill="url(#bg)"/>
+
+  <!-- soft contact shadows, grounding each bubble on the paper -->
+  <g fill="#000000" opacity="0.07">
+    <ellipse cx="460" cy="256" rx="86" ry="16"/>
+    <ellipse cx="150" cy="438" rx="78" ry="14"/>
+    <ellipse cx="430" cy="480" rx="50" ry="10"/>
+    <ellipse cx="300" cy="222" rx="32" ry="7"/>
+    <ellipse cx="530" cy="540" rx="42" ry="9"/>
+    <ellipse cx="560" cy="284" rx="34" ry="7"/>
+  </g>
+
+  <!-- freshly popped: a burst ring and drifting score, the game's own micro-moment -->
+  <circle cx="215" cy="520" r="52" fill="none" stroke="rgba(44,41,36,0.35)" stroke-width="3"/>
+  <text x="215" y="500" font-family="'SF Mono','JetBrains Mono',ui-monospace,Menlo,Consolas,monospace" font-weight="700" font-size="26" fill="#2c2c2b" text-anchor="middle" opacity="0.8">+30</text>
+
+  <!-- bonus bubble: dashed halo, same as .bubble.bonus -->
+  <circle cx="530" cy="500" r="56" fill="none" stroke="rgba(44,41,36,0.35)" stroke-width="2" stroke-dasharray="6 7"/>
+  <circle cx="530" cy="500" r="56" fill="url(#glass)" stroke="rgba(60,55,45,0.22)" stroke-width="2"/>
+  <ellipse cx="513" cy="474" rx="17" ry="11" fill="rgba(255,255,255,0.85)"/>
+
+  <!-- normal bubbles, varied sizes -->
+  <g>
+    <circle cx="460" cy="170" r="112" fill="url(#glass)" stroke="rgba(60,55,45,0.22)" stroke-width="2"/>
+    <ellipse cx="426.4" cy="111.8" rx="33.6" ry="22.4" fill="rgba(255,255,255,0.85)"/>
+  </g>
+  <g>
+    <circle cx="150" cy="360" r="100" fill="url(#glass)" stroke="rgba(60,55,45,0.22)" stroke-width="2"/>
+    <ellipse cx="120" cy="308" rx="30" ry="20" fill="rgba(255,255,255,0.85)"/>
+  </g>
+  <g>
+    <circle cx="430" cy="430" r="66" fill="url(#glass)" stroke="rgba(60,55,45,0.22)" stroke-width="2"/>
+    <ellipse cx="410.2" cy="395.7" rx="19.8" ry="13.2" fill="rgba(255,255,255,0.85)"/>
+  </g>
+  <g>
+    <circle cx="300" cy="190" r="42" fill="url(#glass)" stroke="rgba(60,55,45,0.22)" stroke-width="2"/>
+    <ellipse cx="287.4" cy="168.2" rx="12.6" ry="8.4" fill="rgba(255,255,255,0.85)"/>
+  </g>
+
+  <!-- bomb bubble, revealed — same tell as the real .bomb-revealed state -->
+  <g>
+    <circle cx="560" cy="284" r="44" fill="url(#bomb)" stroke="rgba(0,0,0,0.5)" stroke-width="2"/>
+    <g transform="translate(560,284)" fill="none" stroke="#f0ece2" stroke-width="2.6" stroke-linecap="round">
+      <circle cx="0" cy="6" r="15" fill="#f0ece2" stroke="none"/>
+      <path d="M0 -9 L4.5 -17"/>
+      <circle cx="5.6" cy="-19" r="3.2" fill="#f0ece2" stroke="none"/>
+    </g>
+  </g>
+</svg>

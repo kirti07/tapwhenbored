@@ -13,6 +13,8 @@
 html, body {
   margin: 0;
   height: 100%;
+  height: 100dvh; /* iOS Safari sizes vh against the chrome-hidden viewport, so a plain
+                     100% here can be taller than what's actually visible on load */
   overflow: hidden;
   background: var(--paper);
   color: var(--ink);

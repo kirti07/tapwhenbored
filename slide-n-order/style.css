@@ -32,6 +32,9 @@
 html, body {
   margin: 0;
   height: 100%;
+  height: 100dvh; /* iOS Safari sizes vh against the chrome-hidden viewport, so a plain
+                     100% here can be taller than what's actually visible on load and
+                     push the board into overlapping the challenge banner above it */
   background: var(--bg);
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
@@ -148,6 +151,10 @@ html, body {
 /* ---- challenge banner ---- */
 
 .challenge-banner {
+  position: relative; /* lifts it into its own paint layer so it always draws above
+                          the board even if the board overflows its flex box on short
+                          viewports — see the html,body dvh note above */
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -247,6 +254,9 @@ html, body {
   border-radius: 16%;
   pointer-events: auto;
   cursor: pointer;
+  touch-action: none; /* the tile owns its own drag gesture — don't let the browser
+                          try to scroll or select on a vertical/horizontal swipe */
+  -webkit-user-drag: none;
   background: linear-gradient(155deg, var(--tile-hi) 0%, var(--tile-mid) 55%, var(--tile-lo) 100%);
   box-shadow:
     inset 0 0 0 1.5px var(--tile-rim),
@@ -260,7 +270,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.25s cubic-bezier(.4,1.4,.6,1), box-shadow 0.2s ease;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease;
   will-change: transform;
 }
 
@@ -310,6 +320,9 @@ html, body {
 }
 
 .tile:active {
+  transition: transform 90ms ease-out; /* press feedback must land instantly — the
+                                           slower settle easing above is only for the
+                                           slide itself, not the initial touch response */
   transform: scale(0.94);
 }
 
