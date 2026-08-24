@@ -304,14 +304,14 @@
         navigator.share({
           files: [file],
           title: "Doodle On",
-          text: "I kept drawing without lifting my finger. Can you beat that?"
+          text: "Try doodling this without lifting your finger!"
         }).catch(function () {});
         return;
       }
       if (navigator.share) {
         navigator.share({
           title: "Doodle On",
-          text: "I kept drawing without lifting my finger on Doodle On.",
+          text: "Try doodling without lifting your finger on Doodle On.",
           url: location.origin + "/doodle-on/"
         }).catch(function () {});
         return;
