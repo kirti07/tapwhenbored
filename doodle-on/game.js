@@ -2,7 +2,7 @@
   "use strict";
 
   // ---------- tuning ----------
-  var LINE_WIDTH = 6.5;  // px, CSS space
+  var LINE_WIDTH = 3;  // px, CSS space
   var STEP = 5;           // resample interval along the stroke, kept for a clean share-image redraw
   var PALETTE = ["#ff9a3d", "#ff5f96", "#a970ff", "#4fb8ff", "#2ee6b8", "#ffd93d"];
   var STOP_DIST = 130;    // px of drawn distance per palette stop, then it loops

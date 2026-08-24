@@ -135,16 +135,6 @@ html, body {
   transform: scale(0.94);
 }
 
-.tagline {
-  margin: 1.6vh 0 0;
-  text-align: center;
-  font-size: clamp(12px, 1.7vh, 14px);
-  color: var(--ink-soft);
-  letter-spacing: 0.03em;
-  line-height: 1.5;
-  flex-shrink: 0;
-}
-
 .tagline-accent {
   color: var(--purple);
   font-weight: 700;
@@ -186,22 +176,36 @@ canvas#canvas {
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1.2vh;
+  text-align: center;
+  padding: 0 6vw;
   pointer-events: none;
   transition: opacity 0.25s ease;
 }
 
-.idle-prompt p {
+.idle-prompt svg {
+  color: var(--purple);
+  opacity: 0.85;
+}
+
+.idle-heading {
   margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-  padding: 1.1vh 4vw;
+  font-size: clamp(15px, 2.2vh, 19px);
+  font-weight: 800;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.idle-hint {
+  margin: 0;
+  padding: 0.8vh 4vw;
   border: 1.5px dashed var(--purple);
   border-radius: 999px;
   background: rgba(124, 92, 255, 0.06);
-  font-size: clamp(12px, 1.8vh, 14px);
+  font-size: clamp(11px, 1.6vh, 13px);
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--purple-dark);
@@ -438,5 +442,18 @@ canvas#canvas {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .idle-prompt p { animation: none; }
+  .idle-hint { animation: none; }
+}
+
+/* ---- short viewports (phone landscape) ----
+   The canvas box is just "whatever's left" after the surrounding rows —
+   on a short/rotated viewport those fixed rows eat a disproportionate
+   share of it, so trim the least essential ones to give the canvas back
+   its room. Purely cosmetic: nothing here is removed from the DOM, so it
+   stays in the page source for crawlers, it's just not rendered here. */
+@media (max-height: 480px) {
+  .stage { padding-top: 1.4vh; padding-bottom: 1.2vh; }
+  .brand-divider, .subtitle, .seo-info { display: none; }
+  .back-link { margin-bottom: 0.3vh; }
+  .howto-link { padding-top: 0.4vh; }
 }
