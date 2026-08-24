@@ -4,6 +4,7 @@
   "redirects": [
     { "source": "/bubble-tap", "destination": "/bubble-tap/", "permanent": true },
     { "source": "/marble-nostalgia", "destination": "/marble-nostalgia/", "permanent": true },
-    { "source": "/slide-n-order", "destination": "/slide-n-order/", "permanent": true }
+    { "source": "/slide-n-order", "destination": "/slide-n-order/", "permanent": true },
+    { "source": "/doodle-on", "destination": "/doodle-on/", "permanent": true }
   ]
 }
