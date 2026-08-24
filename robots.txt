@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://tapwhenbored.com/sitemap.xml
+Sitemap: https://www.tapwhenbored.com/sitemap.xml

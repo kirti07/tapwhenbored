@@ -428,6 +428,30 @@ html, body {
   padding: 1.2vh 4px 0;
 }
 
+.seo-info {
+  flex-shrink: 0;
+  align-self: center;
+  max-width: 90vw;
+  margin-top: 0.6vh;
+  font-size: 9px;
+  color: var(--ink-soft);
+  text-align: center;
+}
+.seo-info summary {
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  list-style: none;
+}
+.seo-info summary::-webkit-details-marker { display: none; }
+.seo-info summary::after { content: " ▾"; }
+.seo-info[open] summary::after { content: " ▴"; }
+.seo-info p {
+  margin: 4px 0 0;
+  line-height: 1.5;
+  text-align: left;
+}
+
 .howto-backdrop {
   position: fixed;
   inset: 0;

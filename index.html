@@ -4,24 +4,56 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#e7dcc7">
-<title>Tap When Bored — tiny games, big breaks</title>
-<meta name="description" content="A small shelf of free, single-player browser games — Bubble Tap and Marble Nostalgia. No download, no signup, nothing to load but the game you pick.">
-<link rel="canonical" href="https://tapwhenbored.com/">
+<title>Tap When Bored — Free Online Games, No Download</title>
+<meta name="description" content="Free browser games for a quick break — Bubble Tap, Marble Nostalgia, and Slide N Order. No download, no signup, nothing to load but the game you pick.">
+<link rel="canonical" href="https://www.tapwhenbored.com/">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Tap When Bored — tiny games, big breaks">
+<meta property="og:title" content="Tap When Bored — Free Online Games, No Download">
 <meta property="og:description" content="A small shelf of free, single-player browser games. Pick one, it opens instantly.">
-<meta property="og:url" content="https://tapwhenbored.com/">
+<meta property="og:url" content="https://www.tapwhenbored.com/">
+<meta property="og:image" content="https://www.tapwhenbored.com/assets/bubble-tap-og.jpg">
+<meta property="og:image:width" content="640">
+<meta property="og:image:height" content="640">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Tap When Bored — tiny games, big breaks">
+<meta name="twitter:title" content="Tap When Bored — Free Online Games, No Download">
 <meta name="twitter:description" content="A small shelf of free, single-player browser games. Pick one, it opens instantly.">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='7'%20fill='%23f1f2ef'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='11'%20fill='none'%20stroke='%232c2c2b'%20stroke-width='2'/%3E%3Ccircle%20cx='11.5'%20cy='11'%20r='3.2'%20fill='%232c2c2b'/%3E%3C/svg%3E">
+<meta name="twitter:image" content="https://www.tapwhenbored.com/assets/bubble-tap-og.jpg">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "WebSite",
   "name": "Tap When Bored",
-  "url": "https://tapwhenbored.com/",
-  "description": "A small shelf of free, single-player browser games."
+  "url": "https://www.tapwhenbored.com/",
+  "description": "A small shelf of free, single-player browser games.",
+  "hasPart": [
+    { "@type": "Game", "name": "Bubble Tap", "url": "https://www.tapwhenbored.com/bubble-tap/" },
+    { "@type": "Game", "name": "Marble Nostalgia", "url": "https://www.tapwhenbored.com/marble-nostalgia/" },
+    { "@type": "Game", "name": "Slide N Order", "url": "https://www.tapwhenbored.com/slide-n-order/" }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Are the games on Tap When Bored free?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Every game is free to play, with no in-app purchases." }
+    },
+    {
+      "@type": "Question",
+      "name": "Do I need to sign up or download anything?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. There's no signup and nothing to install — each game opens straight in your browser." }
+    },
+    {
+      "@type": "Question",
+      "name": "Do the games work on mobile?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Every game is built for touch and works on phones, tablets, and desktop browsers." }
+    }
+  ]
 }
 </script>
 <link rel="stylesheet" href="style.css">
@@ -37,9 +69,15 @@
     </div>
   </header>
 
+  <p class="intro">
+    A small shelf of free online games for whenever you've got a spare minute — pop bubble
+    wrap, work a peg-solitaire board, or slide tiles back into order. Every game is
+    single-player, runs straight in your browser, and needs no download or signup.
+  </p>
+
   <main class="shelf" aria-label="Games">
     <a class="card" href="/bubble-tap/">
-      <img class="thumb" src="assets/bubble-tap-thumb.webp" width="640" height="640" alt="" aria-hidden="true">
+      <img class="thumb" src="assets/bubble-tap-thumb.webp" width="640" height="640" alt="Bubble Tap — bubble wrap popping game preview">
       <div class="card-body">
         <h2 class="card-name">Bubble Tap</h2>
         <p class="card-desc">Tap · Relax</p>
@@ -47,7 +85,7 @@
     </a>
 
     <a class="card" href="/marble-nostalgia/">
-      <img class="thumb" src="assets/marble-nostalgia-thumb.webp" width="640" height="640" alt="" aria-hidden="true">
+      <img class="thumb" src="assets/marble-nostalgia-thumb.webp" width="640" height="640" alt="Marble Nostalgia — peg solitaire marble board preview">
       <div class="card-body">
         <h2 class="card-name">Marble Nostalgia</h2>
         <p class="card-desc">Think · Move</p>
@@ -55,13 +93,29 @@
     </a>
 
     <a class="card" href="/slide-n-order/">
-      <img class="thumb" src="assets/slide-n-order-thumb.svg" width="640" height="640" alt="" aria-hidden="true">
+      <img class="thumb" src="assets/slide-n-order-thumb.svg" width="640" height="640" alt="Slide N Order — 15-puzzle sliding tile game preview">
       <div class="card-body">
         <h2 class="card-name">Slide N Order</h2>
         <p class="card-desc">Tap · Arrange</p>
       </div>
     </a>
   </main>
+
+  <section class="faq" aria-label="Frequently asked questions">
+    <h2 class="faq-title">Questions</h2>
+    <details class="faq-item">
+      <summary>Are the games on Tap When Bored free?</summary>
+      <p>Yes. Every game is free to play, with no in-app purchases.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Do I need to sign up or download anything?</summary>
+      <p>No. There's no signup and nothing to install — each game opens straight in your browser.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Do the games work on mobile?</summary>
+      <p>Yes. Every game is built for touch and works on phones, tablets, and desktop browsers.</p>
+    </details>
+  </section>
 
   <footer class="hub-footer">More tiny games coming soon.</footer>
 </div>
