@@ -281,16 +281,28 @@
   }
 
   // ---------- game actions ----------
+  var revertTimer = null;
+
+  function revertTiles(tiles, prev) {
+    if (revertTimer) clearTimeout(revertTimer);
+    revertTimer = setTimeout(function () {
+      tiles.forEach(function (t, i) { t.textContent = prev[i]; });
+      revertTimer = null;
+    }, 450);
+  }
+
   function attemptCommit() {
     if (state.solved || !activeTiles) return;
-    var word = activeTiles.map(function (t) { return t.textContent; }).join("");
+    var tiles = activeTiles;
+    var word = tiles.map(function (t) { return t.textContent; }).join("");
 
     var prev = state.history[state.history.length - 1];
     if (word === prev) { hideHintNow(); return; }
-    if (diffCount(word, prev) !== 1) { showHint("Change exactly one letter"); sndError(); return; }
-    if (state.history.indexOf(word) !== -1) { showHint("Already used that word"); sndError(); return; }
-    if (!DICTIONARY[word]) { showHint("Not a word we know"); sndError(); return; }
+    if (diffCount(word, prev) !== 1) { showHint("Change exactly one letter"); sndError(); revertTiles(tiles, prev); return; }
+    if (state.history.indexOf(word) !== -1) { showHint("Already used that word"); sndError(); revertTiles(tiles, prev); return; }
+    if (!DICTIONARY[word]) { showHint("Not a word we know"); sndError(); revertTiles(tiles, prev); return; }
 
+    if (revertTimer) { clearTimeout(revertTimer); revertTimer = null; }
     hideHintNow();
     state.history.push(word);
 
