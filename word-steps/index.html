@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#f3ede0">
+<title>Word Steps — Free Daily Word Ladder Puzzle</title>
+<meta name="description" content="A free daily word ladder puzzle. Change one letter at a time to turn the start word into the target word. New puzzle every day, no signup.">
+<link rel="canonical" href="https://www.tapwhenbored.com/word-steps/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Word Steps — Free Daily Word Ladder Puzzle">
+<meta property="og:description" content="Change one letter at a time to turn the start word into the target word. A new puzzle every day.">
+<meta property="og:url" content="https://www.tapwhenbored.com/word-steps/">
+<meta property="og:image" content="https://www.tapwhenbored.com/assets/word-steps-thumb.svg">
+<meta property="og:image:width" content="640">
+<meta property="og:image:height" content="640">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Word Steps — Free Daily Word Ladder Puzzle">
+<meta name="twitter:description" content="Change one letter at a time to turn the start word into the target word. A new puzzle every day.">
+<meta name="twitter:image" content="https://www.tapwhenbored.com/assets/word-steps-thumb.svg">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Game",
+  "name": "Word Steps",
+  "url": "https://www.tapwhenbored.com/word-steps/",
+  "description": "A free daily word ladder puzzle. Change one letter at a time to turn the start word into the target word.",
+  "image": "https://www.tapwhenbored.com/assets/word-steps-thumb.svg",
+  "genre": "Word",
+  "playMode": "SinglePlayer",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Tap When Bored", "item": "https://www.tapwhenbored.com/" },
+    { "@type": "ListItem", "position": 2, "name": "Word Steps", "item": "https://www.tapwhenbored.com/word-steps/" }
+  ]
+}
+</script>
+<link rel="stylesheet" href="style.css">
+<script defer src="/_vercel/insights/script.js"></script>
+</head>
+<body>
+  <div class="stage">
+    <header class="topbar">
+      <div class="brand">
+        <a class="back-link" href="/">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <span>Games</span>
+        </a>
+        <h1 class="title">WORD <span class="title-accent">STEPS</span></h1>
+        <div class="brand-divider"><span></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span></span></div>
+        <p class="subtitle">DAILY</p>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" id="undoBtn" title="Undo" aria-label="Undo last step">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l-4-4 4-4"/><path d="M5 10h9a5 5 0 0 1 0 10h-1"/></svg>
+        </button>
+        <button class="icon-btn" id="restartBtn" title="Start over" aria-label="Start over">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.9-6.16"/><path d="M20 4v5h-5"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="play-area">
+      <div class="puzzle-bar">
+        <span class="puzzle-word" id="startWord">WORD</span>
+        <svg class="puzzle-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <span class="puzzle-word" id="targetWord">STEP</span>
+        <span class="step-pill" id="stepPill">0 steps</span>
+      </div>
+
+      <div class="ladder-wrap" id="ladderWrap">
+        <div class="ladder" id="ladder"></div>
+      </div>
+
+      <p class="hint-msg" id="hintMsg" aria-live="polite"></p>
+    </div>
+
+    <button class="howto-link" id="howtoBtn">How to play</button>
+
+    <details class="seo-info">
+      <summary>What is this?</summary>
+      <p>
+        Word Steps is a free daily word ladder puzzle. Change one letter at a time
+        to turn the start word into the target word — every word in between has to
+        be a real word. There's one puzzle a day, unlimited attempts, and your best
+        step count is saved so you can keep trying to beat it. No score, no timer,
+        no signup.
+      </p>
+    </details>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="overlay-content">
+      <svg class="overlay-icon" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+      <div class="overlay-title-row">
+        <span class="deco deco-1">&#10022;</span>
+        <p class="overlay-title" id="overlayTitle">SOLVED</p>
+        <span class="deco deco-2">&#10022;</span>
+      </div>
+      <p class="overlay-sub" id="overlaySub">COLD &#8594; WARM</p>
+      <p class="overlay-steps" id="overlaySteps">You did it in 6 steps.</p>
+      <p class="overlay-best" id="overlayBest">&#9733; Best today: 6 steps</p>
+      <div class="overlay-actions">
+        <button class="again-btn" id="againBtn">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.9-6.16"/><path d="M20 4v5h-5"/></svg>
+          Try for fewer steps
+        </button>
+        <button class="share-btn" id="shareBtn">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.7 15.7 6.6M8.3 13.3l7.4 4.1"/></svg>
+          Share
+        </button>
+      </div>
+      <p class="share-note" id="shareNote">Copied!</p>
+      <p class="next-puzzle">New word tomorrow in <span id="countdown">00:00:00</span></p>
+    </div>
+  </div>
+
+  <div class="howto-backdrop" id="howtoBackdrop"></div>
+  <div class="howto-sheet" id="howtoSheet">
+    <div class="howto-handle"></div>
+    <p class="howto-title">How to play</p>
+    <ul class="howto-list">
+      <li>Tap a letter in the current word, then pick its replacement.</li>
+      <li>If that's a real word, it locks in as your next step automatically.</li>
+      <li>Reach the target in as few steps as possible.</li>
+      <li>Already solved it? Come back and try for fewer steps — your best today is saved.</li>
+      <li>A new puzzle unlocks every day at midnight.</li>
+    </ul>
+  </div>
+
+  <div class="letter-backdrop" id="letterBackdrop"></div>
+  <div class="letter-sheet" id="letterSheet">
+    <div class="howto-handle"></div>
+    <div class="letter-sheet-header">
+      <p class="letter-sheet-title">Choose a letter</p>
+      <button class="letter-close" id="letterCloseBtn" aria-label="Cancel">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="letter-grid" id="letterGrid"></div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fefbf3"/>
+      <stop offset="100%" stop-color="#f5eedc"/>
+    </linearGradient>
+    <linearGradient id="wsAccent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1f9974"/>
+      <stop offset="100%" stop-color="#146b53"/>
+    </linearGradient>
+    <pattern id="dots" width="44" height="44" patternUnits="userSpaceOnUse">
+      <circle cx="22" cy="22" r="2.5" fill="#2b2620" opacity="0.1"/>
+    </pattern>
+  </defs>
+
+  <rect width="640" height="640" fill="url(#paper)"/>
+  <rect width="640" height="640" fill="url(#dots)"/>
+
+  <!-- word ladder cards -->
+  <rect x="140" y="150" width="360" height="70" rx="16" fill="#fbf7ec" stroke="#e3d3ae" stroke-width="3"/>
+  <text x="320" y="196" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-weight="800" font-size="34" letter-spacing="6" fill="#2b2620">C<tspan fill="#d9822b">O</tspan>LD</text>
+
+  <path d="M320 232 L320 268" stroke="#8a7f68" stroke-width="4" stroke-linecap="round" opacity="0.6"/>
+  <path d="M306 254 L320 270 L334 254" fill="none" stroke="#8a7f68" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+
+  <rect x="140" y="285" width="360" height="70" rx="16" fill="#fbf7ec" stroke="#e3d3ae" stroke-width="3"/>
+  <text x="320" y="331" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-weight="800" font-size="34" letter-spacing="6" fill="#2b2620">C<tspan fill="#d9822b">A</tspan>RD</text>
+
+  <path d="M320 367 L320 403" stroke="#8a7f68" stroke-width="4" stroke-linecap="round" opacity="0.6"/>
+  <path d="M306 389 L320 405 L334 389" fill="none" stroke="#8a7f68" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+
+  <rect x="140" y="420" width="360" height="70" rx="16" fill="#fbf7ec" stroke="url(#wsAccent)" stroke-width="3.5"/>
+  <text x="320" y="466" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-weight="800" font-size="34" letter-spacing="6" fill="url(#wsAccent)">WARM</text>
+
+  <text x="320" y="110" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-weight="800" font-size="30" letter-spacing="2" fill="#2b2620">WORD STEPS</text>
+
+  <circle cx="556" cy="120" r="9" fill="#1f9974" opacity="0.8"/>
+  <circle cx="90" cy="520" r="7" fill="#d9822b" opacity="0.7"/>
+</svg>
