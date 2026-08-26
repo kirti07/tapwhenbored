@@ -577,3 +577,52 @@ html, body {
     font-size: 8px;
   }
 }
+
+/* ==== Neon Arcade (dark theme) ====
+   Keeps the console/scoreboard identity (monospace title, glass bubbles) —
+   only the surrounding chrome and the two hardcoded near-black text colours
+   (which would be invisible on a near-black background) need a dark pass. */
+
+:root[data-theme="dark"] {
+  --paper: #0d0e1a;
+  --paper-2: #14132a;
+  --ink: #f0eefa;
+  --ink-soft: #9b96c4;
+  --line: #2c2850;
+  --accent: #22e5ff;
+  --accent-dark: #0bb8d9;
+  color-scheme: dark;
+}
+
+[data-theme="dark"] .app,
+[data-theme="dark"] .overlay {
+  background:
+    radial-gradient(circle at 20% 15%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 40%),
+    var(--paper);
+}
+
+[data-theme="dark"] .notice {
+  background: color-mix(in srgb, #ffffff 6%, transparent);
+}
+[data-theme="dark"] .notice.warn {
+  color: #ff5c72;
+  border-color: #ff5c72;
+  background: color-mix(in srgb, #ff5c72 12%, transparent);
+}
+[data-theme="dark"] .notice.good {
+  color: #34e19a;
+  border-color: #34e19a;
+  background: color-mix(in srgb, #34e19a 12%, transparent);
+}
+
+[data-theme="dark"] .toggle {
+  background: color-mix(in srgb, #ffffff 10%, transparent);
+}
+
+[data-theme="dark"] .icon-btn:active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+[data-theme="dark"] .panel {
+  background: rgba(0, 0, 0, 0.55);
+}

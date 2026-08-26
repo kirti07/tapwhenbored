@@ -487,3 +487,91 @@ html, body {
   .tile.movable.bounce { animation: none; }
   .overlay-tile { animation: none; }
 }
+
+/* ==== Neon Arcade (dark theme) ==== */
+
+:root[data-theme="dark"] {
+  --bg: #0d0e1a;
+  --ink: #f0eefa;
+  --ink-soft: #9b96c4;
+  --line: #362c56;
+
+  --accent: #a855f7;
+  --accent-dark: #7c3aed;
+
+  --wood-hi: #6b4a2a;
+  --wood-mid: #4a3018;
+  --wood-lo: #2e1c0c;
+  --wood-edge-lit: #7a5636;
+  --wood-edge-dark: #180f06;
+
+  --slot-lo: #150c05;
+  --slot-mid: #241408;
+  --slot-rim: #3a2410;
+
+  --tile-hi: #f4ecd8;
+  --tile-mid: #e6d9ba;
+  --tile-lo: #d0bd92;
+  --tile-ink: #2a2419;
+  --tile-rim: rgba(15, 8, 3, 0.5);
+  --tile-shadow: rgba(8, 4, 1, 0.55);
+
+  --correct-hi: #c9a8ff;
+  --correct-mid: #a855f7;
+  --correct-lo: #7c3aed;
+  --correct-ink: #ffffff;
+}
+
+[data-theme="dark"] .tray {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 210, 150, 0.12),
+    inset 0 0.6vh 1.2vh rgba(255, 210, 150, 0.08),
+    inset 0 -0.5vh 1vh rgba(0, 0, 0, 0.55),
+    0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, transparent),
+    0 0 3vh color-mix(in srgb, var(--accent) 30%, transparent),
+    0 1.8vh 3.2vh rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .tile.movable {
+  box-shadow:
+    inset 0 0 0 1.5px var(--tile-rim),
+    inset 0 0.4vh 0.5vh rgba(255, 255, 255, 0.6),
+    inset 0 -0.5vh 0.6vh rgba(110, 75, 30, 0.28),
+    0 0.5vh 0.9vh var(--tile-shadow),
+    0 0 0 1.5px color-mix(in srgb, var(--accent) 80%, transparent),
+    0 0 1.8vh color-mix(in srgb, var(--accent) 65%, transparent);
+}
+
+[data-theme="dark"] .icon-btn:active {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+[data-theme="dark"] .challenge-banner {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+[data-theme="dark"] .overlay {
+  background: rgba(13, 14, 26, 0.94);
+}
+
+[data-theme="dark"] .overlay-tile {
+  box-shadow:
+    inset 0 0 0 1.5px var(--tile-rim),
+    inset 0 0.4vh 0.5vh rgba(255, 255, 255, 0.5),
+    0 0 3vh color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+[data-theme="dark"] .again-btn {
+  box-shadow: 0 0.8vh 1.8vh color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+@keyframes glow-dark {
+  0%, 100% { box-shadow: inset 0 0 0 1.5px var(--tile-rim), inset 0 0.4vh 0.5vh rgba(255, 255, 255, 0.5), 0 0 1.5vh rgba(168, 85, 247, 0.6); }
+  50% { box-shadow: inset 0 0 0 1.5px var(--tile-rim), inset 0 0.4vh 0.5vh rgba(255, 255, 255, 0.5), 0 0 4vh rgba(168, 85, 247, 1); }
+}
+[data-theme="dark"] .overlay-tile { animation-name: glow-dark; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="dark"] .overlay-tile { animation: none; }
+}

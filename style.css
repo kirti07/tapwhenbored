@@ -37,7 +37,57 @@ html, body {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
   margin-bottom: 40px;
+}
+
+/* ---- theme toggle ---- */
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.theme-toggle-icon {
+  display: flex;
+  color: var(--text-secondary);
+}
+
+.theme-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.theme-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--accent);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease;
+}
+
+.theme-switch[aria-checked="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.theme-switch[aria-checked="true"] .theme-switch-thumb {
+  transform: translateX(20px);
+  background: #ffffff;
 }
 
 .brand-name {
@@ -214,4 +264,47 @@ html, body {
   .card-name { font-size: 14px; }
   .play-btn { width: 28px; height: 28px; }
   .play-btn svg { width: 11px; height: 11px; }
+}
+
+/* ==== Neon Arcade (dark theme) ====
+   Same tokens, dark values — every rule above that reads var(--bg)/var(--text)/
+   var(--accent)/etc already re-themes on its own. This block only needs to
+   (a) redefine the tokens and (b) fix the handful of rules that hardcode a
+   colour instead of reading a variable (card shadow, thumbnail art). */
+
+:root[data-theme="dark"] {
+  --bg: #0d0e1a;
+  --surface: #14132a;
+  --surface-elevated: #1a1832;
+  --text: #f0eefa;
+  --text-secondary: #9b96c4;
+  --border: #2c2850;
+  --accent: #a855f7;
+  color-scheme: dark;
+}
+
+[data-theme="dark"] .brand-pop--warm { color: #ff5c8a; }
+[data-theme="dark"] .brand-pop--cool { color: #34e19a; }
+
+[data-theme="dark"] .card--marble { --accent: #22d3ee; }
+[data-theme="dark"] .card--bubble { --accent: #22e5ff; }
+[data-theme="dark"] .card--slide  { --accent: #a855f7; }
+[data-theme="dark"] .card--doodle { --accent: #ff5fb3; }
+[data-theme="dark"] .card--word   { --accent: #34e19a; }
+
+[data-theme="dark"] .card {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent), 0 0 22px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+[data-theme="dark"] .card:hover {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent), 0 0 30px color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+/* the thumbnails are static light-mode art; re-tone rather than ship a second
+   set of image assets — cheap, no new requests, no new dependency */
+[data-theme="dark"] .thumb {
+  filter: brightness(0.82) contrast(1.12) saturate(1.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-switch, .theme-switch-thumb { transition: none; }
 }

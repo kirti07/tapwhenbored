@@ -641,6 +641,51 @@ html, body {
   .icon-btn, .again-btn, .share-btn, .tile-active, .letter-btn { transition: none; }
 }
 
+/* ==== Neon Arcade (dark theme) ====
+   Letter tiles already read `var(--paper)` for their fill, so darkening that
+   one token turns every tile/letter-button dark with a coloured border —
+   no extra rules needed there. Only the hardcoded green tints need a
+   dark-mode equivalent. */
+
+:root[data-theme="dark"] {
+  --bg: #0d0e1a;
+  --paper: #14132a;
+  --paper-edge: #2c2850;
+  --ink: #f0eefa;
+  --ink-soft: #9b96c4;
+  --line: #2c2850;
+
+  --accent: #34e19a;
+  --accent-dark: #10a866;
+  --mark: #ffb84d;
+  --error: #ff5c72;
+}
+
+[data-theme="dark"] .icon-btn:active,
+[data-theme="dark"] .step-pill,
+[data-theme="dark"] .letter-btn.current,
+[data-theme="dark"] .next-puzzle {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+[data-theme="dark"] .next-puzzle {
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+[data-theme="dark"] .tile-active {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+[data-theme="dark"] .tile-active.picking {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+[data-theme="dark"] .again-btn {
+  box-shadow: 0 0.8vh 1.8vh color-mix(in srgb, var(--accent) 50%, transparent);
+}
+[data-theme="dark"] .hint-msg {
+  box-shadow: 0 1.2vh 3vh color-mix(in srgb, var(--error) 45%, transparent);
+}
+[data-theme="dark"] .overlay {
+  background: linear-gradient(to top, rgba(13, 14, 26, 0.94) 0%, rgba(13, 14, 26, 0.6) 40%, rgba(13, 14, 26, 0) 75%);
+}
+
 /* ---- short viewports (phone landscape) ---- */
 @media (max-height: 480px) {
   .stage { padding-top: 1.4vh; padding-bottom: 1.2vh; }

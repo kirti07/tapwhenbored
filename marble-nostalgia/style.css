@@ -627,3 +627,79 @@ html, body {
 .share-note.show {
   opacity: 1;
 }
+
+/* ==== Neon Arcade (dark theme) ==== */
+
+:root[data-theme="dark"] {
+  --bg: #0d0e1a;
+  --ink: #f0eefa;
+  --ink-soft: #9b96c4;
+  --line: #223142;
+
+  --accent: #22d3ee;
+  --accent-dark: #0891b2;
+
+  --wood-hi: #6e4d2c;
+  --wood-mid: #4d331a;
+  --wood-lo: #2c1c0e;
+  --wood-edge-lit: #7c5a38;
+  --wood-edge-dark: #150c05;
+
+  --hole-lo: #0e0904;
+  --hole-mid: #1c1108;
+  --hole-rim: #2c1c0e;
+
+  --marble-shadow: rgba(0, 0, 0, 0.45);
+
+  --target-glow: #ff7a5c;
+}
+
+[data-theme="dark"] .board-rim {
+  box-shadow:
+    0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, transparent),
+    0 0 3vh color-mix(in srgb, var(--accent) 30%, transparent),
+    0 1.8vh 3.2vh rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .board-circle {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 200, 140, 0.1),
+    inset 0 0.4vh 1vh rgba(255, 200, 140, 0.08),
+    inset 0 -0.6vh 1.4vh rgba(0, 0, 0, 0.55);
+}
+
+[data-theme="dark"] .marble {
+  background: radial-gradient(circle at 40% 34%, rgba(70, 150, 195, 0.95) 0%, rgba(35, 100, 145, 0.92) 55%, rgba(14, 42, 62, 0.88) 100%);
+}
+
+[data-theme="dark"] .icon-btn:active,
+[data-theme="dark"] .hint-banner {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+[data-theme="dark"] .hint-banner {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+[data-theme="dark"] .overlay {
+  background: rgba(13, 14, 26, 0.94);
+}
+
+[data-theme="dark"] .overlay-marble {
+  box-shadow:
+    inset 0 0 0 1.5px var(--marble-rim),
+    inset -0.15vh -0.25vh 0.5vh rgba(255, 255, 255, 0.14),
+    inset 0.25vh 0.45vh 0.9vh rgba(10, 22, 32, 0.3),
+    inset 0 -0.5vh 0.5vh rgba(120, 180, 220, 0.25),
+    0 0 3vh color-mix(in srgb, var(--accent) 75%, transparent);
+}
+
+[data-theme="dark"] .again-btn {
+  box-shadow: 0 0.8vh 1.8vh color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+@keyframes glow-dark {
+  0%, 100% { box-shadow: inset 0 0 0 1.5px var(--marble-rim), inset -0.15vh -0.25vh 0.5vh rgba(255, 255, 255, 0.14), inset 0.25vh 0.45vh 0.9vh rgba(10, 22, 32, 0.35), 0 0 1.5vh rgba(34, 211, 238, 0.6); }
+  50% { box-shadow: inset 0 0 0 1.5px var(--marble-rim), inset -0.15vh -0.25vh 0.5vh rgba(255, 255, 255, 0.22), inset 0.25vh 0.45vh 0.9vh rgba(10, 22, 32, 0.35), 0 0 4vh rgba(34, 211, 238, 1); }
+}
+[data-theme="dark"] .marble.win-glow,
+[data-theme="dark"] .overlay-marble { animation-name: glow-dark; }

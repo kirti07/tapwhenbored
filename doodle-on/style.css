@@ -429,6 +429,45 @@ canvas#canvas {
   .idle-hint { animation: none; }
 }
 
+/* ==== Neon Arcade (dark theme) ====
+   The drawing surface goes dark too — a rainbow line glowing on black reads
+   as "neon light drawing," which fits the theme far better than a cream
+   paper would. The <canvas> itself only ever draws the stroke (clearRect,
+   never filled), so this is a pure CSS change with no drawing-code risk. */
+
+:root[data-theme="dark"] {
+  --bg: #0d0e1a;
+  --paper: #14132a;
+  --paper-edge: #2c2850;
+  --ink: #f0eefa;
+  --ink-soft: #9b96c4;
+  --line: #2c2850;
+
+  --purple: #b06bff;
+  --purple-dark: #9d4dff;
+  --pink: #ff4fc4;
+  --orange: #ffb84d;
+  --teal: #3df0d4;
+  --yellow: #ffe066;
+}
+
+[data-theme="dark"] .canvas-wrap {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1.6px);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 0 0 1.5px color-mix(in srgb, var(--purple) 35%, transparent), 0 0 3vh color-mix(in srgb, var(--purple) 20%, transparent);
+}
+
+[data-theme="dark"] .idle-hint {
+  background: color-mix(in srgb, var(--purple) 14%, transparent);
+}
+
+[data-theme="dark"] .overlay {
+  background: linear-gradient(to top, rgba(13, 14, 26, 0.94) 0%, rgba(13, 14, 26, 0.6) 40%, rgba(13, 14, 26, 0) 75%);
+}
+
+[data-theme="dark"] .again-btn {
+  box-shadow: 0 0.8vh 1.8vh color-mix(in srgb, var(--purple) 50%, transparent);
+}
+
 /* ---- short viewports (phone landscape) ----
    The canvas box is just "whatever's left" after the surrounding rows —
    on a short/rotated viewport those fixed rows eat a disproportionate
