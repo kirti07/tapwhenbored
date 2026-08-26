@@ -5,13 +5,14 @@
    marbles for Marble Nostalgia) — it just gives them a common, cozy shelf
    to sit on. */
 :root {
-  --bg: #e7dcc7;
-  --surface: #f8f2e5;
-  --surface-elevated: #faf6ec;
-  --text: #3a3226;
-  --text-secondary: #665a44;
-  --border: #d8c8a8;
-  --accent: #3a3226;
+  --bg: #f6f6fb;
+  --surface: #ffffff;
+  --surface-elevated: #fefeff;
+  --text: #262b3d;
+  --text-secondary: #767a8c;
+  --border: #e6e4f2;
+  --accent: #8b7fe0;
+  --font-display: "Nunito", ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif;
   color-scheme: light;
 }
 
@@ -41,10 +42,15 @@ html, body {
 
 .brand-name {
   margin: 0;
-  font-size: 22px;
+  font-family: var(--font-display);
+  font-size: 32px;
   font-weight: 700;
   letter-spacing: -0.01em;
+  line-height: 1.05;
 }
+
+.brand-pop--warm { color: #ff6f5e; }
+.brand-pop--cool { color: #1f9974; }
 
 .tagline {
   margin: 4px 0 0;
@@ -96,7 +102,8 @@ html, body {
   content: "+";
   display: inline-block;
   width: 16px;
-  color: var(--text-secondary);
+  color: var(--accent);
+  font-weight: 700;
 }
 .faq-item[open] summary::before { content: "–"; }
 
@@ -120,10 +127,18 @@ html, body {
 }
 .card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(58,42,20,0.14);
-  border-color: var(--text-secondary);
+  box-shadow: 0 8px 20px rgba(38,43,61,0.12);
+  border-color: var(--accent);
 }
 .card:active { transform: scale(0.98); }
+
+.card:hover .card-desc { color: var(--accent); }
+
+.card--marble { --accent: #1684d1; }
+.card--bubble { --accent: #4fb6e0; }
+.card--slide  { --accent: #8b7fe0; }
+.card--doodle { --accent: #7c5cff; }
+.card--word   { --accent: #1f9974; }
 
 .thumb {
   display: block;
@@ -136,11 +151,20 @@ html, body {
 }
 
 .card-body {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
   padding: 10px 4px 14px;
+}
+
+.card-text {
+  min-width: 0;
 }
 
 .card-name {
   margin: 0;
+  font-family: var(--font-display);
   font-size: 15px;
   font-weight: 700;
 }
@@ -150,7 +174,24 @@ html, body {
   font-size: 12px;
   letter-spacing: 0.04em;
   color: var(--text-secondary);
+  transition: color 0.15s ease;
 }
+
+.play-btn {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+}
+
+.card:hover .play-btn { transform: scale(1.08); }
+.card:active .play-btn { transform: scale(0.94); }
 
 .hub-footer {
   margin-top: 32px;
@@ -166,8 +207,11 @@ html, body {
 @media (max-width: 480px) {
   .hub { padding: max(20px, env(safe-area-inset-top)) 16px 32px; }
   .hub-header { margin-bottom: 28px; }
+  .brand-name { font-size: 26px; }
   .shelf { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .card { padding: 8px 8px 0; }
   .card-body { padding: 8px 2px 10px; }
   .card-name { font-size: 14px; }
+  .play-btn { width: 28px; height: 28px; }
+  .play-btn svg { width: 11px; height: 11px; }
 }

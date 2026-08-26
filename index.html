@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#e7dcc7">
+<meta name="theme-color" content="#f6f6fb">
 <title>Tap When Bored — Free Online Games, No Download</title>
 <meta name="description" content="Free browser games for a quick break — Bubble Tap, Marble Nostalgia, Slide N Order, and Doodle On. No download, no signup, nothing to load but the game you pick.">
 <link rel="canonical" href="https://www.tapwhenbored.com/">
@@ -58,6 +58,9 @@
   ]
 }
 </script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <script defer src="/_vercel/insights/script.js"></script>
 </head>
@@ -66,49 +69,64 @@
 <div class="hub">
   <header class="hub-header">
     <div class="brand">
-      <h1 class="brand-name">Tap When Bored</h1>
+      <h1 class="brand-name">Tap <span class="brand-pop brand-pop--warm">When</span> <span class="brand-pop brand-pop--cool">Bored</span></h1>
       <p class="tagline">Tiny games. Big breaks.</p>
     </div>
   </header>
 
   <main class="shelf" aria-label="Games">
-    <a class="card" href="/marble-nostalgia/">
+    <a class="card card--marble" href="/marble-nostalgia/">
       <img class="thumb" src="assets/marble-nostalgia-thumb.webp" width="640" height="640" alt="Marble Nostalgia — peg solitaire marble board preview">
       <div class="card-body">
-        <h2 class="card-name">Marble Nostalgia</h2>
-        <p class="card-desc">Think · Move</p>
+        <div class="card-text">
+          <h2 class="card-name">Marble Nostalgia</h2>
+          <p class="card-desc">Think · Move</p>
+        </div>
+        <span class="play-btn" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>
       </div>
     </a>
 
-    <a class="card" href="/bubble-tap/">
+    <a class="card card--bubble" href="/bubble-tap/">
       <img class="thumb" src="assets/bubble-tap-thumb.svg" width="640" height="640" alt="Bubble Tap — bubble wrap popping game preview">
       <div class="card-body">
-        <h2 class="card-name">Bubble Tap</h2>
-        <p class="card-desc">Tap · Relax</p>
+        <div class="card-text">
+          <h2 class="card-name">Bubble Tap</h2>
+          <p class="card-desc">Tap · Relax</p>
+        </div>
+        <span class="play-btn" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>
       </div>
     </a>
 
-    <a class="card" href="/slide-n-order/">
+    <a class="card card--slide" href="/slide-n-order/">
       <img class="thumb" src="assets/slide-n-order-thumb.svg" width="640" height="640" alt="Slide N Order — 15-puzzle sliding tile game preview">
       <div class="card-body">
-        <h2 class="card-name">Slide N Order</h2>
-        <p class="card-desc">Tap · Arrange</p>
+        <div class="card-text">
+          <h2 class="card-name">Slide N Order</h2>
+          <p class="card-desc">Tap · Arrange</p>
+        </div>
+        <span class="play-btn" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>
       </div>
     </a>
 
-    <a class="card" href="/doodle-on/">
+    <a class="card card--doodle" href="/doodle-on/">
       <img class="thumb" src="assets/doodle-on-thumb.svg" width="640" height="640" alt="Doodle On — one continuous line drawing game preview">
       <div class="card-body">
-        <h2 class="card-name">Doodle On</h2>
-        <p class="card-desc">Draw · Doodle</p>
+        <div class="card-text">
+          <h2 class="card-name">Doodle On</h2>
+          <p class="card-desc">Draw · Doodle</p>
+        </div>
+        <span class="play-btn" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>
       </div>
     </a>
 
-    <a class="card" href="/word-steps/">
+    <a class="card card--word" href="/word-steps/">
       <img class="thumb" src="assets/word-steps-thumb.svg" width="640" height="640" alt="Word Steps — daily word ladder puzzle preview">
       <div class="card-body">
-        <h2 class="card-name">Word Steps</h2>
-        <p class="card-desc">Think · Spell</p>
+        <div class="card-text">
+          <h2 class="card-name">Word Steps</h2>
+          <p class="card-desc">Think · Spell</p>
+        </div>
+        <span class="play-btn" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>
       </div>
     </a>
   </main>

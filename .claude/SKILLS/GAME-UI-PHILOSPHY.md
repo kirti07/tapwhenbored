@@ -350,3 +350,82 @@ The interface should remain usable when browser dimensions change dynamically.
 A responsive change is successful when the same game feels natural to play on a phone, tablet, laptop and desktop without requiring separate versions of the interface.
 
 Responsive design must not significantly increase bundle size, rendering work or implementation complexity.
+
+## Colour Harmony and Visual Cohesion
+
+Do not evaluate colours individually. Evaluate how colours interact with the rest of the screen.
+
+A colour may look good on its own but still feel visually disconnected from the overall theme.
+
+When styling a game, consider the relationship between:
+
+* The page background
+* The surrounding UI
+* The game board or main object
+* Interactive elements
+* Accent colours
+* Shadows and depth
+* Selected, success and failure states
+
+Ask:
+
+> Does this colour belong in the same visual world as the rest of the interface?
+
+Do not preserve an existing colour simply because it belongs to the original game design.
+
+If a game object visually clashes with the active theme, refine its colour, tone, saturation, warmth, shadow or surrounding surface treatment.
+
+The goal is not for every game to use the same colours.
+
+The goal is for different colours to feel intentionally related.
+
+### Example
+
+A purple or lavender Soft Pop environment may clash with a highly realistic orange or yellow wooden game board.
+
+Do not automatically keep both unchanged.
+
+Consider whether the board should be refined by adjusting its:
+
+* Hue
+* Warmth
+* Saturation
+* Brightness
+* Texture intensity
+* Shadow
+* Border treatment
+
+Alternatively, adjust the surrounding theme surfaces so the relationship feels intentional.
+
+Preserve the identity of the game, but adapt its visual treatment to the active theme.
+
+### Theme Harmony
+
+Every game should have its own personality while still belonging to the active theme.
+
+A game may use colours outside the main theme palette, but those colours should feel deliberately compatible rather than accidental.
+
+For example:
+
+* Warm colours can work within a cool theme if their saturation and intensity are controlled.
+* A natural material can work within a playful theme if its treatment is simplified and visually integrated.
+* A contrasting accent should create intentional focus rather than visual conflict.
+
+Do not rely on arbitrary colour combinations.
+
+Use visual judgment.
+
+### Final Colour Test
+
+Before approving a visual change, inspect the full screen rather than individual components.
+
+Ask:
+
+1. Which colour is visually dominant?
+2. Which colour is secondary?
+3. Where does the eye go first?
+4. Do the game colours support or fight the surrounding theme?
+5. Does anything look pasted in from a different visual system?
+6. If the page background changed, would the game object still feel integrated?
+
+If a game looks like it belongs to a different product, refine the colour relationship before adding more visual effects.

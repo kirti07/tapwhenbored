@@ -1,15 +1,17 @@
 :root {
-  --bg: #f3ede0;
-  --paper: #fbf7ec;
-  --paper-edge: #e3d3ae;
-  --ink: #2b2620;
-  --ink-soft: #8a7f68;
-  --line: #d9cfb8;
+  --bg: #fdf3d9;
+  --paper: #fffcf2;
+  --paper-edge: #f2e2ad;
+  --ink: #262b3d;
+  --ink-soft: #767b8c;
+  --line: #f2e2ad;
 
   --accent: #1f9974;
   --accent-dark: #146b53;
   --mark: #d9822b;
-  --error: #c9503f;
+  --error: #d9694f;
+
+  --font-display: "Nunito", ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -67,9 +69,10 @@ html, body {
 
 .title {
   margin: 0;
+  font-family: var(--font-display);
   font-size: clamp(16px, 2.6vh, 21px);
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  font-weight: 700;
+  letter-spacing: 0.01em;
   color: var(--ink);
 }
 
@@ -80,29 +83,8 @@ html, body {
   color: transparent;
 }
 
-.brand-divider {
-  display: flex;
-  align-items: center;
-  gap: 0.4em;
-  margin: 0.5em 0 0.35em;
-}
-
-.brand-divider span {
-  display: block;
-  height: 1px;
-  width: 1.2em;
-  background: var(--line);
-}
-
-.brand-divider span.dot {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: var(--line);
-}
-
 .subtitle {
-  margin: 0;
+  margin: 0.4em 0 0;
   font-size: clamp(10px, 1.4vh, 12px);
   letter-spacing: 0.3em;
   color: var(--ink-soft);
@@ -160,9 +142,10 @@ html, body {
 }
 
 .puzzle-word {
+  font-family: var(--font-display);
   font-size: clamp(15px, 2.4vh, 19px);
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   color: var(--ink);
 }
 
@@ -388,7 +371,7 @@ html, body {
   font-weight: 700;
   letter-spacing: 0.02em;
   white-space: nowrap;
-  box-shadow: 0 1.2vh 3vh rgba(43, 38, 32, 0.25);
+  box-shadow: 0 1.2vh 3vh rgba(140, 100, 20, 0.22);
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, -50%) scale(0.9);
@@ -514,7 +497,7 @@ html, body {
   align-items: flex-end;
   justify-content: center;
   padding-bottom: max(6vh, env(safe-area-inset-bottom));
-  background: linear-gradient(to top, rgba(243, 237, 224, 0.94) 0%, rgba(243, 237, 224, 0.6) 40%, rgba(243, 237, 224, 0) 75%);
+  background: linear-gradient(to top, rgba(253, 243, 217, 0.94) 0%, rgba(253, 243, 217, 0.6) 40%, rgba(253, 243, 217, 0) 75%);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.4s ease;
@@ -547,9 +530,10 @@ html, body {
 
 .overlay-title {
   margin: 0;
+  font-family: var(--font-display);
   font-size: clamp(20px, 4vh, 30px);
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   background: linear-gradient(90deg, var(--accent), var(--accent-dark));
   -webkit-background-clip: text;
   background-clip: text;
@@ -596,9 +580,10 @@ html, body {
   gap: 0.5em;
   padding: 1.2vh 4vw;
   border-radius: 999px;
+  font-family: var(--font-display);
   font-size: clamp(12px, 1.8vh, 14px);
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   cursor: pointer;
   transition: transform 0.1s ease;
 }
@@ -659,7 +644,7 @@ html, body {
 /* ---- short viewports (phone landscape) ---- */
 @media (max-height: 480px) {
   .stage { padding-top: 1.4vh; padding-bottom: 1.2vh; }
-  .brand-divider, .subtitle, .seo-info { display: none; }
+  .subtitle, .seo-info { display: none; }
   .back-link { margin-bottom: 0.3vh; }
   .howto-link { padding-top: 0.4vh; }
 }

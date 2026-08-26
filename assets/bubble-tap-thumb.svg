@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
   <defs>
     <radialGradient id="bg" cx="28%" cy="20%" r="95%">
-      <stop offset="0%" stop-color="#fbf6ea"/>
-      <stop offset="45%" stop-color="#f3ecd9"/>
-      <stop offset="100%" stop-color="#e2d1ac"/>
+      <stop offset="0%" stop-color="#f4fbfe"/>
+      <stop offset="45%" stop-color="#e2f2fa"/>
+      <stop offset="100%" stop-color="#c7e6f2"/>
     </radialGradient>
     <radialGradient id="glass" cx="32%" cy="26%" r="78%">
       <stop offset="0%" stop-color="#ffffff"/>
@@ -32,7 +32,7 @@
 
   <!-- freshly popped: a burst ring and drifting score, the game's own micro-moment -->
   <circle cx="215" cy="520" r="52" fill="none" stroke="rgba(44,41,36,0.35)" stroke-width="3"/>
-  <text x="215" y="500" font-family="'SF Mono','JetBrains Mono',ui-monospace,Menlo,Consolas,monospace" font-weight="700" font-size="26" fill="#2c2c2b" text-anchor="middle" opacity="0.8">+30</text>
+  <text x="215" y="500" font-family="'SF Mono','JetBrains Mono',ui-monospace,Menlo,Consolas,monospace" font-weight="700" font-size="26" fill="#262b3d" text-anchor="middle" opacity="0.8">+30</text>
 
   <!-- bonus bubble: dashed halo, same as .bubble.bonus -->
   <circle cx="530" cy="500" r="56" fill="none" stroke="rgba(44,41,36,0.35)" stroke-width="2" stroke-dasharray="6 7"/>

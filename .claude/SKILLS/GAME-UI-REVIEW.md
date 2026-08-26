@@ -242,3 +242,30 @@ If space is limited, simplify or reposition secondary information before shrinki
 Do not solve responsive problems by introducing unnecessary JavaScript, duplicate DOM structures or device-specific implementations.
 
 Prefer lightweight CSS solutions whenever possible.
+
+## Review Colour Relationships
+
+Inspect the complete screen and identify colour combinations that feel visually disconnected or accidental.
+
+Check whether:
+
+* The game board clashes with the page background
+* Warm and cool colours feel unintentionally conflicting
+* Accent colours compete with each other
+* Saturation is inconsistent
+* A game object looks imported from a different visual style
+* Shadows or textures make one element feel more realistic than the rest of the interface
+
+Do not preserve existing colours automatically.
+
+If a colour conflicts with the active theme, determine whether to adjust:
+
+* The game object
+* The surrounding surface
+* The saturation
+* The warmth
+* The brightness
+* The texture
+* The shadow treatment
+
+Preserve game identity, but ensure the full screen feels visually intentional.
