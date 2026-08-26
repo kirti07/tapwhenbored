@@ -24,9 +24,6 @@
   var overlayTitle = document.getElementById("overlayTitle");
   var overlaySub = document.getElementById("overlaySub");
   var againBtn = document.getElementById("againBtn");
-  var howtoBtn = document.getElementById("howtoBtn");
-  var howtoSheet = document.getElementById("howtoSheet");
-  var howtoBackdrop = document.getElementById("howtoBackdrop");
   var shareBtn = document.getElementById("shareBtn");
   var shareNote = document.getElementById("shareNote");
   var challengeBanner = document.getElementById("challengeBanner");
@@ -157,7 +154,6 @@
     btn.textContent = value;
     btn.dataset.index = i;
     btn.setAttribute("aria-label", "Tile " + value);
-    btn.addEventListener("click", onTileClick);
     tileCellEl(i).appendChild(btn);
     tileEls[i] = btn;
     return btn;
@@ -212,6 +208,8 @@
   // bottom-sheet drag, just squeezed into one grid cell.
   var drag = null;
   var pendingShakeEl = null;
+  var activePointerId = null; // only one finger/pointer drives the board at a time
+  var settling = false; // true from release until the deferred commit/spring-back finishes
 
   function rubberband(overshoot, dimension) {
     var constant = 0.55;
@@ -290,6 +288,7 @@
   }
 
   function settleDrag(d, commit, isTap) {
+    settling = true;
     var el = d.el;
     var targetProgress = commit ? d.distance : 0;
     var remaining = Math.abs(targetProgress - d.progress);
@@ -316,14 +315,16 @@
       el.style.transform = "";
       if (commit) commitSlide(d.index);
       else updateMovable();
+      settling = false;
     };
     el.addEventListener("transitionend", done);
     fallbackTimer = setTimeout(done, duration + 60); // safety net if transitionend doesn't fire
   }
 
   function commitSlide(i) {
-    var toCell = tileCellEl(blankIndex);
     var el = tileEls[i];
+    if (!el) return; // stale settle callback from a state that no longer exists
+    var toCell = tileCellEl(blankIndex);
     var oldBlank = blankIndex;
 
     tiles[oldBlank] = tiles[i];
@@ -376,21 +377,6 @@
 
   function updateBestHud() {
     bestVal.textContent = best != null ? "Best " + best : "";
-  }
-
-  function onTileClick(e) {
-    // Pointer-driven taps and drags are fully handled by the pointerdown/move/up
-    // listeners below; this stays only for keyboard activation (Enter/Space on a
-    // focused tile), which browsers fire as a click with detail === 0.
-    if (e.detail !== 0) return;
-    e.stopPropagation();
-    if (ended) return;
-    var i = parseInt(this.dataset.index, 10);
-    if (neighborIndices(blankIndex).indexOf(i) === -1) {
-      shakeTile(this);
-      return;
-    }
-    slideTile(i);
   }
 
   function checkWin() {
@@ -466,48 +452,55 @@
     updateBestHud();
   }
 
-  function openHowto() {
-    howtoSheet.classList.add("show");
-    howtoBackdrop.classList.add("show");
-  }
-  function closeHowto() {
-    howtoSheet.classList.remove("show");
-    howtoBackdrop.classList.remove("show");
-  }
-
   restartBtn.addEventListener("click", restart);
   againBtn.addEventListener("click", restart);
-  howtoBtn.addEventListener("click", openHowto);
-  howtoBackdrop.addEventListener("click", closeHowto);
   shareBtn.addEventListener("click", shareResult);
 
   tilesGrid.addEventListener("pointerdown", function (e) {
-    if (ended || drag || pendingShakeEl) return;
+    if (ended || activePointerId !== null || settling) return; // one interaction at a time, and only once the last one has fully committed
     var tileEl = e.target.closest(".tile");
     if (!tileEl) return;
+    activePointerId = e.pointerId;
     var i = parseInt(tileEl.dataset.index, 10);
     if (neighborIndices(blankIndex).indexOf(i) !== -1) {
       beginDrag(e, tileEl, i);
     } else {
-      pendingShakeEl = { el: tileEl, pointerId: e.pointerId, x: e.clientX, y: e.clientY };
+      pendingShakeEl = { el: tileEl, x: e.clientX, y: e.clientY };
       try { tileEl.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
     }
   });
   tilesGrid.addEventListener("pointermove", function (e) {
-    if (drag) updateDrag(e);
+    if (drag && e.pointerId === activePointerId) updateDrag(e);
   });
   tilesGrid.addEventListener("pointerup", function (e) {
+    if (e.pointerId !== activePointerId) return;
     if (drag) {
       endDrag(e);
-    } else if (pendingShakeEl && e.pointerId === pendingShakeEl.pointerId) {
+    } else if (pendingShakeEl) {
       var moved = Math.hypot(e.clientX - pendingShakeEl.x, e.clientY - pendingShakeEl.y);
       if (moved < TAP_MAX_MOVE) shakeTile(pendingShakeEl.el);
       pendingShakeEl = null;
     }
+    activePointerId = null;
   });
   tilesGrid.addEventListener("pointercancel", function (e) {
+    if (e.pointerId !== activePointerId) return;
     if (drag) endDrag(e, true);
     pendingShakeEl = null;
+    activePointerId = null;
+  });
+  tilesGrid.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" && e.key !== " " && e.key !== "Spacebar") return;
+    var tileEl = e.target.closest(".tile");
+    if (!tileEl) return;
+    e.preventDefault(); // stop the browser's own click-on-activate; we handle it here
+    if (ended || settling) return;
+    var i = parseInt(tileEl.dataset.index, 10);
+    if (neighborIndices(blankIndex).indexOf(i) === -1) {
+      shakeTile(tileEl);
+      return;
+    }
+    slideTile(i);
   });
 
   buildDom();
