@@ -64,7 +64,6 @@
   const scoreEl = document.getElementById("scoreVal");
   const tapsEl = document.getElementById("tapsVal");
   const bombsEl = document.getElementById("bombsVal");
-  const noticeEl = document.getElementById("notice");
   const challengeBanner = document.getElementById("challengeBanner");
 
   const pauseBtn = document.getElementById("pauseBtn");
@@ -119,7 +118,6 @@
   let pfW = 0, pfH = 0;
   let lastT = null;
   let rafId = null;
-  let noticeRevertTimer = null;
   let topUpAcc = 0;
 
   // ---------- audio ----------
@@ -181,30 +179,6 @@
     g.connect(audioCtx.destination);
     o.start(t);
     o.stop(t + 0.22);
-  }
-
-  // ---------- notice ----------
-  function baseNoticeText() {
-    const liveBombs = bubbles.filter((b) => b.isBomb && !b.dead).length;
-    const remaining = Math.max(1, state.bombThreshold - state.tapsSinceBomb);
-    if (liveBombs > 0) {
-      return `${liveBombs} BOMB${liveBombs === 1 ? "" : "S"} HIDDEN — ${remaining} MORE TAP${remaining === 1 ? "" : "S"} TO CLEAR THEM`;
-    }
-    const nextCount = bombCountForRound(state.bombRound + 1);
-    const bombWord = nextCount === 1 ? "A BOMB" : `${nextCount} BOMBS`;
-    return `${bombWord} APPEAR${nextCount === 1 ? "S" : ""} AFTER ${remaining} MORE TAP${remaining === 1 ? "" : "S"}`;
-  }
-  function refreshNotice() {
-    noticeEl.textContent = baseNoticeText();
-    noticeEl.classList.toggle("warn", bubbles.some((b) => b.isBomb && !b.dead));
-    noticeEl.classList.remove("good");
-  }
-  function flashNotice(text, cls, holdMs) {
-    clearTimeout(noticeRevertTimer);
-    noticeEl.textContent = text;
-    noticeEl.classList.remove("warn", "good");
-    if (cls) noticeEl.classList.add(cls);
-    noticeRevertTimer = setTimeout(refreshNotice, holdMs);
   }
 
   // ---------- stats ----------
@@ -279,7 +253,7 @@
     const speed = rand(...CONFIG.speedRange) * calmMul * progressMul * (isBomb ? CONFIG.bombSpeedMul : 1);
 
     const el = document.createElement("div");
-    el.className = "bubble spawning" + (isBomb ? " bomb" : "") + (isBonus ? " bonus" : "");
+    el.className = "bubble spawning" + (isBomb ? " bomb" : " c" + randInt(0, 5)) + (isBonus ? " bonus" : "");
     el.style.width = size + "px";
     el.style.height = size + "px";
     const shell = document.createElement("div");
@@ -399,7 +373,6 @@
     bubbles = bubbles.filter((x) => x !== b);
     removeBubbleEl(b, 300);
     updateStats();
-    refreshNotice();
     setTimeout(topUpBubbles, 220);
     maybeArmBomb();
   }
@@ -431,11 +404,6 @@
     ensureAudio();
     playDefuse();
     updateStats();
-    flashNotice(
-      `DODGED ${liveBombs.length} BOMB${liveBombs.length === 1 ? "" : "S"} — BUBBLES NOW WORTH ${state.bubbleValue}`,
-      "good",
-      2200
-    );
     setTimeout(topUpBubbles, 260);
   }
 
@@ -447,7 +415,6 @@
     for (let i = 0; i < count; i++) createBubble("bomb");
     state.tapsSinceBomb = 0;
     state.bombThreshold = randInt(...CONFIG.bombThresholdRange);
-    refreshNotice();
   }
 
   function triggerBomb(b) {
@@ -561,7 +528,6 @@
 
   function resetGame() {
     stopLoop();
-    clearTimeout(noticeRevertTimer);
     for (const b of bubbles) if (b.el.parentNode) b.el.parentNode.removeChild(b.el);
     bubbles = [];
     state.score = 0;
@@ -578,7 +544,6 @@
     state.bonusActive = false;
     topUpAcc = 0;
     updateStats();
-    refreshNotice();
     setPaused(false);
     gameOverOverlay.classList.add("hidden");
     measurePlayfield();
@@ -681,7 +646,6 @@
   // ---------- boot ----------
   measurePlayfield();
   updateStats();
-  refreshNotice();
   checkChallengeLink();
   topUpBubbles();
   startLoop();
