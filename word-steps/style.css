@@ -505,7 +505,6 @@ html, body {
 
 .overlay.show {
   opacity: 1;
-  pointer-events: auto;
 }
 
 .overlay-content {
@@ -515,6 +514,11 @@ html, body {
   gap: 1.1vh;
   max-width: 90vw;
   text-align: center;
+  pointer-events: none;
+}
+
+.overlay.show .overlay-content {
+  pointer-events: auto;
 }
 
 .overlay-icon {
