@@ -39,8 +39,6 @@
     minSize: 42,
     maxSize: 104,
     baseValue: 10,
-    valueIncrement: 10,
-    bombThresholdRange: [5, 6],
     speedRange: [0.022, 0.06],
     // bubble count is never a fixed number — it's derived from screen area
     // (bigger screen = more room = more bubbles) and grows as you play, up to
@@ -49,21 +47,36 @@
     areaPerBubble: 9000,
     densityGrowthPerTap: 0.006,
     maxDensityMultiplier: 3.2,
-    bonusChance: 0.1,
     comboWindowMs: 900,
     maxCombo: 12,
-    // subtle bomb "tells" — a faint grey tint (CSS) plus a slower, faintly
-    // wobbly drift. Learnable with attention, easy to miss once the field
-    // gets crowded and fast in later waves.
+    // bomb "tell" — a slower, faintly wobbly drift.
     bombSpeedMul: 0.6,
     bombWobbleAmp: 1.6,
+    // four-state model: safe (purple) bubbles are always safe to pop, worth
+    // 1x. Neutral bubbles (a few decorative colors) are unresolved — tapping
+    // one reveals it as safe or unstable in place, also worth 1x, and needs
+    // a second tap to actually clear it. Unstable (yellow) bubbles pop for 0
+    // points but can convert nearby safe bubbles into bombs. Bombs only
+    // ever come from the initial board setup or from an unstable-bubble
+    // conversion — never a recurring wave.
+    unstableChance: 0.12,
+    neutralChance: 0.25,
+    neutralResolveUnstableChance: 0.5,
+    safeValueMul: 1,
+    neutralValueMul: 1,
+    unstableValueMul: 0,
+    initialBombPct: 0.04,
+    unstableRadiusFraction: 0.16,
+    unstableMaxConvertSmall: 1,
+    unstableMaxConvertLarge: 2,
   };
+
+  const NEUTRAL_COLOR_CLASSES = ["c0", "c1", "c3", "c5"];
 
   // ---------- dom ----------
   const playfield = document.getElementById("playfield");
   const scoreEl = document.getElementById("scoreVal");
   const tapsEl = document.getElementById("tapsVal");
-  const bombsEl = document.getElementById("bombsVal");
   const challengeBanner = document.getElementById("challengeBanner");
 
   const pauseBtn = document.getElementById("pauseBtn");
@@ -99,18 +112,12 @@
   const state = {
     score: 0,
     taps: 0,
-    bombsSkipped: 0,
-    bubbleValue: CONFIG.baseValue,
-    tapsSinceBomb: 0,
-    bombThreshold: randInt(...CONFIG.bombThresholdRange),
-    bombRound: 0,
     paused: false,
     gameOver: false,
     soundOn: loadFlag("twb_sound", true),
     calmMode: loadFlag("twb_calm", false),
     combo: 0,
     lastPopAt: 0,
-    bonusActive: false,
   };
 
   let bubbles = [];
@@ -165,27 +172,10 @@
     g.connect(audioCtx.destination);
     noise.start(t);
   }
-  function playDefuse() {
-    if (!state.soundOn || !audioCtx) return;
-    const t = audioCtx.currentTime;
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    o.type = "triangle";
-    o.frequency.setValueAtTime(320, t);
-    o.frequency.exponentialRampToValueAtTime(640, t + 0.18);
-    g.gain.setValueAtTime(0.12, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-    o.connect(g);
-    g.connect(audioCtx.destination);
-    o.start(t);
-    o.stop(t + 0.22);
-  }
-
   // ---------- stats ----------
   function updateStats() {
     scoreEl.textContent = pad(state.score, 5);
     tapsEl.textContent = pad(state.taps, 2);
-    bombsEl.textContent = pad(state.bombsSkipped, 2);
   }
 
   // ---------- bubble factory ----------
@@ -230,7 +220,13 @@
   }
 
   function spawnNormal() {
-    const kind = !state.bonusActive && Math.random() < CONFIG.bonusChance ? "bonus" : "normal";
+    const r = Math.random();
+    const kind =
+      r < CONFIG.unstableChance
+        ? "unstable"
+        : r < CONFIG.unstableChance + CONFIG.neutralChance
+        ? "neutral"
+        : "normal";
     return createBubble(kind);
   }
 
@@ -241,11 +237,11 @@
 
   function createBubble(kind) {
     const isBomb = kind === "bomb";
-    const isBonus = kind === "bonus";
-    // bombs are sized exactly like normal bubbles — no free tell there.
-    // The only tells are a faint grey tint (CSS) and a slower, faintly
-    // wobbly drift, both subtle enough to require real attention.
-    const size = isBonus ? rand(CONFIG.maxSize - 8, CONFIG.maxSize + 18) : rand(CONFIG.minSize, CONFIG.maxSize);
+    const isUnstable = kind === "unstable";
+    const isNeutral = kind === "neutral";
+    // bombs are sized exactly like other bubbles — no free tell there.
+    // The only tell is a slower, faintly wobbly drift.
+    const size = rand(CONFIG.minSize, CONFIG.maxSize);
     const pos = pickSpawnPos(size);
     const calmMul = state.calmMode ? 0.35 : 1;
     const progressMul = 1 + Math.min(1, state.taps / 500) * 0.2;
@@ -253,7 +249,15 @@
     const speed = rand(...CONFIG.speedRange) * calmMul * progressMul * (isBomb ? CONFIG.bombSpeedMul : 1);
 
     const el = document.createElement("div");
-    el.className = "bubble spawning" + (isBomb ? " bomb" : " c" + randInt(0, 5)) + (isBonus ? " bonus" : "");
+    // safe bubbles are always purple (c2), unstable bubbles are always
+    // yellow (c4), neutral bubbles get one of a few decorative colors —
+    // color is the only state tell, no ring/size difference.
+    const colorClass = isUnstable
+      ? "c4"
+      : isNeutral
+      ? NEUTRAL_COLOR_CLASSES[randInt(0, NEUTRAL_COLOR_CLASSES.length - 1)]
+      : "c2";
+    el.className = "bubble spawning" + (isBomb ? " bomb" : " " + colorClass);
     el.style.width = size + "px";
     el.style.height = size + "px";
     const shell = document.createElement("div");
@@ -279,12 +283,12 @@
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
       isBomb,
-      isBonus,
+      isUnstable,
+      isNeutral,
       age: 0,
       wobblePhase: rand(0, Math.PI * 2),
       dead: false,
     };
-    if (isBonus) state.bonusActive = true;
     el.dataset.id = bubble.id;
     bubbles.push(bubble);
     applyTransform(bubble);
@@ -340,29 +344,33 @@
   }
 
   // ---------- game actions ----------
-  function valueForBubble(b) {
+  // Base "1x" value — safe and neutral taps both use it as-is; unstable
+  // taps scale it down to 0 via scoreTap.
+  function valueForBubble() {
     const variance = 0.85 + Math.random() * 0.3;
-    let v = state.bubbleValue * variance;
-    if (b.isBonus) v *= 3;
+    const v = CONFIG.baseValue * variance;
     return Math.max(5, Math.round(v / 5) * 5);
   }
 
-  function popNormal(b) {
-    b.dead = true;
-    const cx = b.x + b.size / 2;
-    const cy = b.y + b.size / 2;
-    const base = valueForBubble(b);
-
+  // Shared combo/score bookkeeping for any tap that scores — a full pop or
+  // a neutral reveal alike — so combo rhythm tracks every tap uniformly
+  // regardless of which tier's multiplier it happens to land on.
+  function scoreTap(mul) {
     const now = Date.now();
     state.combo = now - state.lastPopAt < CONFIG.comboWindowMs ? Math.min(state.combo + 1, CONFIG.maxCombo) : 1;
     state.lastPopAt = now;
     const comboMul = 1 + (state.combo - 1) * 0.05;
-    const gained = Math.round(base * comboMul);
-
+    const gained = Math.round(valueForBubble() * mul * comboMul);
     state.taps++;
     state.score += gained;
-    state.tapsSinceBomb++;
-    if (b.isBonus) state.bonusActive = false;
+    return gained;
+  }
+
+  function popNormal(b, mul) {
+    b.dead = true;
+    const cx = b.x + b.size / 2;
+    const cy = b.y + b.size / 2;
+    const gained = scoreTap(mul);
 
     const label = state.combo >= 3 ? `+${gained} ×${state.combo}` : `+${gained}`;
     showFloatText(cx, cy, label);
@@ -374,47 +382,74 @@
     removeBubbleEl(b, 300);
     updateStats();
     setTimeout(topUpBubbles, 220);
-    maybeArmBomb();
   }
 
-  // Bomb count is a share of whatever's on screen, not a fixed number — a
-  // phone with 20 bubbles and a desktop with 80 should feel equally
-  // dangerous. Starts at 5% of the bubble count and climbs 3 points per wave
-  // up to a 70% ceiling, rounded to the nearest bubble.
-  function bombCountForRound(round) {
-    const pct = Math.min(70, 5 + (round - 1) * 3);
-    return Math.max(1, Math.round((pct / 100) * targetBubbleCount()));
-  }
+  // Tapping a neutral bubble doesn't clear it — it reveals as safe or
+  // unstable in place (worth the neutral 1x tier), and needs a second tap
+  // to actually resolve for that color's own reward.
+  function revealNeutral(b) {
+    b.isNeutral = false;
+    b.isUnstable = Math.random() < CONFIG.neutralResolveUnstableChance;
+    b.el.classList.remove(...NEUTRAL_COLOR_CLASSES);
+    b.el.classList.add(b.isUnstable ? "c4" : "c2");
 
-  // A bomb wave has no timer of its own — it just stays hidden among the
-  // bubbles for the whole stretch until the next threshold is hit. That's
-  // the moment the old wave gets swept (each one still counts as a skip)
-  // and the next, bigger wave immediately takes its place.
-  function sweepBombWave() {
-    const liveBombs = bubbles.filter((b) => b.isBomb && !b.dead);
-    if (!liveBombs.length) return;
-    for (const b of liveBombs) {
-      b.dead = true;
-      b.el.classList.add("defusing");
-      removeBubbleEl(b, 520);
-    }
-    bubbles = bubbles.filter((b) => !liveBombs.includes(b));
-    state.bombsSkipped += liveBombs.length;
-    state.bubbleValue += CONFIG.valueIncrement * liveBombs.length;
+    const cx = b.x + b.size / 2;
+    const cy = b.y + b.size / 2;
+    const gained = scoreTap(CONFIG.neutralValueMul);
+    const label = state.combo >= 3 ? `+${gained} ×${state.combo}` : `+${gained}`;
+    showFloatText(cx, cy, label);
     ensureAudio();
-    playDefuse();
+    playPop(state.combo);
     updateStats();
-    setTimeout(topUpBubbles, 260);
   }
 
-  function maybeArmBomb() {
-    if (state.tapsSinceBomb < state.bombThreshold) return;
-    sweepBombWave();
-    state.bombRound++;
-    const count = bombCountForRound(state.bombRound);
+  // One-time starting batch, sized to the board — bombs otherwise only ever
+  // appear via an unstable-bubble conversion, never a recurring wave.
+  function spawnInitialBombs() {
+    const count = Math.max(1, Math.round(targetBubbleCount() * CONFIG.initialBombPct));
     for (let i = 0; i < count; i++) createBubble("bomb");
-    state.tapsSinceBomb = 0;
-    state.bombThreshold = randInt(...CONFIG.bombThresholdRange);
+  }
+
+  // Interaction radius/cap for unstable-bubble conversions — a fixed radius
+  // relative to the smaller playfield dimension (clamped so it stays
+  // sensible at extreme sizes), and a cap that scales with screen size
+  // reusing the site's existing mobile breakpoint.
+  function unstableRadius() {
+    return Math.min(260, Math.max(90, Math.min(pfW, pfH) * CONFIG.unstableRadiusFraction));
+  }
+  function unstableMaxConvert() {
+    return pfW <= 640 ? CONFIG.unstableMaxConvertSmall : CONFIG.unstableMaxConvertLarge;
+  }
+
+  // Converts the closest safe bubbles within radius into bombs — always the
+  // nearest ones, never random, so the player can tell what happened.
+  function convertNearbyToBombs(b) {
+    const cx = b.x + b.size / 2;
+    const cy = b.y + b.size / 2;
+    const radius = unstableRadius();
+    const maxConvert = unstableMaxConvert();
+    const candidates = bubbles
+      .filter((o) => o !== b && !o.dead && !o.isBomb && !o.isUnstable && !o.isNeutral)
+      .map((o) => ({ o, dist: Math.hypot((o.x + o.size / 2) - cx, (o.y + o.size / 2) - cy) }))
+      .filter((e) => e.dist <= radius)
+      .sort((a, c) => a.dist - c.dist)
+      .slice(0, maxConvert);
+    for (const { o } of candidates) convertToBomb(o);
+  }
+
+  function convertToBomb(b) {
+    b.isBomb = true;
+    b.el.classList.remove("c2", "c4");
+    b.el.classList.add("bomb");
+    const icon = document.createElement("div");
+    icon.className = "bomb-icon";
+    icon.innerHTML = BOMB_ICON_SVG;
+    b.el.appendChild(icon);
+  }
+
+  function triggerUnstable(b) {
+    convertNearbyToBombs(b);
+    popNormal(b, CONFIG.unstableValueMul);
   }
 
   function triggerBomb(b) {
@@ -433,7 +468,9 @@
   function handleTap(b) {
     if (state.paused || state.gameOver || b.dead) return;
     if (b.isBomb) triggerBomb(b);
-    else popNormal(b);
+    else if (b.isNeutral) revealNeutral(b);
+    else if (b.isUnstable) triggerUnstable(b);
+    else popNormal(b, CONFIG.safeValueMul);
   }
 
   // ---------- loop ----------
@@ -532,22 +569,17 @@
     bubbles = [];
     state.score = 0;
     state.taps = 0;
-    state.bombsSkipped = 0;
-    state.bubbleValue = CONFIG.baseValue;
-    state.tapsSinceBomb = 0;
-    state.bombThreshold = randInt(...CONFIG.bombThresholdRange);
-    state.bombRound = 0;
     state.paused = false;
     state.gameOver = false;
     state.combo = 0;
     state.lastPopAt = 0;
-    state.bonusActive = false;
     topUpAcc = 0;
     updateStats();
     setPaused(false);
     gameOverOverlay.classList.add("hidden");
     measurePlayfield();
     topUpBubbles();
+    spawnInitialBombs();
     startLoop();
   }
 
@@ -648,5 +680,6 @@
   updateStats();
   checkChallengeLink();
   topUpBubbles();
+  spawnInitialBombs();
   startLoop();
 })();

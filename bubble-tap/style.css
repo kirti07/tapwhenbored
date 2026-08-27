@@ -9,8 +9,8 @@
   --accent-dark: #2e93bd;
   color-scheme: light;
 
-  /* Soft Pop bubble palette — a controlled rotation of pastel hues so
-     bubbles read as varied and alive without looking random/chaotic. */
+  /* four-state colors: purple = safe, yellow = unstable, the rest are
+     decorative "neutral" colors — unresolved until tapped once */
   --bubble-c0: #8fa8f5;
   --bubble-c1: #f5a8d0;
   --bubble-c2: #c3a8f5;
@@ -183,7 +183,9 @@ html, body {
   justify-content: center;
 }
 
-/* one random color per non-bomb bubble, from the controlled palette above */
+/* safe bubbles are purple, unstable bubbles are yellow, neutral bubbles get
+   one of the other colors at random — color is the only state tell, no
+   ring/size difference between any of them */
 .bubble.c0 { --bc: var(--bubble-c0); }
 .bubble.c1 { --bc: var(--bubble-c1); }
 .bubble.c2 { --bc: var(--bubble-c2); }
@@ -207,6 +209,7 @@ html, body {
     inset 0 2px 6px rgba(255,255,255,0.55),
     inset 0 -4px 10px rgba(0,0,0,0.10),
     0 3px 8px rgba(0,0,0,0.12);
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .bubble .highlight {
@@ -253,21 +256,6 @@ html, body {
   transition: box-shadow 0.16s ease;
 }
 
-.bubble.bonus .shell {
-  box-shadow:
-    inset 0 2px 6px rgba(255,255,255,0.7),
-    inset 0 -4px 8px rgba(0,0,0,0.05),
-    0 0 0 2px rgba(44,41,36,0.14),
-    0 4px 10px rgba(0,0,0,0.12);
-}
-.bubble.bonus::before {
-  content: "";
-  position: absolute;
-  inset: -8px;
-  border-radius: 50%;
-  border: 1px dashed rgba(44,41,36,0.45);
-  animation: spin-ring 6s linear infinite;
-}
 .legend-swatch {
   width: 20px;
   height: 20px;
@@ -278,13 +266,18 @@ html, body {
   background: var(--bubble-c2);
   box-shadow: inset 0 1px 2px rgba(255,255,255,0.5);
 }
-.legend-swatch.bonus {
+.legend-swatch.unstable {
   background: var(--bubble-c4);
-  border: 1.5px dashed rgba(44,41,36,0.45);
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.5);
 }
-@keyframes spin-ring {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+.legend-swatch.neutral {
+  background: conic-gradient(
+    var(--bubble-c0) 0deg 90deg,
+    var(--bubble-c1) 90deg 180deg,
+    var(--bubble-c3) 180deg 270deg,
+    var(--bubble-c5) 270deg 360deg
+  );
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.5);
 }
 
 .bubble.popping {
@@ -603,14 +596,14 @@ html, body {
   --accent-dark: #0bb8d9;
   color-scheme: dark;
 
-  /* narrower, cooler jewel-tone rotation — blue/violet/teal/silver, matching
-     the dark theme's dominant hues rather than reusing the light palette */
+  /* four-state colors: teal = safe, violet = unstable, the rest are
+     decorative "neutral" colors, distinct from both of those hues */
   --bubble-c0: #5b7fe0;
-  --bubble-c1: #9b7fe8;
+  --bubble-c1: #e0699b;
   --bubble-c2: #35d6c4;
   --bubble-c3: #aab3c9;
   --bubble-c4: #9b7fe8;
-  --bubble-c5: #35d6c4;
+  --bubble-c5: #e0935b;
 
   --bomb-glow: 0 0 16px 4px rgba(255, 77, 61, 0.5);
 }
@@ -629,10 +622,6 @@ html, body {
     inset 0 -4px 10px rgba(0,0,0,0.35),
     0 4px 10px rgba(0,0,0,0.5);
 }
-[data-theme="dark"] .bubble.bonus::before {
-  border-color: rgba(255,255,255,0.45);
-}
-
 [data-theme="dark"] .toggle {
   background: color-mix(in srgb, #ffffff 10%, transparent);
 }
