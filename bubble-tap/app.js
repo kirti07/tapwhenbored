@@ -60,15 +60,18 @@
     // ever come from the initial board setup or from an unstable-bubble
     // conversion — never a recurring wave.
     unstableChance: 0.12,
-    neutralChance: 0.25,
+    neutralChance: 0.4,
     neutralResolveUnstableChance: 0.5,
     safeValueMul: 1,
     neutralValueMul: 1,
     unstableValueMul: 0,
     initialBombPct: 0.04,
     unstableRadiusFraction: 0.16,
-    unstableMaxConvertSmall: 1,
-    unstableMaxConvertLarge: 2,
+    // conversions on an unstable tap scale with the smaller screen
+    // dimension — bigger screens have more room, so more bubbles convert.
+    unstableConvertMin: 2,
+    unstableConvertDivisor: 400,
+    unstableConvertMax: 4,
   };
 
   const NEUTRAL_COLOR_CLASSES = ["c0", "c1", "c3", "c5"];
@@ -410,15 +413,16 @@
     for (let i = 0; i < count; i++) createBubble("bomb");
   }
 
-  // Interaction radius/cap for unstable-bubble conversions — a fixed radius
-  // relative to the smaller playfield dimension (clamped so it stays
-  // sensible at extreme sizes), and a cap that scales with screen size
-  // reusing the site's existing mobile breakpoint.
+  // Interaction radius/cap for unstable-bubble conversions — both scale
+  // with the smaller playfield dimension (clamped so they stay sensible at
+  // extreme sizes), so bigger screens convert more bubbles across a wider
+  // area, proportionally.
   function unstableRadius() {
     return Math.min(260, Math.max(90, Math.min(pfW, pfH) * CONFIG.unstableRadiusFraction));
   }
   function unstableMaxConvert() {
-    return pfW <= 640 ? CONFIG.unstableMaxConvertSmall : CONFIG.unstableMaxConvertLarge;
+    const scaled = Math.round(Math.min(pfW, pfH) / CONFIG.unstableConvertDivisor);
+    return Math.min(CONFIG.unstableConvertMax, Math.max(CONFIG.unstableConvertMin, scaled));
   }
 
   // Converts the closest safe bubbles within radius into bombs — always the
