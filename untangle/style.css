@@ -159,19 +159,27 @@ html, body {
   50% { opacity: 0.55; }
 }
 
+/* Invisible, larger circle that owns all pointer/touch interaction — decoupled
+   from the visible dot's size so grabbing a node never needs pixel-perfect
+   finger placement, even when the dot itself renders small. */
+.node-hit {
+  fill: transparent;
+  cursor: grab;
+  touch-action: none; /* the node owns its own drag gesture */
+}
+.node-hit:active { cursor: grabbing; }
+
 .node {
   fill: var(--node);
   stroke: var(--bg);
   stroke-width: 3;
-  cursor: grab;
-  touch-action: none; /* the node owns its own drag gesture */
+  pointer-events: none; /* the node-hit circle beneath handles all interaction */
   transition: r 0.15s ease, filter 0.15s ease;
   transform-box: fill-box;
   transform-origin: center;
 }
 
 .node.active {
-  cursor: grabbing;
   fill: var(--accent-dark);
   filter: drop-shadow(0 0 6px rgba(239, 106, 85, 0.55));
 }
@@ -189,9 +197,6 @@ html, body {
   fill: none;
   stroke: var(--node-fixed);
   stroke-width: 4;
-  cursor: default;
-  pointer-events: all; /* fill:none shapes only hit-test their stroke by default —
-                           this keeps the whole node tappable, not just the ring */
 }
 
 .node.shake {
