@@ -532,9 +532,8 @@
       activePointerId = e.pointerId;
       if (!isTouch) { beginDrag(e, el, idx); return; } // desktop: unchanged immediate drag
 
-      // Touch: don't commit to a drag yet. Real movement (checked in pointermove)
-      // promotes this into the same drag as above; a clean release resolves it
-      // as a tap-select instead, in endDrag.
+      // Touch: no dragging at all — resolved as a tap-select/deselect/switch
+      // in endDrag once the finger lifts.
       pendingTap = { idx: idx, x: e.clientX, y: e.clientY };
       try { board.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
       return;
@@ -558,18 +557,10 @@
     if (after < before) sndRelease();
   }
 
+  // Touch never promotes a pending tap into a drag — tap-to-move is the only
+  // touch interaction. This only ever drives the desktop mouse drag.
   board.addEventListener("pointermove", function (e) {
-    if (e.pointerId !== activePointerId) return;
-
-    if (pendingTap && pendingTap.idx >= 0) {
-      var moved = Math.hypot(e.clientX - pendingTap.x, e.clientY - pendingTap.y);
-      if (moved <= TAP_MAX_MOVE) return; // still just a held tap candidate
-      var idx = pendingTap.idx;
-      pendingTap = null;
-      beginDrag(e, board, idx); // promoted: follows the finger from here on, same as desktop
-    }
-
-    if (dragIndex < 0) return; // pending tap on empty space — no live feedback while held
+    if (e.pointerId !== activePointerId || dragIndex < 0) return;
     latestX = e.clientX;
     latestY = e.clientY;
     if (!rafScheduled) { rafScheduled = true; requestAnimationFrame(applyDragMove); }
