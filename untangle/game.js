@@ -9,6 +9,7 @@
   var MIN_CLUSTER = 3; // smallest a cluster is allowed to be in the cluster+bridge template
   var GEN_ATTEMPTS = 200;
   var PAD = 0.09;      // fraction margin nodes can't be dragged past
+  var TAP_MAX_MOVE = 10; // px — touch press+release under this counts as a tap, not a drag
   var BEST_KEY = "untangleBestMoves";
   var HINT_KEY = "untangleHintSeen";
 
@@ -39,6 +40,8 @@
   var dragMoved = false;
   var dragRect = null;     // board rect cached for the duration of a drag
   var latestX = 0, latestY = 0, rafScheduled = false;
+  var selectedIndex = -1;  // tap-to-move selection (touch only)
+  var pendingTap = null;   // { idx, x, y } — touch gesture not yet resolved as tap or drag
   var hintCleared = readHintSeen();
 
   function readHintSeen() {
@@ -318,6 +321,8 @@
   }
 
   function generatePuzzle() {
+    selectedIndex = -1;
+    pendingTap = null;
     var n = MIN_NODES + Math.floor(Math.random() * (MAX_NODES - MIN_NODES + 1));
     var built = buildGraph(n);
     edges = built.edges;
@@ -428,7 +433,7 @@
       var nel = nodeEls[n];
       nel.setAttribute("cx", cx);
       nel.setAttribute("cy", cy);
-      nel.setAttribute("r", n === dragIndex ? r + 4 : r);
+      nel.setAttribute("r", (n === dragIndex || n === selectedIndex) ? r + 4 : r);
       var hel = hitEls[n];
       hel.setAttribute("cx", cx);
       hel.setAttribute("cy", cy);
@@ -493,20 +498,52 @@
   shareBtn.addEventListener("click", shareResult);
   window.addEventListener("resize", render);
 
-  board.addEventListener("pointerdown", function (e) {
-    if (ended || activePointerId !== null) return;
-    var el = e.target.closest(".node-hit");
-    if (!el) return;
-    var idx = parseInt(el.dataset.index, 10);
-    clearHint(); // any interaction attempt counts as "the player found the dots"
-    if (fixed[idx]) { triggerShake(nodeEls[idx]); return; }
-    activePointerId = e.pointerId;
+  function clearSelection() {
+    if (selectedIndex >= 0) nodeEls[selectedIndex].classList.remove("active");
+    selectedIndex = -1;
+  }
+
+  function selectNode(idx) {
+    clearSelection();
+    selectedIndex = idx;
+    nodeEls[idx].classList.add("active");
+    render();
+  }
+
+  function beginDrag(e, el, idx) {
     dragIndex = idx;
     dragMoved = false;
     dragRect = board.getBoundingClientRect();
     board.classList.add("dragging");
     nodeEls[idx].classList.add("active");
     try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+  }
+
+  board.addEventListener("pointerdown", function (e) {
+    if (ended || activePointerId !== null) return;
+    var isTouch = e.pointerType === "touch";
+    var el = e.target.closest(".node-hit");
+
+    if (el) {
+      var idx = parseInt(el.dataset.index, 10);
+      clearHint(); // any interaction attempt counts as "the player found the dots"
+      if (fixed[idx]) { triggerShake(nodeEls[idx]); return; }
+
+      activePointerId = e.pointerId;
+      if (!isTouch) { beginDrag(e, el, idx); return; } // desktop: unchanged immediate drag
+
+      // Touch: don't commit to a drag yet. Real movement (checked in pointermove)
+      // promotes this into the same drag as above; a clean release resolves it
+      // as a tap-select instead, in endDrag.
+      pendingTap = { idx: idx, x: e.clientX, y: e.clientY };
+      try { board.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      return;
+    }
+
+    if (!isTouch || selectedIndex < 0) return; // desktop, or nothing to move-to-here
+    activePointerId = e.pointerId;
+    pendingTap = { idx: -1, x: e.clientX, y: e.clientY };
+    try { board.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
   });
 
   function applyDragMove() {
@@ -522,7 +559,17 @@
   }
 
   board.addEventListener("pointermove", function (e) {
-    if (e.pointerId !== activePointerId || dragIndex < 0) return;
+    if (e.pointerId !== activePointerId) return;
+
+    if (pendingTap && pendingTap.idx >= 0) {
+      var moved = Math.hypot(e.clientX - pendingTap.x, e.clientY - pendingTap.y);
+      if (moved <= TAP_MAX_MOVE) return; // still just a held tap candidate
+      var idx = pendingTap.idx;
+      pendingTap = null;
+      beginDrag(e, board, idx); // promoted: follows the finger from here on, same as desktop
+    }
+
+    if (dragIndex < 0) return; // pending tap on empty space — no live feedback while held
     latestX = e.clientX;
     latestY = e.clientY;
     if (!rafScheduled) { rafScheduled = true; requestAnimationFrame(applyDragMove); }
@@ -530,6 +577,28 @@
 
   function endDrag(e) {
     if (e.pointerId !== activePointerId) return;
+
+    if (pendingTap) {
+      var moved = Math.hypot(e.clientX - pendingTap.x, e.clientY - pendingTap.y);
+      if (moved <= TAP_MAX_MOVE) {
+        if (pendingTap.idx >= 0) {
+          if (selectedIndex === pendingTap.idx) { clearSelection(); render(); }
+          else selectNode(pendingTap.idx);
+        } else if (selectedIndex >= 0) {
+          var rect = board.getBoundingClientRect();
+          var idx = selectedIndex;
+          nodes[idx].x = clamp((e.clientX - rect.left) / rect.width, PAD, 1 - PAD);
+          nodes[idx].y = clamp((e.clientY - rect.top) / rect.height, PAD, 1 - PAD);
+          clearSelection();
+          moves++;
+          checkSolved(render());
+        }
+      }
+      pendingTap = null;
+      activePointerId = null;
+      return;
+    }
+
     if (dragIndex >= 0) nodeEls[dragIndex].classList.remove("active");
     board.classList.remove("dragging");
     dragRect = null;
