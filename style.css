@@ -189,6 +189,7 @@ html, body {
 .card--slide  { --accent: #8b7fe0; }
 .card--doodle { --accent: #7c5cff; }
 .card--word   { --accent: #1f9974; }
+.card--untangle { --accent: #ef6a55; }
 
 .thumb {
   display: block;
@@ -291,6 +292,7 @@ html, body {
 [data-theme="dark"] .card--slide  { --accent: #a855f7; }
 [data-theme="dark"] .card--doodle { --accent: #ff5fb3; }
 [data-theme="dark"] .card--word   { --accent: #34e19a; }
+[data-theme="dark"] .card--untangle { --accent: #ff6b57; }
 
 [data-theme="dark"] .card {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent), 0 0 22px color-mix(in srgb, var(--accent) 14%, transparent);
