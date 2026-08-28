@@ -26,6 +26,7 @@
   var edges = [];       // [a, b] node id pairs
   var fixed = [];       // boolean per node id — true if pinned (not draggable)
   var nodeEls = [];
+  var hitEls = [];       // invisible larger circles that own pointer/touch interaction
   var edgeEls = [];
   var moves = 0;
   var startTime = 0;
@@ -361,6 +362,16 @@
       board.appendChild(el);
       return el;
     });
+    // Each node is two circles: an invisible larger one that owns all pointer/touch
+    // interaction (so grabbing a node doesn't need pixel-perfect finger placement),
+    // and the small visible dot on top, purely decorative (pointer-events: none).
+    hitEls = nodes.map(function (_, i) {
+      var el = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      el.setAttribute("class", "node-hit");
+      el.dataset.index = i;
+      board.appendChild(el);
+      return el;
+    });
     nodeEls = nodes.map(function (_, i) {
       var el = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       el.setAttribute("class", fixed[i] ? "node fixed" : "node");
@@ -370,13 +381,20 @@
     });
   }
 
-  function nodeRadius(rect) {
-    return Math.max(14, Math.min(22, Math.min(rect.width, rect.height) * 0.05));
+  function nodeRadius(rect, n) {
+    var base = Math.min(rect.width, rect.height) * 0.05;
+    var scaled = base * Math.sqrt(9 / n); // ease crowding as node count grows past the old baseline of ~9
+    return Math.max(11, Math.min(22, scaled));
+  }
+
+  function hitRadius(r) {
+    return Math.max(r + 6, 22); // comfortable touch target regardless of the visual dot's size
   }
 
   function render() {
     var rect = board.getBoundingClientRect();
-    var r = nodeRadius(rect);
+    var r = nodeRadius(rect, nodes.length);
+    var hitR = hitRadius(r);
 
     var crossing = new Array(edges.length);
     for (var i = 0; i < edges.length; i++) {
@@ -401,10 +419,15 @@
     }
 
     for (var n = 0; n < nodes.length; n++) {
+      var cx = nodes[n].x * rect.width, cy = nodes[n].y * rect.height;
       var nel = nodeEls[n];
-      nel.setAttribute("cx", nodes[n].x * rect.width);
-      nel.setAttribute("cy", nodes[n].y * rect.height);
+      nel.setAttribute("cx", cx);
+      nel.setAttribute("cy", cy);
       nel.setAttribute("r", n === dragIndex ? r + 4 : r);
+      var hel = hitEls[n];
+      hel.setAttribute("cx", cx);
+      hel.setAttribute("cy", cy);
+      hel.setAttribute("r", hitR);
     }
 
     crossingsVal.textContent = String(count);
@@ -467,15 +490,15 @@
 
   board.addEventListener("pointerdown", function (e) {
     if (ended || activePointerId !== null) return;
-    var el = e.target.closest(".node");
+    var el = e.target.closest(".node-hit");
     if (!el) return;
     var idx = parseInt(el.dataset.index, 10);
-    if (fixed[idx]) { triggerShake(el); return; }
+    clearHint(); // any interaction attempt counts as "the player found the dots"
+    if (fixed[idx]) { triggerShake(nodeEls[idx]); return; }
     activePointerId = e.pointerId;
     dragIndex = idx;
     dragMoved = false;
-    clearHint();
-    el.classList.add("active");
+    nodeEls[idx].classList.add("active");
     try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
   });
 
