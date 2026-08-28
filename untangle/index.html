@@ -6,18 +6,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#fdf2ef">
 <title>Untangle — Free Online Puzzle Game</title>
-<meta name="description" content="A free online untangle puzzle. Drag the dots until no lines cross — a brand-new random puzzle every time, no levels, no signup.">
+<meta name="description" content="A free online untangle puzzle. Move the dots until no lines cross — a brand-new random puzzle every time, no levels, no signup.">
 <link rel="canonical" href="https://www.tapwhenbored.com/untangle/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Untangle — Free Online Puzzle Game">
-<meta property="og:description" content="Drag the dots until no lines cross. A new random puzzle every time.">
+<meta property="og:description" content="Move the dots until no lines cross. A new random puzzle every time.">
 <meta property="og:url" content="https://www.tapwhenbored.com/untangle/">
 <meta property="og:image" content="https://www.tapwhenbored.com/assets/untangle-og.jpg">
 <meta property="og:image:width" content="640">
 <meta property="og:image:height" content="640">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Untangle — Free Online Puzzle Game">
-<meta name="twitter:description" content="Drag the dots until no lines cross. A new random puzzle every time.">
+<meta name="twitter:description" content="Move the dots until no lines cross. A new random puzzle every time.">
 <meta name="twitter:image" content="https://www.tapwhenbored.com/assets/untangle-og.jpg">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <script type="application/ld+json">
@@ -26,7 +26,7 @@
   "@type": "Game",
   "name": "Untangle",
   "url": "https://www.tapwhenbored.com/untangle/",
-  "description": "A free online untangle puzzle. Drag dots connected by lines until none of the lines cross.",
+  "description": "A free online untangle puzzle. Move dots connected by lines until none of the lines cross.",
   "image": "https://www.tapwhenbored.com/assets/untangle-og.jpg",
   "genre": "Puzzle",
   "playMode": "SinglePlayer",
@@ -68,7 +68,7 @@
     </header>
 
     <p class="tagline tagline-mouse">Drag the dots until no lines cross.</p>
-    <p class="tagline tagline-touch">Tap a dot, then tap where it should go.</p>
+    <p class="tagline tagline-touch">Tap a movable dot, then tap where you want it.</p>
 
     <div class="board-area">
       <div class="board-wrap" id="boardWrap">
@@ -80,13 +80,25 @@
         <span class="counter-value" id="crossingsVal">0</span>
         <span class="counter-best" id="bestVal"></span>
       </div>
+
+      <div class="legend">
+        <span class="legend-item">
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle class="legend-dot legend-dot--movable" cx="7" cy="7" r="6"/></svg>
+          Movable
+        </span>
+        <span class="legend-item">
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle class="legend-dot legend-dot--fixed" cx="7" cy="7" r="6"/><circle class="legend-dot-inner" cx="7" cy="7" r="2"/></svg>
+          Fixed
+        </span>
+      </div>
     </div>
 
+    <button class="howto-link" id="howtoBtn">How to play</button>
+
     <details class="seo-info">
-      <summary>How to play</summary>
+      <summary>About</summary>
       <p>
         Untangle is a free online puzzle — dots connected by lines, some of them crossing.
-        Tap a dot, then tap where it should go, until every line is clear of the others.
         Every puzzle is randomly generated, so there's a fresh one to solve each time.
         No levels, no signup, no download.
       </p>
@@ -106,11 +118,22 @@
       </svg>
       <p class="overlay-sub" id="overlaySub">14 moves · 22s</p>
       <div class="overlay-actions">
-        <button class="again-btn" id="againBtn">Again</button>
+        <button class="pill-btn" id="againBtn">Again</button>
         <button class="share-btn" id="shareBtn">Share</button>
       </div>
       <p class="share-note" id="shareNote">Link copied</p>
     </div>
+  </div>
+
+  <div class="howto-backdrop" id="howtoBackdrop"></div>
+  <div class="howto-sheet" id="howtoSheet">
+    <div class="howto-handle"></div>
+    <p class="howto-title">How to play</p>
+    <ul class="howto-list">
+      <li>Tap a movable dot to select it.</li>
+      <li>Tap an empty spot to move it there.</li>
+      <li>Untangle every line so none cross.</li>
+    </ul>
   </div>
 
   <script src="game.js"></script>

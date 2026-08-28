@@ -12,6 +12,7 @@
   --edge: #d9c7c0;
   --node: var(--ink);
   --node-fixed: #4a6fa5;
+  --purple: #8b5cf6;
 }
 
 * { box-sizing: border-box; }
@@ -192,23 +193,23 @@ html, body {
 }
 
 .node.active {
-  fill: var(--accent-dark);
+  stroke: var(--accent);
+  stroke-width: 4;
   filter: drop-shadow(0 0 6px rgba(239, 106, 85, 0.55));
-}
-
-.node.hint {
-  animation: node-hint 1.3s ease-in-out infinite;
-}
-
-@keyframes node-hint {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
 }
 
 .node.fixed {
   fill: none;
   stroke: var(--node-fixed);
   stroke-width: 4;
+}
+
+/* Small solid center inside a fixed node's ring — reads as "pinned in
+   place" rather than an empty outline. Position-only in JS; size is fixed
+   at creation time. */
+.node-fixed-dot {
+  fill: var(--node-fixed);
+  pointer-events: none;
 }
 
 .node.shake {
@@ -221,6 +222,27 @@ html, body {
   75% { transform: translateX(3px); }
 }
 
+/* Dashed valid-move area — always visible, makes the movement clamp visible
+   instead of an invisible wall. */
+.move-boundary {
+  fill: none;
+  stroke: var(--purple);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 6;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.move-boundary.pulse {
+  animation: boundary-pulse 0.4s ease-out;
+}
+
+@keyframes boundary-pulse {
+  0% { stroke-width: 1.5; opacity: 0.55; }
+  40% { stroke-width: 3.5; opacity: 1; }
+  100% { stroke-width: 1.5; opacity: 0.55; }
+}
+
 /* ---- counter ---- */
 
 .counter-box {
@@ -228,19 +250,22 @@ html, body {
   flex-direction: column;
   align-items: center;
   gap: 0.3vh;
+  width: min(78vw, 320px);
+  padding-top: 1.8vh;
+  border-top: 1px solid var(--line);
 }
 
 .counter-label {
   font-size: clamp(9px, 1.3vh, 11px);
   letter-spacing: 0.18em;
-  color: var(--ink-soft);
+  color: var(--purple);
   text-transform: uppercase;
 }
 
 .counter-value {
   font-size: clamp(16px, 2.4vh, 20px);
   font-weight: 600;
-  color: var(--ink);
+  color: var(--purple);
   letter-spacing: 0.05em;
 }
 
@@ -250,6 +275,42 @@ html, body {
   font-weight: 600;
   letter-spacing: 0.06em;
   min-height: 1.4em;
+}
+
+/* ---- legend ---- */
+
+.legend {
+  display: flex;
+  justify-content: center;
+  gap: 5vw;
+  flex-shrink: 0;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: clamp(10px, 1.3vh, 12px);
+  color: var(--ink-soft);
+}
+
+.legend-dot--movable { fill: var(--node); }
+.legend-dot--fixed { fill: none; stroke: var(--node-fixed); stroke-width: 1.6; }
+.legend-dot-inner { fill: var(--node-fixed); }
+
+.howto-link {
+  align-self: center;
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  color: var(--accent-dark);
+  font-weight: 600;
+  font-size: clamp(12px, 1.8vh, 14px);
+  letter-spacing: 0.02em;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  padding: 1vh 4px 0;
 }
 
 .seo-info {
@@ -274,6 +335,73 @@ html, body {
   margin: 4px 0 0;
   line-height: 1.5;
   text-align: left;
+}
+
+/* ---- how to play (bottom sheet, matches the rest of the collection) ---- */
+
+.howto-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 24, 18, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 10;
+}
+
+.howto-backdrop.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.howto-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -1vh 3vh rgba(0, 0, 0, 0.25);
+  padding: 1.6vh 6vw calc(4vh + env(safe-area-inset-bottom, 0px));
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(.4, 0, .2, 1);
+  z-index: 11;
+}
+
+.howto-sheet.show {
+  transform: translateY(0);
+}
+
+.howto-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ink-soft);
+  opacity: 0.4;
+  margin: 0 auto 2vh;
+}
+
+.howto-title {
+  margin: 0 0 1.6vh;
+  font-size: clamp(14px, 2vh, 16px);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+}
+
+.howto-list {
+  margin: 0;
+  padding: 0 0 0 1.1em;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2vh;
+  font-size: clamp(13px, 1.9vh, 15px);
+  color: var(--ink);
+  line-height: 1.4;
+}
+.howto-list li::marker {
+  color: var(--accent);
+  font-weight: 700;
 }
 
 /* ---- overlay ---- */
@@ -346,7 +474,7 @@ html, body {
   margin-top: 1vh;
 }
 
-.again-btn,
+.pill-btn,
 .share-btn {
   font-family: var(--font-display);
   font-weight: 600;
@@ -357,10 +485,10 @@ html, body {
   cursor: pointer;
   transition: transform 0.1s ease;
 }
-.again-btn:active,
+.pill-btn:active,
 .share-btn:active { transform: scale(0.96); }
 
-.again-btn {
+.pill-btn {
   border: none;
   background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   color: #fff;
@@ -388,10 +516,10 @@ html, body {
 
 @media (prefers-reduced-motion: reduce) {
   .node { transition: none; }
-  .node.hint { animation: none; }
   .node.shake { animation: none; }
   .edge.crossing { animation: none; }
   .overlay-icon circle { animation: none; }
+  .move-boundary.pulse { animation: none; }
 }
 
 /* ==== Neon Arcade (dark theme) ==== */
@@ -408,6 +536,8 @@ html, body {
   --edge: #4a3430;
   --node: #f7ece8;
   --node-fixed: #4fd3ff;
+  --boundary: #9ec54c;
+  --purple: #b967ff;
 }
 
 [data-theme="dark"] .icon-btn:active {
@@ -415,18 +545,41 @@ html, body {
 }
 
 [data-theme="dark"] .node.active {
-  fill: var(--accent);
+  stroke: var(--accent);
   filter: drop-shadow(0 0 8px color-mix(in srgb, var(--accent) 75%, transparent));
+}
+
+[data-theme="dark"] .edge {
+  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--edge) 70%, transparent));
 }
 
 [data-theme="dark"] .edge.crossing {
   filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 65%, transparent));
 }
 
+[data-theme="dark"] .move-boundary {
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--purple) 60%, transparent));
+}
+
+[data-theme="dark"] .title {
+  color: var(--boundary);
+}
+
+[data-theme="dark"] .tagline {
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+  background: var(--boundary);
+  color: #000;
+  font-weight: 700;
+  padding: 0.5em 1.1em;
+  border-radius: 999px;
+}
+
 [data-theme="dark"] .overlay {
   background: rgba(23, 15, 17, 0.94);
 }
 
-[data-theme="dark"] .again-btn {
+[data-theme="dark"] .pill-btn {
   box-shadow: 0 0.8vh 1.8vh color-mix(in srgb, var(--accent) 45%, transparent);
 }

@@ -8,10 +8,9 @@
   var MIN_FREE = 5;    // hard floor on draggable nodes left after fixing some
   var MIN_CLUSTER = 3; // smallest a cluster is allowed to be in the cluster+bridge template
   var GEN_ATTEMPTS = 200;
-  var PAD = 0.09;      // fraction margin nodes can't be dragged past
-  var TAP_MAX_MOVE = 10; // px — touch press+release under this counts as a tap, not a drag
+  var HOME_RADIUS = 0.36; // fraction from board center — the puzzle's canonical circle layout
+  var MOVE_RADIUS = 0.41; // fraction from board center — the circular area a node can occupy
   var BEST_KEY = "untangleBestMoves";
-  var HINT_KEY = "untangleHintSeen";
 
   var board = document.getElementById("board");
   var crossingsVal = document.getElementById("crossingsVal");
@@ -22,13 +21,18 @@
   var againBtn = document.getElementById("againBtn");
   var shareBtn = document.getElementById("shareBtn");
   var shareNote = document.getElementById("shareNote");
+  var howtoBtn = document.getElementById("howtoBtn");
+  var howtoSheet = document.getElementById("howtoSheet");
+  var howtoBackdrop = document.getElementById("howtoBackdrop");
 
   var nodes = [];       // {x, y} fractions 0..1, index = node id
   var edges = [];       // [a, b] node id pairs
   var fixed = [];       // boolean per node id — true if pinned (not draggable)
   var nodeEls = [];
   var hitEls = [];       // invisible larger circles that own pointer/touch interaction
+  var fixedDotEls = [];  // small solid center dot, one per fixed node only (sparse array)
   var edgeEls = [];
+  var boundaryEl = null;  // always-visible dashed circle marking the valid move area
   var crossingFlags = []; // reusable per-edge crossing state, sized once in buildDom
   var moves = 0;
   var startTime = 0;
@@ -40,45 +44,36 @@
   var dragMoved = false;
   var dragRect = null;     // board rect cached for the duration of a drag
   var latestX = 0, latestY = 0, rafScheduled = false;
+  var wasOutsideBoundary = false; // desktop drag: pulse once per crossing, not every frame held past it
   var selectedIndex = -1;  // tap-to-move selection (touch only)
-  var pendingTap = null;   // { idx, x, y } — touch gesture not yet resolved as tap or drag
-  var hintCleared = readHintSeen();
+  var pendingTap = null;   // touch gesture awaiting release: null = none, -1 = on empty board, >=0 = on that node id
 
-  function readHintSeen() {
-    try { return localStorage.getItem(HINT_KEY) === "1"; } catch (e) { return true; }
+  // Opt-in only, like every other game's "How to play" — never auto-shown, no
+  // localStorage tracking. The full-screen backdrop naturally blocks board
+  // taps while it's open, so no separate interaction guard is needed either.
+  function openHowto() {
+    howtoSheet.classList.add("show");
+    howtoBackdrop.classList.add("show");
+  }
+  function closeHowto() {
+    howtoSheet.classList.remove("show");
+    howtoBackdrop.classList.remove("show");
   }
 
-  function clearHint() {
-    if (hintCleared) return;
-    hintCleared = true;
-    try { localStorage.setItem(HINT_KEY, "1"); } catch (e) { /* ignore */ }
-    var hinted = board.querySelector(".node.hint");
-    if (hinted) hinted.classList.remove("hint");
-  }
-
-  function applyHint() {
-    if (hintCleared) return;
-    var idx = edgeEls.findIndex(function (el, i) {
-      if (!el.classList.contains("crossing")) return false;
-      var pair = edges[i];
-      return !fixed[pair[0]] || !fixed[pair[1]];
-    });
-    var nodeIndex = -1;
-    if (idx >= 0) {
-      var pair = edges[idx];
-      nodeIndex = !fixed[pair[0]] ? pair[0] : pair[1];
-    } else {
-      for (var i2 = 0; i2 < nodes.length; i2++) {
-        if (!fixed[i2]) { nodeIndex = i2; break; }
-      }
-    }
-    if (nodeIndex >= 0) nodeEls[nodeIndex].classList.add("hint");
-  }
-
+  // offsetWidth (the usual force-reflow trick) is undefined on SVG shapes —
+  // it silently no-ops there, so a fast repeat trigger fails to restart the
+  // animation. getBoundingClientRect() forces a real synchronous reflow on
+  // any element, SVG included.
   function triggerShake(el) {
     el.classList.remove("shake");
-    void el.offsetWidth; // force reflow so a repeat tap can retrigger the animation
+    void el.getBoundingClientRect();
     el.classList.add("shake");
+  }
+
+  function triggerBoundaryPulse() {
+    boundaryEl.classList.remove("pulse");
+    void boundaryEl.getBoundingClientRect();
+    boundaryEl.classList.add("pulse");
   }
 
   function readBest() {
@@ -153,7 +148,7 @@
   }
 
   function circlePositions(n) {
-    var pos = [], R = 0.36;
+    var pos = [], R = HOME_RADIUS;
     for (var i = 0; i < n; i++) {
       var a = (i / n) * Math.PI * 2 - Math.PI / 2;
       pos.push({ x: 0.5 + R * Math.cos(a), y: 0.5 + R * Math.sin(a) });
@@ -365,12 +360,17 @@
     startTime = performance.now();
     buildDom();
     render();
-    applyHint();
     hideOverlay();
   }
 
   function buildDom() {
     board.innerHTML = "";
+    // The dashed valid-move boundary — always visible, framing the area a
+    // node can be moved into; sits above the edges but below the nodes/hit
+    // targets.
+    boundaryEl = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    boundaryEl.setAttribute("class", "move-boundary");
+    board.appendChild(boundaryEl);
     edgeEls = edges.map(function () {
       var el = document.createElementNS("http://www.w3.org/2000/svg", "line");
       el.setAttribute("class", "edge");
@@ -394,6 +394,17 @@
       board.appendChild(el);
       return el;
     });
+    // Fixed nodes get one extra small solid dot centered inside their ring
+    // ("bullseye") so they read as pinned in place, not just an empty outline.
+    fixedDotEls = [];
+    nodes.forEach(function (_, i) {
+      if (!fixed[i]) return;
+      var el = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      el.setAttribute("class", "node-fixed-dot");
+      el.setAttribute("r", 4);
+      board.appendChild(el);
+      fixedDotEls[i] = el;
+    });
     crossingFlags = new Array(edges.length);
   }
 
@@ -404,7 +415,7 @@
   }
 
   function hitRadius(r) {
-    return Math.max(r + 6, 22); // comfortable touch target regardless of the visual dot's size
+    return Math.max(r + 4, 18); // comfortable touch target without over-claiming board area
   }
 
   function render() {
@@ -417,6 +428,10 @@
     var hitR = hitRadius(r);
 
     var count = computeCrossings(nodes, edges, crossingFlags);
+
+    boundaryEl.setAttribute("cx", 0.5 * rect.width);
+    boundaryEl.setAttribute("cy", 0.5 * rect.height);
+    boundaryEl.setAttribute("r", MOVE_RADIUS * Math.min(rect.width, rect.height));
 
     for (var e = 0; e < edges.length; e++) {
       var pair = edges[e], p1 = nodes[pair[0]], p2 = nodes[pair[1]];
@@ -438,6 +453,10 @@
       hel.setAttribute("cx", cx);
       hel.setAttribute("cy", cy);
       hel.setAttribute("r", hitR);
+      if (fixed[n]) {
+        fixedDotEls[n].setAttribute("cx", cx);
+        fixedDotEls[n].setAttribute("cy", cy);
+      }
     }
 
     crossingsVal.textContent = String(count);
@@ -449,6 +468,22 @@
   }
 
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  // Pulls a fraction-space point back onto the circular MOVE_RADIUS boundary
+  // around the board's center if it lies outside it (used by desktop drag,
+  // which just quietly stays inside it rather than showing the indicator below).
+  function clampToBoundary(x, y) {
+    var dx = x - 0.5, dy = y - 0.5;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist <= MOVE_RADIUS) return { x: x, y: y };
+    var scale = MOVE_RADIUS / dist;
+    return { x: 0.5 + dx * scale, y: 0.5 + dy * scale };
+  }
+
+  function withinBoundary(x, y) {
+    var dx = x - 0.5, dy = y - 0.5;
+    return (dx * dx + dy * dy) <= MOVE_RADIUS * MOVE_RADIUS;
+  }
 
   function showOverlay() {
     var seconds = Math.max(0, Math.round((performance.now() - startTime) / 1000));
@@ -496,6 +531,8 @@
   resetBtn.addEventListener("click", generatePuzzle);
   againBtn.addEventListener("click", generatePuzzle);
   shareBtn.addEventListener("click", shareResult);
+  howtoBtn.addEventListener("click", openHowto);
+  howtoBackdrop.addEventListener("click", closeHowto);
   window.addEventListener("resize", render);
 
   function clearSelection() {
@@ -514,6 +551,7 @@
     dragIndex = idx;
     dragMoved = false;
     dragRect = board.getBoundingClientRect();
+    wasOutsideBoundary = false;
     board.classList.add("dragging");
     nodeEls[idx].classList.add("active");
     try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
@@ -526,22 +564,24 @@
 
     if (el) {
       var idx = parseInt(el.dataset.index, 10);
-      clearHint(); // any interaction attempt counts as "the player found the dots"
       if (fixed[idx]) { triggerShake(nodeEls[idx]); return; }
 
       activePointerId = e.pointerId;
       if (!isTouch) { beginDrag(e, el, idx); return; } // desktop: unchanged immediate drag
 
       // Touch: no dragging at all — resolved as a tap-select/deselect/switch
-      // in endDrag once the finger lifts.
-      pendingTap = { idx: idx, x: e.clientX, y: e.clientY };
+      // in endDrag once the finger lifts, however far it wandered while held
+      // (a real finger's natural jitter during a "tap" can easily be several
+      // pixels — there's no drag left to disambiguate against, so it must
+      // always resolve, never silently drop the tap).
+      pendingTap = idx;
       try { board.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
       return;
     }
 
     if (!isTouch || selectedIndex < 0) return; // desktop, or nothing to move-to-here
     activePointerId = e.pointerId;
-    pendingTap = { idx: -1, x: e.clientX, y: e.clientY };
+    pendingTap = -1;
     try { board.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
   });
 
@@ -549,8 +589,13 @@
     rafScheduled = false;
     if (dragIndex < 0) return; // drag may have already ended before this frame ran
     var rect = dragRect;
-    nodes[dragIndex].x = clamp((latestX - rect.left) / rect.width, PAD, 1 - PAD);
-    nodes[dragIndex].y = clamp((latestY - rect.top) / rect.height, PAD, 1 - PAD);
+    var rawX = (latestX - rect.left) / rect.width, rawY = (latestY - rect.top) / rect.height;
+    var outside = !withinBoundary(rawX, rawY);
+    if (outside && !wasOutsideBoundary) triggerBoundaryPulse();
+    wasOutsideBoundary = outside;
+    var p = clampToBoundary(rawX, rawY);
+    nodes[dragIndex].x = p.x;
+    nodes[dragIndex].y = p.y;
     dragMoved = true;
     var before = parseInt(crossingsVal.textContent, 10);
     var after = render();
@@ -569,20 +614,27 @@
   function endDrag(e) {
     if (e.pointerId !== activePointerId) return;
 
-    if (pendingTap) {
-      var moved = Math.hypot(e.clientX - pendingTap.x, e.clientY - pendingTap.y);
-      if (moved <= TAP_MAX_MOVE) {
-        if (pendingTap.idx >= 0) {
-          if (selectedIndex === pendingTap.idx) { clearSelection(); render(); }
-          else selectNode(pendingTap.idx);
-        } else if (selectedIndex >= 0) {
-          var rect = board.getBoundingClientRect();
-          var idx = selectedIndex;
-          nodes[idx].x = clamp((e.clientX - rect.left) / rect.width, PAD, 1 - PAD);
-          nodes[idx].y = clamp((e.clientY - rect.top) / rect.height, PAD, 1 - PAD);
+    if (pendingTap !== null) {
+      if (pendingTap >= 0) {
+        if (selectedIndex === pendingTap) { clearSelection(); render(); }
+        else selectNode(pendingTap);
+      } else if (selectedIndex >= 0) {
+        var rect = board.getBoundingClientRect();
+        var idx = selectedIndex;
+        var fx = (e.clientX - rect.left) / rect.width;
+        var fy = (e.clientY - rect.top) / rect.height;
+        if (withinBoundary(fx, fy)) {
+          nodes[idx].x = fx;
+          nodes[idx].y = fy;
           clearSelection();
           moves++;
           checkSolved(render());
+        } else {
+          // Outside the valid area: reject the move but keep the node selected
+          // so the player can just try again, matching the "invalid action"
+          // feedback already used for tapping a fixed node.
+          triggerShake(nodeEls[idx]);
+          triggerBoundaryPulse();
         }
       }
       pendingTap = null;
