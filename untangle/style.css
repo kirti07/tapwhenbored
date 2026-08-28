@@ -116,6 +116,14 @@ html, body {
   flex-shrink: 0;
 }
 
+/* Show the matching instruction for how this device actually moves a dot —
+   touch devices tap, everything else drags. Pure CSS, no device-detection JS. */
+.tagline-touch { display: none; }
+@media (hover: none) and (pointer: coarse) {
+  .tagline-touch { display: block; }
+  .tagline-mouse { display: none; }
+}
+
 /* ---- board area ---- */
 
 .board-area {
