@@ -28,6 +28,7 @@
   var nodeEls = [];
   var hitEls = [];       // invisible larger circles that own pointer/touch interaction
   var edgeEls = [];
+  var crossingFlags = []; // reusable per-edge crossing state, sized once in buildDom
   var moves = 0;
   var startTime = 0;
   var ended = false;
@@ -36,6 +37,8 @@
   var activePointerId = null;
   var dragIndex = -1;
   var dragMoved = false;
+  var dragRect = null;     // board rect cached for the duration of a drag
+  var latestX = 0, latestY = 0, rafScheduled = false;
   var hintCleared = readHintSeen();
 
   function readHintSeen() {
@@ -295,16 +298,23 @@
     }
   }
 
-  function countCrossings(pos, e) {
-    var c = 0;
+  // Shared by puzzle generation (count only) and render() (count + per-edge
+  // flags, via the optional flagsOut array) — one implementation instead of
+  // two near-identical double loops.
+  function computeCrossings(pos, e, flagsOut) {
+    var count = 0;
     for (var i = 0; i < e.length; i++) {
-      for (var j = i + 1; j < e.length; j++) {
+      var crossing = false;
+      for (var j = 0; j < e.length; j++) {
+        if (i === j) continue;
         var a = e[i], b = e[j];
         if (a[0] === b[0] || a[0] === b[1] || a[1] === b[0] || a[1] === b[1]) continue;
-        if (segmentsCross(pos[a[0]], pos[a[1]], pos[b[0]], pos[b[1]])) c++;
+        if (segmentsCross(pos[a[0]], pos[a[1]], pos[b[0]], pos[b[1]])) { crossing = true; break; }
       }
+      if (flagsOut) flagsOut[i] = crossing;
+      if (crossing) count++;
     }
-    return c;
+    return count;
   }
 
   function generatePuzzle() {
@@ -337,7 +347,7 @@
       for (var fi = 0; fi < fixedIds.length; fi++) positions[fixedIds[fi]] = slots[fixedIds[fi]];
       for (var fj = 0; fj < freeIds.length; fj++) positions[freeIds[fj]] = slots[scrambledFree[fj]];
 
-      var c = countCrossings(positions, edges);
+      var c = computeCrossings(positions, edges);
       if (c >= minCrossings && c <= maxCrossings) { chosen = positions; break; }
       var diff = c < minCrossings ? minCrossings - c : c - maxCrossings;
       if (diff < fallbackDiff) { fallbackDiff = diff; fallback = positions; }
@@ -379,6 +389,7 @@
       board.appendChild(el);
       return el;
     });
+    crossingFlags = new Array(edges.length);
   }
 
   function nodeRadius(rect, n) {
@@ -392,21 +403,15 @@
   }
 
   function render() {
-    var rect = board.getBoundingClientRect();
+    // Reuse the rect cached at drag start instead of re-querying layout on
+    // every single pointermove — the board can't resize mid-drag (window
+    // resize is handled separately below). Kept as a zero-arg function since
+    // it's also registered directly as the "resize" event listener.
+    var rect = (dragIndex >= 0 && dragRect) ? dragRect : board.getBoundingClientRect();
     var r = nodeRadius(rect, nodes.length);
     var hitR = hitRadius(r);
 
-    var crossing = new Array(edges.length);
-    for (var i = 0; i < edges.length; i++) {
-      crossing[i] = false;
-      for (var j = 0; j < edges.length; j++) {
-        if (i === j) continue;
-        var a = edges[i], b = edges[j];
-        if (a[0] === b[0] || a[0] === b[1] || a[1] === b[0] || a[1] === b[1]) continue;
-        if (segmentsCross(nodes[a[0]], nodes[a[1]], nodes[b[0]], nodes[b[1]])) { crossing[i] = true; break; }
-      }
-    }
-    var count = crossing.reduce(function (s, v) { return s + (v ? 1 : 0); }, 0);
+    var count = computeCrossings(nodes, edges, crossingFlags);
 
     for (var e = 0; e < edges.length; e++) {
       var pair = edges[e], p1 = nodes[pair[0]], p2 = nodes[pair[1]];
@@ -415,7 +420,7 @@
       el.setAttribute("y1", p1.y * rect.height);
       el.setAttribute("x2", p2.x * rect.width);
       el.setAttribute("y2", p2.y * rect.height);
-      el.classList.toggle("crossing", crossing[e]);
+      el.classList.toggle("crossing", crossingFlags[e]);
     }
 
     for (var n = 0; n < nodes.length; n++) {
@@ -498,24 +503,36 @@
     activePointerId = e.pointerId;
     dragIndex = idx;
     dragMoved = false;
+    dragRect = board.getBoundingClientRect();
+    board.classList.add("dragging");
     nodeEls[idx].classList.add("active");
     try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
   });
 
-  board.addEventListener("pointermove", function (e) {
-    if (e.pointerId !== activePointerId || dragIndex < 0) return;
-    var rect = board.getBoundingClientRect();
-    nodes[dragIndex].x = clamp((e.clientX - rect.left) / rect.width, PAD, 1 - PAD);
-    nodes[dragIndex].y = clamp((e.clientY - rect.top) / rect.height, PAD, 1 - PAD);
+  function applyDragMove() {
+    rafScheduled = false;
+    if (dragIndex < 0) return; // drag may have already ended before this frame ran
+    var rect = dragRect;
+    nodes[dragIndex].x = clamp((latestX - rect.left) / rect.width, PAD, 1 - PAD);
+    nodes[dragIndex].y = clamp((latestY - rect.top) / rect.height, PAD, 1 - PAD);
     dragMoved = true;
     var before = parseInt(crossingsVal.textContent, 10);
     var after = render();
     if (after < before) sndRelease();
+  }
+
+  board.addEventListener("pointermove", function (e) {
+    if (e.pointerId !== activePointerId || dragIndex < 0) return;
+    latestX = e.clientX;
+    latestY = e.clientY;
+    if (!rafScheduled) { rafScheduled = true; requestAnimationFrame(applyDragMove); }
   });
 
   function endDrag(e) {
     if (e.pointerId !== activePointerId) return;
     if (dragIndex >= 0) nodeEls[dragIndex].classList.remove("active");
+    board.classList.remove("dragging");
+    dragRect = null;
     if (dragMoved) {
       moves++;
       checkSolved(render());
