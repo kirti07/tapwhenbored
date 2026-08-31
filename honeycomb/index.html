@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script>try{var t=localStorage.getItem("theme")==="dark"?"dark":"light";document.documentElement.setAttribute("data-theme",t);if(t==="dark"){var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content","#14101f")}}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#fdf8e7">
+<title>Honeycomb — Free Online Hex Puzzle Game</title>
+<meta name="description" content="A free online hive puzzle. Move edge tiles, watch the clue numbers change, and keep the hive connected — a brand-new random hive every time, no levels, no signup.">
+<link rel="canonical" href="https://www.tapwhenbored.com/honeycomb/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Honeycomb — Free Online Hex Puzzle Game">
+<meta property="og:description" content="Move the edge tiles of a hive without breaking it apart. A new random hive every time.">
+<meta property="og:url" content="https://www.tapwhenbored.com/honeycomb/">
+<meta property="og:image" content="https://www.tapwhenbored.com/assets/honeycomb-og.jpg">
+<meta property="og:image:width" content="640">
+<meta property="og:image:height" content="640">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Honeycomb — Free Online Hex Puzzle Game">
+<meta name="twitter:description" content="Move the edge tiles of a hive without breaking it apart. A new random hive every time.">
+<meta name="twitter:image" content="https://www.tapwhenbored.com/assets/honeycomb-og.jpg">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Game",
+  "name": "Honeycomb",
+  "url": "https://www.tapwhenbored.com/honeycomb/",
+  "description": "A free online hive puzzle. Move edge tiles, watch the clue numbers change, and keep the hive connected.",
+  "image": "https://www.tapwhenbored.com/assets/honeycomb-og.jpg",
+  "genre": "Puzzle",
+  "playMode": "SinglePlayer",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Tap When Bored", "item": "https://www.tapwhenbored.com/" },
+    { "@type": "ListItem", "position": 2, "name": "Honeycomb", "item": "https://www.tapwhenbored.com/honeycomb/" }
+  ]
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script defer src="/_vercel/insights/script.js"></script>
+</head>
+<body>
+  <div class="stage">
+    <header class="topbar">
+      <div class="brand">
+        <a class="back-link" href="/">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <span>Games</span>
+        </a>
+        <h1 class="title">HONEYCOMB</h1>
+        <p class="subtitle">HIVE PUZZLE</p>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" id="newBtn" title="New hive" aria-label="New hive">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.9-6.16"/><path d="M20 4v5h-5"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <p class="tagline" id="tagline">Clear every bomb without breaking the hive.</p>
+
+    <div class="board-area">
+      <div class="board-wrap">
+        <div class="board" id="board" role="img" aria-label="Honeycomb hive board"></div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat">
+          <span class="stat-label">Score</span>
+          <span class="stat-value" id="scoreVal">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Best</span>
+          <span class="stat-value" id="bestVal">0</span>
+        </div>
+      </div>
+
+      <div class="legend">
+        <span class="legend-item"><span class="legend-hex legend-hex--clue"></span> Clue tile</span>
+        <span class="legend-item"><span class="legend-hex legend-hex--hidden"></span> Hidden tile</span>
+      </div>
+    </div>
+
+    <button class="howto-link" id="howtoBtn">How to play</button>
+
+    <details class="seo-info">
+      <summary>About</summary>
+      <p>
+        Honeycomb is a free online puzzle: clear every bomb from an irregular hex hive without
+        breaking it apart. Numbered tiles are fixed clues showing how many nearby tiles are
+        bombs; hidden tiles could be either — tap one to shift it if it's safe, or clear it if
+        it's a bomb. Every hive is randomly generated. No signup, no download.
+      </p>
+    </details>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="overlay-content">
+      <p class="overlay-title" id="overlayTitle">PATTERN BROKEN</p>
+      <svg class="overlay-icon" viewBox="0 0 56 56" width="56" height="56" aria-hidden="true">
+        <polygon points="8,20 18,14 28,20 28,32 18,38 8,32" />
+        <polygon points="32,24 42,18 52,24 52,36 42,42 32,36" />
+      </svg>
+      <p class="overlay-sub" id="overlaySub">Score 0 · Best 0</p>
+      <p class="overlay-global" id="globalScoreEl" hidden></p>
+      <div class="overlay-actions">
+        <button class="pill-btn" id="againBtn">Play Again</button>
+        <button class="share-btn" id="shareBtn">Share</button>
+      </div>
+      <p class="share-note" id="shareNote">Link copied</p>
+    </div>
+  </div>
+
+  <div class="howto-backdrop" id="howtoBackdrop"></div>
+  <div class="howto-sheet" id="howtoSheet">
+    <div class="howto-handle"></div>
+    <p class="howto-title">How to play</p>
+    <ul class="howto-list">
+      <li>Goal: clear every bomb while keeping the hive in one connected piece.</li>
+      <li>Numbered tiles are fixed clues — each shows how many of its 6 neighbors are bombs. Hidden tiles could be either.</li>
+      <li>Tap any hidden tile to act on it. A safe tile slides into the first open space going clockwise from the top; a bomb is cleared on the spot.</li>
+      <li>Either kind of move can split the hive apart and end the run — use the numbers to predict which taps are safe.</li>
+    </ul>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
