@@ -1,0 +1,25 @@
+/* The global-best line on a game's end card.
+ *
+ * One rule so the line reads the same in every game that has a leaderboard,
+ * picking up each game's accent so it still belongs to the page. Games that
+ * have no leaderboard never import this.
+ *
+ * Requires --accent-dark. --record is optional: a game sets it to colour the
+ * "new record" state, and it falls back to the accent otherwise.
+ *
+ * See ARCHITECTURE.md §27.
+ */
+
+.overlay-global {
+  margin: 0;
+  font-size: clamp(11px, 1.6vh, 13px);
+  color: var(--accent-dark);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+/* Beating the record is the one moment worth shouting about on this line. */
+.overlay-global.new-global {
+  color: var(--record, var(--accent-dark));
+  font-weight: 800;
+}

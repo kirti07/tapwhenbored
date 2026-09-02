@@ -31,7 +31,13 @@ export const games = [
     changefreq: "monthly",
     hasRestart: true,
     hasOverlay: true,
-    leaderboard: false,
+    leaderboard: {
+      // Fewest marbles left. Bottoms out at 1, so the global best saturates
+      // quickly — that is inherent to the game, not a bug.
+      lowerIsBetter: true,
+      daily: false,
+      unit: "marbles left",
+    },
   },
   {
     slug: "bubble-tap",
@@ -52,7 +58,7 @@ export const games = [
     // No overlay: bubble-tap predates the shared page template and shows its
     // game-over state inline instead.
     hasOverlay: false,
-    leaderboard: true,
+    leaderboard: { lowerIsBetter: false, daily: false, unit: "points" },
   },
   {
     slug: "slide-n-order",
@@ -71,7 +77,7 @@ export const games = [
     changefreq: "monthly",
     hasRestart: true,
     hasOverlay: true,
-    leaderboard: false,
+    leaderboard: { lowerIsBetter: true, daily: false, unit: "moves" },
   },
   {
     slug: "doodle-on",
@@ -90,6 +96,7 @@ export const games = [
     changefreq: "monthly",
     hasRestart: true,
     hasOverlay: true,
+    // No score by design — "no score, no timer, just see how far you can go".
     leaderboard: false,
   },
   {
@@ -110,7 +117,14 @@ export const games = [
     changefreq: "daily",
     hasRestart: true,
     hasOverlay: true,
-    leaderboard: false,
+    leaderboard: {
+      // Everyone gets the same puzzle each day, so the record is scoped to the
+      // day. An all-time "fewest steps" would just record the easiest puzzle
+      // ever published and then never move.
+      lowerIsBetter: true,
+      daily: true,
+      unit: "steps",
+    },
   },
   {
     slug: "untangle",
@@ -130,6 +144,9 @@ export const games = [
     // Restarts from the overlay's "Again" button; no topbar restart control.
     hasRestart: false,
     hasOverlay: true,
+    // Left out on purpose: the puzzle is 8-13 nodes with a varying number of
+    // crossings, so a global "fewest moves" would only ever record whoever drew
+    // the smallest layout.
     leaderboard: false,
   },
   {
@@ -149,7 +166,12 @@ export const games = [
     changefreq: "monthly",
     hasRestart: false,
     hasOverlay: true,
-    leaderboard: true,
+    leaderboard: {
+      // Completion time in milliseconds.
+      lowerIsBetter: true,
+      daily: false,
+      unit: "time",
+    },
   },
 ];
 

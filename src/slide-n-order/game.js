@@ -1,3 +1,5 @@
+import { isLeaderboardAvailable, submitScore } from "../shared/ui/leaderboard.js";
+
 (function () {
   "use strict";
 
@@ -27,6 +29,7 @@
   var shareBtn = document.getElementById("shareBtn");
   var shareNote = document.getElementById("shareNote");
   var challengeBanner = document.getElementById("challengeBanner");
+  var globalBest = document.getElementById("globalBest");
   var howtoBtn = document.getElementById("howtoBtn");
   var howtoSheet = document.getElementById("howtoSheet");
   var howtoBackdrop = document.getElementById("howtoBackdrop");
@@ -390,6 +393,7 @@
       updateBestHud();
       setTimeout(function () {
         showOverlay(isNewBest ? "NEW BEST" : "SOLVED", moves + (moves === 1 ? " move" : " moves"));
+        showGlobalBest(moves);
       }, 350);
     }
   }
@@ -399,6 +403,29 @@
     overlaySub.textContent = sub;
     shareNote.classList.remove("show");
     overlay.classList.add("show");
+  }
+
+  // Fewest moves wins. The end card is already complete before this runs, so a
+  // slow or failed leaderboard costs nothing but this one line.
+  function showGlobalBest(moveCount) {
+    if (!isLeaderboardAvailable()) {
+      globalBest.hidden = true;
+      return;
+    }
+    globalBest.hidden = false;
+    globalBest.classList.remove("new-global");
+    globalBest.textContent = "Global best \u2026";
+    submitScore("slide-n-order", moveCount).then(function (best) {
+      if (best === null) {
+        globalBest.textContent = "Global best unavailable";
+        return;
+      }
+      var isRecord = moveCount <= best;
+      globalBest.textContent = isRecord
+        ? "\u2605 New global best \u2605"
+        : "Global best " + best + (best === 1 ? " move" : " moves");
+      globalBest.classList.toggle("new-global", isRecord);
+    });
   }
 
   function hideOverlay() {

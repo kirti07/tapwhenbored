@@ -4,6 +4,7 @@
 @import "../shared/css/base.css";
 @import "../shared/css/shell.css";
 @import "../shared/css/howto.css";
+@import "../shared/css/leaderboard.css";
 
 :root {
   --bg: #f1eefb;

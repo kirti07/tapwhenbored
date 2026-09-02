@@ -88,7 +88,7 @@ import { submitScore } from "../shared/ui/leaderboard.js";
   var overlayTitle = document.getElementById("overlayTitle");
   var overlayReason = document.getElementById("overlayReason");
   var overlaySub = document.getElementById("overlaySub");
-  var globalScoreEl = document.getElementById("globalScoreEl");
+  var globalScoreEl = document.getElementById("globalBest");
   var againBtn = document.getElementById("againBtn");
   var shareBtn = document.getElementById("shareBtn");
   var shareNote = document.getElementById("shareNote");
