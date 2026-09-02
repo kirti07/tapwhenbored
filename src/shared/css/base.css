@@ -1,0 +1,6 @@
+/* Site-wide resets. Safe for every page including bubble-tap, which does not
+   share the rest of the page shell. */
+
+* { box-sizing: border-box; }
+
+.back-link svg { width: 13px; height: 13px; }

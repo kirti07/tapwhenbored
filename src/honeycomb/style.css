@@ -1,3 +1,9 @@
+/* Shared first: game rules below must be able to override them, and
+   @import inlines in source order in both dev and build. */
+@import "../shared/css/tokens.css";
+@import "../shared/css/base.css";
+@import "../shared/css/shell.css";
+
 /* Soft Pop — a very subtle lemon-yellow ground with two flat, meaningful
    tile colours: one for hidden tiles, one for revealed clue tiles. Colour
    only ever marks that one distinction — never clue value, never anything
@@ -20,7 +26,6 @@
   color-scheme: light;
 }
 
-* { box-sizing: border-box; }
 
 html, body {
   margin: 0;
@@ -44,32 +49,9 @@ html, body {
 
 /* ---- top bar ---- */
 
-.topbar {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-shrink: 0;
-}
 
-.brand {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
 
-.back-link {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-bottom: 0.8vh;
-  color: var(--ink-soft);
-  font-size: clamp(10px, 1.4vh, 12px);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-decoration: none;
-}
 .back-link:hover { color: var(--ink); }
-.back-link svg { width: 13px; height: 13px; }
 
 .title {
   margin: 0;
@@ -80,31 +62,8 @@ html, body {
   color: var(--ink);
 }
 
-.subtitle {
-  margin: 0.4em 0 0;
-  font-size: clamp(10px, 1.4vh, 12px);
-  letter-spacing: 0.3em;
-  color: var(--ink-soft);
-}
 
-.top-actions {
-  display: flex;
-  gap: 2vw;
-}
 
-.icon-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 1.5px solid var(--line);
-  background: transparent;
-  color: var(--ink);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.15s ease, transform 0.1s ease;
-}
 
 .icon-btn:active {
   background: rgba(139, 111, 217, 0.14);
@@ -401,15 +360,6 @@ html, body {
   padding: 1vh 4px 0;
 }
 
-.seo-info {
-  flex-shrink: 0;
-  align-self: center;
-  max-width: 90vw;
-  margin-top: 0.6vh;
-  font-size: 9px;
-  color: var(--ink-soft);
-  text-align: center;
-}
 .seo-info summary {
   cursor: pointer;
   letter-spacing: 0.06em;

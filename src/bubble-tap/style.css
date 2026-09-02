@@ -1,3 +1,7 @@
+/* Shared first: game rules below must be able to override them, and
+   @import inlines in source order in both dev and build. */
+@import "../shared/css/base.css";
+
 :root {
   --paper: #eaf6fb;
   --paper-2: #d8edf5;
@@ -21,7 +25,6 @@
   --bomb-glow: 0 0 10px 2px rgba(255, 77, 61, 0.28);
 }
 
-* { box-sizing: border-box; }
 
 html, body {
   margin: 0;
@@ -68,7 +71,6 @@ html, body {
   white-space: nowrap;
 }
 .back-link:hover { color: var(--ink); }
-.back-link svg { width: 13px; height: 13px; }
 
 .title {
   margin: 0;

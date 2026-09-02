@@ -1,3 +1,9 @@
+/* Shared first: game rules below must be able to override them, and
+   @import inlines in source order in both dev and build. */
+@import "../shared/css/tokens.css";
+@import "../shared/css/base.css";
+@import "../shared/css/shell.css";
+
 :root {
   --bg: #fdf3d9;
   --paper: #fffcf2;
@@ -14,7 +20,6 @@
   --font-display: "Nunito", ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif;
 }
 
-* { box-sizing: border-box; }
 
 html, body {
   margin: 0;
@@ -40,32 +45,9 @@ html, body {
 
 /* ---- top bar ---- */
 
-.topbar {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-shrink: 0;
-}
 
-.brand {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
 
-.back-link {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-bottom: 0.8vh;
-  color: var(--ink-soft);
-  font-size: clamp(10px, 1.4vh, 12px);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-decoration: none;
-}
 .back-link:hover { color: var(--ink); }
-.back-link svg { width: 13px; height: 13px; }
 
 .title {
   margin: 0;
@@ -83,17 +65,7 @@ html, body {
   color: transparent;
 }
 
-.subtitle {
-  margin: 0.4em 0 0;
-  font-size: clamp(10px, 1.4vh, 12px);
-  letter-spacing: 0.3em;
-  color: var(--ink-soft);
-}
 
-.top-actions {
-  display: flex;
-  gap: 2vw;
-}
 
 .icon-btn {
   width: 44px;
@@ -399,15 +371,6 @@ html, body {
   padding: 1vh 4px 0;
 }
 
-.seo-info {
-  flex-shrink: 0;
-  align-self: center;
-  max-width: 90vw;
-  margin-top: 0.6vh;
-  font-size: 9px;
-  color: var(--ink-soft);
-  text-align: center;
-}
 .seo-info summary {
   cursor: pointer;
   letter-spacing: 0.06em;
