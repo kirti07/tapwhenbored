@@ -1,10 +1,14 @@
 /* Shared first: game rules below must be able to override them, and
    @import inlines in source order in both dev and build. */
 @import "../shared/css/base.css";
+@import "../shared/css/howto.css";
 
 :root {
   --paper: #eaf6fb;
   --paper-2: #d8edf5;
+  /* Alias for shared components, which speak --bg. This game's own
+     rules keep using --paper. */
+  --bg: var(--paper);
   --ink: #262b3d;
   --ink-soft: #767b8c;
   --line: #cfe6f0;

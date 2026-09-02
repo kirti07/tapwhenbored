@@ -127,10 +127,23 @@ const html = `<!doctype html>
       <div id="board"></div>
     </div>
 
+    <button class="howto-link" id="howtoBtn">How to play</button>
+
     <details class="seo-info">
       <summary>What is this?</summary>
       <p>TODO: two or three sentences for search engines and curious players.</p>
     </details>
+  </div>
+
+  <div class="howto-backdrop" id="howtoBackdrop"></div>
+  <div class="howto-sheet" id="howtoSheet">
+    <div class="howto-handle"></div>
+    <p class="howto-title">How to play</p>
+    <ul class="howto-list">
+      <li>TODO: the one action the player takes.</li>
+      <li>TODO: what makes a move good or bad.</li>
+      <li>TODO: how the game ends.</li>
+    </ul>
   </div>
 
   <div class="overlay" id="overlay">
@@ -155,6 +168,7 @@ const css = `/* Shared first: game rules below must be able to override them, an
 @import "../shared/css/tokens.css";
 @import "../shared/css/base.css";
 @import "../shared/css/shell.css";
+@import "../shared/css/howto.css";
 
 /* This game's own palette. The token names are shared; the values are this
    game's identity, so they belong here and never in shared CSS. */
@@ -239,6 +253,9 @@ const js = `// ${title}
   var overlayEl = document.getElementById("overlay");
   var restartBtn = document.getElementById("restartBtn");
   var againBtn = document.getElementById("againBtn");
+  var howtoBtn = document.getElementById("howtoBtn");
+  var howtoSheet = document.getElementById("howtoSheet");
+  var howtoBackdrop = document.getElementById("howtoBackdrop");
 
   var state = null;
 
@@ -265,6 +282,20 @@ const js = `// ${title}
     hideOverlay();
     render();
   }
+
+  // ---------- how to play ----------
+  function openHowto() {
+    howtoSheet.classList.add("show");
+    howtoBackdrop.classList.add("show");
+  }
+
+  function closeHowto() {
+    howtoSheet.classList.remove("show");
+    howtoBackdrop.classList.remove("show");
+  }
+
+  howtoBtn.addEventListener("click", openHowto);
+  howtoBackdrop.addEventListener("click", closeHowto);
 
   restartBtn.addEventListener("click", start);
   againBtn.addEventListener("click", start);
@@ -315,8 +346,9 @@ Still to do:
   2. public/assets/${slug}-og.jpg      social preview, raster not SVG (640x640)
   3. Replace every TODO in src/${slug}/ and in the registry entry
   4. Add .card--${slug} { --accent: ...; } to src/style.css
-  5. Build the mechanic in src/${slug}/game.js
-  6. tests/games/${slug}.spec.js once the mechanic works
+  5. Replace the three TODO bullets in the "How to play" sheet
+  6. Build the mechanic in src/${slug}/game.js
+  7. tests/games/${slug}.spec.js once the mechanic works
 
   npm run validate    checks the wiring
   npm run dev         then open http://localhost:5173/${slug}/

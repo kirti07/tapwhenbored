@@ -100,6 +100,7 @@ for (const g of games) {
       await expect(page.locator(".back-link")).toHaveCount(1);
       await expect(page.locator("#shareBtn")).toHaveCount(1);
       await expect(page.locator(".seo-info")).toHaveCount(1);
+      await expect(page.locator("#howtoBtn")).toHaveCount(1);
 
       // Capability-gated.
       if (g.hasRestart) await expect(page.locator("#restartBtn")).toHaveCount(1);
@@ -131,6 +132,35 @@ for (const g of games) {
       expect(overflow, `${g.slug} overflows horizontally`).toBe(false);
     });
 
+    test("how to play opens, lists steps, and closes", async ({ page }) => {
+      // Every game explains itself the same way. Two games shipped without any
+      // instructions at all, so this is asserted for all of them rather than
+      // gated on a capability flag.
+      await page.goto(g.path);
+
+      const sheet = page.locator("#howtoSheet");
+      await expect(sheet).not.toHaveClass(/show/);
+
+      await page.locator("#howtoBtn").click();
+      await expect(sheet).toHaveClass(/show/);
+
+      // Steps are bullets, not a paragraph.
+      const steps = page.locator("#howtoSheet .howto-list li");
+      expect(await steps.count()).toBeGreaterThanOrEqual(3);
+      for (let i = 0; i < (await steps.count()); i++) {
+        await expect(steps.nth(i)).not.toBeEmpty();
+      }
+      // The sheet animates with transform, so it stays "visible" to Playwright
+      // either way; the `show` class is the real state.
+      await expect(page.locator("#howtoTitle, .howto-title")).toContainText(
+        /how to play/i,
+      );
+
+      await page.locator("#howtoBackdrop").click();
+      await expect(sheet).not.toHaveClass(/show/);
+    });
+
+
     test("back link returns to the homepage", async ({ page }) => {
       await page.goto(g.path);
       await page.locator(".back-link").click();
@@ -138,6 +168,49 @@ for (const g of games) {
     });
   });
 }
+
+test("the how-to sheet is laid out identically in every game", async ({ page }) => {
+  // "Consistent" means the games agree with each other, not that they match a
+  // constant: gap and font-size are vh-based, so the absolute pixels legitimately
+  // differ between viewports. Colour is excluded — that is each game's accent.
+  const geometryOf = async (g) => {
+    await page.goto(g.path);
+    await page.locator("#howtoBtn").click();
+    await expect(page.locator("#howtoSheet")).toHaveClass(/show/);
+    return page.evaluate(() => {
+      const ul = document.querySelector(".howto-list");
+      const li = ul.querySelector("li");
+      const link = document.querySelector(".howto-link");
+      const sheet = document.querySelector(".howto-sheet");
+      const u = getComputedStyle(ul);
+      const l = getComputedStyle(li);
+      const k = getComputedStyle(link);
+      const s = getComputedStyle(sheet);
+      return {
+        listPaddingLeft: u.paddingLeft,
+        listRowGap: u.rowGap,
+        listDisplay: u.display,
+        listFlexDirection: u.flexDirection,
+        itemDisplay: l.display,
+        itemFontSize: l.fontSize,
+        itemLineHeight: l.lineHeight,
+        itemListStyleType: l.listStyleType,
+        linkFontWeight: k.fontWeight,
+        linkFontSize: k.fontSize,
+        linkLetterSpacing: k.letterSpacing,
+        sheetBorderRadius: s.borderTopLeftRadius,
+        sheetPadding: s.paddingTop,
+      };
+    });
+  };
+
+  const reference = await geometryOf(games[0]);
+  for (const g of games.slice(1)) {
+    expect(await geometryOf(g), `${g.slug} differs from ${games[0].slug}`).toEqual(
+      reference,
+    );
+  }
+});
 
 test.describe("routing", () => {
   test("a slugless game URL redirects to the canonical trailing slash", async ({

@@ -70,6 +70,9 @@ import { isLeaderboardAvailable, submitScore } from "../shared/ui/leaderboard.js
   const closeSettingsBtn = document.getElementById("closeSettingsBtn");
   const soundToggle = document.getElementById("soundToggle");
   const motionToggle = document.getElementById("motionToggle");
+  const howtoBtn = document.getElementById("howtoBtn");
+  const howtoSheet = document.getElementById("howtoSheet");
+  const howtoBackdrop = document.getElementById("howtoBackdrop");
 
   // ---------- helpers ----------
   const rand = (a, b) => a + Math.random() * (b - a);
@@ -618,6 +621,20 @@ import { isLeaderboardAvailable, submitScore } from "../shared/ui/leaderboard.js
     syncToggle(soundToggle, state.soundOn);
     syncToggle(motionToggle, state.calmMode);
   }
+  // ---------- how to play ----------
+  const openHowto = () => {
+    howtoSheet.classList.add("show");
+    howtoBackdrop.classList.add("show");
+  };
+
+  const closeHowto = () => {
+    howtoSheet.classList.remove("show");
+    howtoBackdrop.classList.remove("show");
+  };
+
+  howtoBtn.addEventListener("click", openHowto);
+  howtoBackdrop.addEventListener("click", closeHowto);
+
   settingsBtn.addEventListener("click", openSettings);
   closeSettingsBtn.addEventListener("click", () => settingsPanel.classList.add("hidden"));
   soundToggle.addEventListener("click", () => {

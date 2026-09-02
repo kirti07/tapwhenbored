@@ -27,6 +27,9 @@
   var shareBtn = document.getElementById("shareBtn");
   var shareNote = document.getElementById("shareNote");
   var challengeBanner = document.getElementById("challengeBanner");
+  var howtoBtn = document.getElementById("howtoBtn");
+  var howtoSheet = document.getElementById("howtoSheet");
+  var howtoBackdrop = document.getElementById("howtoBackdrop");
 
   var tiles = [];        // index -> tile number (1..15) or null for the blank
   var blankIndex = TOTAL - 1;
@@ -451,6 +454,20 @@
     updateMovesHud();
     updateBestHud();
   }
+
+  // ---------- how to play ----------
+  function openHowto() {
+    howtoSheet.classList.add("show");
+    howtoBackdrop.classList.add("show");
+  }
+
+  function closeHowto() {
+    howtoSheet.classList.remove("show");
+    howtoBackdrop.classList.remove("show");
+  }
+
+  howtoBtn.addEventListener("click", openHowto);
+  howtoBackdrop.addEventListener("click", closeHowto);
 
   restartBtn.addEventListener("click", restart);
   againBtn.addEventListener("click", restart);

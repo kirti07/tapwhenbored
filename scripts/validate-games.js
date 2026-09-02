@@ -129,6 +129,18 @@ for (const g of games) {
         `marker, found ${markers}`,
     );
 
+  // Every game explains itself the same way: a "How to play" opener, a sheet of
+  // bullet steps, and a backdrop to dismiss it. Two games were missing this
+  // entirely, which is the drift this check prevents.
+  for (const id of ["howtoBtn", "howtoSheet", "howtoBackdrop"]) {
+    if (!html.includes(`id="${id}"`))
+      err(`src/${g.slug}/index.html: missing #${id} — every game needs "How to play"`);
+  }
+  if (!html.includes('class="howto-list"'))
+    err(`src/${g.slug}/index.html: how-to sheet must use <ul class="howto-list">`);
+  if (!html.includes("<summary>What is this?</summary>"))
+    err(`src/${g.slug}/index.html: the seo-info summary should read "What is this?"`);
+
   const canonical = html.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
   const expected = `${SITE_URL}${g.path}`;
   if (!canonical) err(`src/${g.slug}/index.html: no canonical link`);

@@ -3,6 +3,7 @@
 @import "../shared/css/tokens.css";
 @import "../shared/css/base.css";
 @import "../shared/css/shell.css";
+@import "../shared/css/howto.css";
 
 :root {
   --bg: #fdf3d9;
@@ -356,20 +357,6 @@ html, body {
 
 /* ---- how to play ---- */
 
-.howto-link {
-  align-self: center;
-  flex-shrink: 0;
-  border: none;
-  background: none;
-  color: var(--accent-dark);
-  font-weight: 600;
-  font-size: clamp(12px, 1.8vh, 14px);
-  letter-spacing: 0.02em;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-  padding: 1vh 4px 0;
-}
 
 .seo-info summary {
   cursor: pointer;
@@ -386,70 +373,12 @@ html, body {
   text-align: left;
 }
 
-.howto-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(30, 24, 16, 0.35);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
-  z-index: 10;
-}
 
-.howto-backdrop.show {
-  opacity: 1;
-  pointer-events: auto;
-}
 
-.howto-sheet {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--bg);
-  border-radius: 20px 20px 0 0;
-  box-shadow: 0 -1vh 3vh rgba(0, 0, 0, 0.25);
-  padding: 1.6vh 6vw calc(4vh + env(safe-area-inset-bottom, 0px));
-  transform: translateY(100%);
-  transition: transform 0.35s cubic-bezier(.4,0,.2,1);
-  z-index: 11;
-}
 
-.howto-sheet.show {
-  transform: translateY(0);
-}
 
-.howto-handle {
-  width: 36px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--ink-soft);
-  opacity: 0.4;
-  margin: 0 auto 2vh;
-}
 
-.howto-title {
-  margin: 0 0 1.6vh;
-  font-size: clamp(14px, 2vh, 16px);
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  color: var(--ink);
-}
 
-.howto-list {
-  margin: 0;
-  padding: 0 0 0 1.1em;
-  display: flex;
-  flex-direction: column;
-  gap: 1.2vh;
-  font-size: clamp(13px, 1.9vh, 15px);
-  color: var(--ink);
-  line-height: 1.4;
-}
-.howto-list li::marker {
-  color: var(--accent);
-  font-weight: 700;
-}
 
 /* ---- solved overlay ---- */
 
