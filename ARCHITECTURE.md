@@ -1,6 +1,6 @@
 # Tap When Bored — Architecture
 
-## 1. Purpose
+# 1. Purpose
 
 Tap When Bored is a collection of lightweight, single-player browser games designed for fast loading, immediate play, simple interaction, and high replayability.
 
@@ -18,7 +18,10 @@ The architecture is optimized for:
 * Simple deployment
 * Minimal shared runtime complexity
 
-The system should make adding game #50 nearly as straightforward as adding game #5.
+The system should make adding game #50 nearly as straightforward as adding game
+#5. Concretely: adding a game means creating `src/<slug>/` and one registry
+entry. It must never require editing the build configuration, the sitemap, or
+`vercel.json`.
 
 ---
 
@@ -74,6 +77,12 @@ The architecture standardizes the things around the games:
 | Shared gameplay engine | No                                |
 | Shared infrastructure  | Small, explicit modules only      |
 | Client-side router     | No                                |
+| URL structure          | Flat `/<slug>/` — permanent       |
+| Vite project root      | `src/`                            |
+| Build output           | `dist/`                           |
+| Trailing slash         | Canonical, enforced in Vercel     |
+| Game discovery         | Filesystem, validated vs registry |
+| Offline model          | Visited games become offline-capable |
 
 ---
 
@@ -105,6 +114,27 @@ Do not introduce:
 
 Each game remains a separate page and production dependency graph.
 
+## Constraints Vite imposes on the layout
+
+These are not stylistic preferences. They follow from how Vite builds a
+multi-page app, and violating them either changes production URLs or breaks the
+build:
+
+1. **A page's emitted path is its source path relative to `root`.** Vite emits
+   each page at `posix.relative(config.root, id)`. The `rollupOptions.input` key
+   does not affect it — that key only names the page's JS chunk. The directory a
+   page lives in *is* its URL.
+2. **Every HTML entry must live inside `root`.** A page outside `root` produces a
+   `../` emit path, which Rollup rejects. Hence `src/index.html`, not a
+   repo-root homepage.
+3. **Games are `src/<slug>/index.html`**, never `src/games/<slug>/index.html`,
+   because the latter would produce `/games/<slug>/` URLs. See §5.
+4. **Only `type="module"` scripts are bundled.** A plain `<script src="game.js">`
+   is left untouched in the output HTML *and* the file is never emitted, so the
+   page ships a 404 for its own game script. The build still exits 0.
+5. **References to `public/` files must be absolute** (`/assets/x.svg`). A
+   relative reference is resolved against the importing HTML and fails the build.
+
 ---
 
 # 5. Multi-Page Application
@@ -115,19 +145,19 @@ Example:
 
 ```text
 /
-├── index.html
+├── index.html            →  /
 │
-├── /games/honeycomb/
-│   └── index.html
+├── /honeycomb/
+│   └── index.html        →  /honeycomb/
 │
-├── /games/doodle-on/
-│   └── index.html
+├── /doodle-on/
+│   └── index.html        →  /doodle-on/
 │
-├── /games/untangle/
-│   └── index.html
+├── /untangle/
+│   └── index.html        →  /untangle/
 │
-└── /games/word-steps/
-    └── index.html
+└── /word-steps/
+    └── index.html        →  /word-steps/
 ```
 
 Each HTML page is a Vite entry point.
@@ -137,7 +167,7 @@ The browser loads only the resources required by the current page.
 For example:
 
 ```text
-/games/honeycomb/
+/honeycomb/
 
 index.html
    ↓
@@ -156,6 +186,44 @@ word-steps.js
 slide-n-order.js
 ...
 ```
+
+## URL structure is a locked decision
+
+Game URLs are flat and permanent:
+
+```text
+https://www.tapwhenbored.com/            homepage
+https://www.tapwhenbored.com/<slug>/     one per game
+```
+
+These URLs are indexed, carry self-referencing canonical tags, appear in
+`sitemap.xml`, and are embedded as absolute `og:url` and `og:image` values that
+social platforms have already cached.
+
+> **Live URLs never change.** No `/games/` prefix, no path restructuring, no
+> redirect chains. Altering a live game URL is a breaking product change, not a
+> refactor.
+
+What follows from it:
+
+1. Game sources are flat directories directly under `src/`, because the source
+   directory name *is* the production URL (§4).
+2. A directory under `src/` without an `index.html` is not a page — `shared/`,
+   `data/`, `assets/`. That absence is the discovery rule (§10, §29).
+3. The trailing slash is canonical. `/<slug>` 308-redirects to `/<slug>/`,
+   configured once in `vercel.json` and mirrored by dev-server middleware.
+4. Dev, `vite preview`, and production serve the same path for the same page. No
+   environment-specific path mapping is permitted anywhere in the stack — that is
+   what lets one Playwright spec run against every environment.
+5. Adding a game adds a URL. It never renames one.
+
+Rejected approaches:
+
+| Approach | Why rejected |
+| -------- | ------------ |
+| `src/games/<slug>/` sources | Emits `/games/<slug>/` — changes every live URL |
+| A build plugin hoisting output out of `games/` | Dev and preview would still serve `/games/<slug>/`; only production would be flat, and the build manifest and service-worker precache list would disagree with real URLs |
+| Vercel `rewrites` mapping flat URLs onto `/games/<slug>/` | Production-only indirection that cannot be exercised locally; a catch-all rule shadows every future top-level path |
 
 ---
 
@@ -185,62 +253,71 @@ A game should be understandable and runnable without understanding the implement
 ```text
 tap-when-bored/
 │
-├── index.html
-├── package.json
-├── vite.config.js
+├── package.json              ("type": "module")
+├── vite.config.js            (root: src/, outDir: dist/, MPA entries)
+├── vercel.json               (buildCommand, outputDirectory, trailingSlash)
+├── playwright.config.js
 ├── CLAUDE.md
 ├── ARCHITECTURE.md
 │
-├── src/
-│   ├── shared/
+├── src/                      ← Vite root. Layout here IS the URL structure (§5).
+│   ├── index.html            →  /
+│   ├── style.css             (homepage only)
+│   │
+│   ├── data/
+│   │   └── games.js          registry — portable ESM, browser + Node
+│   │
+│   ├── shared/               no index.html ⇒ not a page
 │   │   ├── css/
 │   │   │   ├── tokens.css
 │   │   │   ├── base.css
 │   │   │   └── shell.css
-│   │   │
 │   │   └── ui/
 │   │       ├── theme.js
 │   │       ├── share.js
 │   │       ├── sound.js
-│   │       └── storage.js
+│   │       ├── storage.js
+│   │       └── leaderboard.js
 │   │
-│   └── games/
-│       ├── honeycomb/
-│       │   ├── index.html
-│       │   ├── main.js
-│       │   ├── game.js
-│       │   ├── style.css
-│       │   └── assets/
-│       │
-│       ├── doodle-on/
-│       │   ├── index.html
-│       │   ├── main.js
-│       │   ├── game.js
-│       │   ├── style.css
-│       │   └── assets/
-│       │
-│       └── ...
-│
-├── data/
-│   └── games.js
+│   ├── honeycomb/            →  /honeycomb/
+│   │   ├── index.html        mandatory — this file makes it a page
+│   │   ├── game.js           loaded as type="module"
+│   │   ├── style.css
+│   │   └── assets/           game-specific, content-hashed
+│   │
+│   ├── doodle-on/            →  /doodle-on/
+│   └── ...                   one flat directory per game
 │
 ├── scripts/
 │   ├── new-game.js
-│   ├── validate-games.js
-│   └── generate-sitemap.js
+│   └── validate-games.js
 │
 ├── tests/
 │   ├── smoke/
 │   ├── pwa/
 │   └── games/
 │
-└── public/
-    └── icons/
+├── public/                   copied verbatim to the dist root; never processed
+│   ├── favicon.svg
+│   ├── robots.txt
+│   ├── manifest.webmanifest
+│   ├── sw.js                 must sit at the root to hold root scope
+│   ├── icons/
+│   └── assets/               crawler-facing images at stable, indexed URLs
+│
+└── dist/                     build output (gitignored)
 ```
+
+`sitemap.xml` is deliberately absent from `public/` — it is emitted by a Vite
+plugin from the registry (§28), so it cannot drift.
+
+Games are flat directories under `src/`, not nested under `src/games/`, because
+the source directory name is the production URL (§4, §5).
 
 The exact internal structure of a game can vary according to its complexity.
 
-A small game does not need unnecessary abstraction.
+A small game does not need unnecessary abstraction. The only mandatory file is
+`index.html`; its presence is what makes the directory a page.
 
 ---
 
@@ -317,7 +394,10 @@ The default should be to keep logic inside the game.
 
 # 10. Game Registry
 
-`data/games.js` is the source of truth for the game catalogue.
+`src/data/games.js` is the source of truth for the game catalogue.
+
+It lives inside Vite's root so browser code can import it directly, with no
+`/@fs/` escape in dev and no `server.fs.allow` dependency.
 
 Example:
 
@@ -327,13 +407,35 @@ export const games = [
     slug: "honeycomb",
     title: "Honeycomb",
     description: "...",
-    path: "/games/honeycomb/",
+    path: "/honeycomb/",            // flat (§5) — must equal "/" + slug + "/"
+    thumb: "/assets/honeycomb-thumb.svg",
+    ogImage: "/assets/honeycomb-og.jpg",
+    cardClass: "card--honeycomb",   // homepage modifier; not always the slug
+    darkThemeColor: "#14101f",      // must match this game's dark --bg
     category: "puzzle",
+    updated: "2026-08-24",          // sitemap lastmod; bump on real change only
     featured: true,
-    pwa: true
+    pwa: true,
+    hasRestart: false,              // restarts via the overlay, not a topbar button
+    hasOverlay: true,
+    leaderboard: true               // false ⇒ never contacts Supabase
   }
 ];
 ```
+
+## Registry constraints
+
+`src/data/games.js` is loaded **both** by the browser and by Node
+(`vite.config.js`, `scripts/*.js`), so it must be portable ESM:
+
+* No `import.meta.glob`, no CSS or image imports, no `process.env`.
+* Image references are plain absolute strings, not imports.
+
+`slug` must equal the directory name under `src/`, and `path` must equal
+`/<slug>/`. Validation enforces both (§29).
+
+Reserved slugs, which would collide with build output or platform paths:
+`assets`, `static`, `icons`, `data`, `shared`, `api`, `_vercel`.
 
 The registry should drive:
 
@@ -390,9 +492,8 @@ A new game should not be considered complete merely because it runs locally.
 A simple game may contain:
 
 ```text
-game/
+src/<slug>/
 ├── index.html
-├── main.js
 ├── game.js
 └── style.css
 ```
@@ -400,7 +501,7 @@ game/
 A more complex game may evolve into:
 
 ```text
-game/
+src/<slug>/
 ├── index.html
 ├── main.js
 ├── game/
@@ -415,7 +516,19 @@ game/
 
 Do not split files prematurely.
 
-Complexity should determine architecture.
+Complexity should determine architecture. A `main.js` whose only content is
+`import "./game.js"` is ceremony, not architecture.
+
+`index.html` is mandatory — it is both the page and the discovery marker.
+
+The entry script must be a module:
+
+```html
+<script type="module" src="./game.js"></script>
+```
+
+Multiple module scripts on one page execute in document order, so an ordered
+data-then-game pair remains valid.
 
 ---
 
@@ -521,10 +634,18 @@ Game-specific visual styling remains inside the game.
 Example:
 
 ```text
-games/honeycomb/style.css
-games/doodle-on/style.css
-games/untangle/style.css
+src/honeycomb/style.css
+src/doodle-on/style.css
+src/untangle/style.css
 ```
+
+A game's `<link rel="stylesheet">` is processed, minified, and content-hashed by
+Vite automatically; no import statement is required.
+
+Shared CSS is pulled in with an `@import` at the top of the game's own
+stylesheet, never a second `<link>`. The shared rules must precede the game's
+own so game-level overrides still win, and `@import` inlining makes that order
+deterministic in both dev and build.
 
 Avoid creating a global component library unless repeated requirements justify it.
 
@@ -714,12 +835,16 @@ The homepage must not import every game.
 Avoid:
 
 ```js
-import honeycomb from "./games/honeycomb";
-import doodle from "./games/doodle";
-import untangle from "./games/untangle";
+import honeycomb from "./honeycomb";
+import doodle from "./doodle-on";
+import untangle from "./untangle";
 ```
 
 The purpose of the MPA is to prevent this kind of bundling.
+
+Each page is its own Rollup entry, so modules under `src/shared/` are split into
+a shared chunk automatically. Do not set `manualChunks` or
+`inlineDynamicImports`.
 
 ---
 
@@ -790,6 +915,23 @@ Preferred formats:
 * Small local assets
 * CSS shapes where appropriate
 
+## Two asset tiers
+
+**Tier 1 — `public/assets/`, stable URLs, never hashed.**
+Anything a crawler or social network fetches by absolute URL: `og:image`,
+`twitter:image`, JSON-LD `image`, homepage thumbnails. These URLs are already
+indexed and cached by third parties and must never change (§5). Reference them
+with an absolute path; a relative reference fails the build (§4).
+
+**Tier 2 — `src/<slug>/assets/` and `src/assets/`, content-hashed.**
+Gameplay assets referenced only from HTML, CSS, or JS. Vite hashes them and
+rewrites the reference, so they can be cached immutably.
+
+If an image appears in any absolute metadata URL, it is Tier 1.
+
+Social platforms render SVG `og:image` poorly or not at all, so an OG image
+should be a raster format even when the on-page artwork is a vector.
+
 ---
 
 # 26. Network Architecture
@@ -811,56 +953,97 @@ Use timeouts and graceful error handling where network requests are required.
 
 # 27. Leaderboard Architecture
 
+The leaderboard is deliberately minimal: **one global best score per game.**
 
-The game a deliberately minimal global leaderboard model.
+No accounts, no per-player scores, no daily boards, no rankings, no history.
 
-Each game has one global best score.
-
-The leaderboard is a shared platform capability, while each game remains responsible for calculating its own score.
-
-Responsibilities
-Game
+## Responsibilities
 
 Each game:
 
-Calculates the player's score.
-Determines when a valid run has finished.
-Submits the score when appropriate.
-Decides whether a higher or lower score represents a better result, if required.
-Leaderboard Service
+* Calculates its own score.
+* Determines when a valid run has finished.
+* Decides whether higher or lower represents a better result.
+* Submits the score when appropriate.
 
-The shared leaderboard service:
+The shared leaderboard service (`src/shared/ui/leaderboard.js`):
 
-Stores the best score for each game.
-Retrieves the current global best score.
-Updates the best score when a new record is achieved.
-Handles communication with Supabase.
-Handles leaderboard errors without affecting gameplay.
+* Submits a candidate score for a game.
+* Returns the current global best.
+* Talks to Supabase.
+* Absorbs its own failures without involving the game.
 
-Games should not contain Supabase-specific database code.
+Games must not contain Supabase-specific or database-specific code.
 
-Data Model
+## Score direction belongs to the game, not the service
 
-The initial implementation should use one record per game:
+The service never compares scores. Each game's SQL function only ever moves the
+record in the improving direction, and how a result is phrased is a presentation
+decision the game already owns.
 
+So the service takes no `direction` flag. Adding one would be the first step
+toward the generalized scoring framework this section rules out.
+
+Most games should use the simplest model:
+
+```text
+Higher score = better
+```
+
+A game whose natural metric is completion time is free to treat lower as better
+at its own call site.
+
+Do not build a generalized scoring framework until multiple games actually
+require it.
+
+## Data model
+
+Each leaderboard-enabled game currently has its own single-row table and its own
+`security definer` RPC, which is what exists in the database today:
+
+```text
+global_score                    honeycomb_global_best
+──────────────────────          ──────────────────────
+id            PRIMARY KEY       id            PRIMARY KEY
+score                           best_ms       (nullable)
+updated_at                      updated_at
+
+submit_score(new_score)         submit_honeycomb_time(new_time_ms)
+  raises the record only          lowers the record only
+```
+
+Row-level security is on, `insert`/`update`/`delete` are revoked from `anon`, and
+the RPC is the only write path.
+
+The intended future model is one row per game:
+
+```text
 game_scores
 ────────────────────────
 game_slug       PRIMARY KEY
 best_score
 updated_at
+```
 
----
+Migrating to it would discard the existing records, so it is deferred until
+there is a reason to pay that cost. Until then the slug-to-RPC mapping lives in
+the shared service, so **no game knows an RPC name either way** and the
+migration changes no game code.
 
-Score Direction
+## Supabase is a service, not a backend
 
-Most games should use the simplest possible scoring model:
+Supabase provides the leaderboard and nothing else. It must not become an
+application backend.
 
-Higher score = better
+* No game requires it to start, run, or finish.
+* No gameplay state, progress, or player data is stored in it.
+* Local play, local best scores, and offline play are unaffected by its absence.
+* A game with `leaderboard: false` never contacts it.
+* Credentials reach the browser as `VITE_`-prefixed env vars (§35). The anon key
+  is public by design; row-level security protects the data.
 
-If a game uses a different scoring model, such as fastest completion time, the leaderboard integration can explicitly indicate that lower is better.
-
-Do not build a generalized scoring framework until multiple games actually require it.
-
+If Supabase is unavailable, the only visible effect is a missing global-best
+line.
 
 # 28. SEO and Metadata
 
@@ -880,6 +1063,21 @@ Adding a game should not require manually editing the sitemap.
 
 Runtime JavaScript should not be responsible for essential SEO metadata.
 
+## SEO invariants
+
+* Game URLs are flat and permanent (§5).
+* Every page carries a self-referencing **absolute** canonical. Absolute is
+  correct here — it also stops preview deployments competing for the same
+  keywords.
+* The trailing slash is canonical. `vercel.json` sets `"trailingSlash": true`,
+  which covers every game automatically, so there is no per-game redirect table.
+* `sitemap.xml` is emitted by a Vite plugin from `src/data/games.js` —
+  `generateBundle` for the build, a dev middleware for the dev server. It is
+  never a checked-in file and is never written into `public/`.
+* `lastmod` comes from each registry entry's `updated` field, not the build
+  date. Republishing unchanged `lastmod` values on every deploy devalues them.
+* An `og:image` must be a raster format (§25).
+
 ---
 
 # 29. Validation
@@ -891,18 +1089,28 @@ Example checks:
 ```text
 Game registry
     ↓
-Every registered game exists
+Every registered slug has src/<slug>/index.html
     ↓
-Required files exist
+Every src/ directory containing index.html is registered   ← both directions
+    ↓
+No slug is reserved (assets, static, icons, data, shared, api, _vercel)
     ↓
 Slugs are unique
     ↓
-URLs are valid
+registry.path === "/" + slug + "/"
+    ↓
+Page canonical === ORIGIN + registry.path
+    ↓
+Required files exist
     ↓
 Metadata exists
     ↓
-Assets resolve
+Referenced public/ assets exist on disk
 ```
+
+The bidirectional registry-to-filesystem check is what makes adding game #50
+safe: filesystem discovery means `vite.config.js` never needs editing, and this
+check means the registry, homepage, and sitemap cannot silently fall behind.
 
 Validation should fail the build when structural problems are detected.
 
@@ -914,198 +1122,47 @@ npm run validate
 
 ---
 
-# 30. Automated Testing
+# 30. Testing
 
-Playwright is the primary browser-level testing framework.
+Playwright is the only browser-level testing framework.
 
-Testing should focus on **user-visible behavior**, not implementation details.
+Tests assert **user-visible behaviour**, never implementation details.
 
-Testing has three layers:
+Three layers:
 
 ```text
                     Tests
                       │
           ┌───────────┼───────────┐
           │           │           │
-       Smoke       Game-specific   PWA
-       tests          tests       tests
+       Smoke     Game-specific   PWA
 ```
 
----
+* **Smoke** — driven by `src/data/games.js`, so every registered game is covered
+  automatically and the suite grows as games are added. Assertions that do not
+  hold for every game are gated on registry capability flags such as
+  `hasRestart` and `hasOverlay`, rather than assumed.
+* **Game-specific** — core mechanic, win and loss conditions, restart. Only for
+  games whose complexity earns it.
+* **PWA** — manifest, icons, service-worker registration, and the
+  visit-then-offline flow.
 
-# 31. Global Smoke Tests
+Suites run against both the dev server and the preview server, which serve
+identical URLs (§5), so no spec needs environment-specific paths.
 
-Every game should automatically receive basic smoke coverage.
+A failed validation or test blocks deployment (§31).
 
-For every game in `games.js`, test:
-
-* Page loads
-* Correct URL
-* No console errors
-* No uncaught exceptions
-* Game initializes
-* Required game surface exists
-* No horizontal overflow
-* Mobile viewport works
-* Desktop viewport works
-* Restart works where applicable
-* Theme works where applicable
-* Share works where applicable
-
-This allows the test suite to automatically grow as games are added.
-
----
-
-# 32. Game-Specific Tests
-
-Nontrivial games require tests for their core mechanics.
-
-Examples:
-
-### Honeycomb
-
-* Safe tile interaction
-* Bomb interaction
-* Bomb consequences
-* Win condition
-* Loss condition
-* Restart
-* Solvability
-
-### Doodle
-
-* Drawing begins
-* Drawing continues
-* Collision detection
-* Goal detection
-* Game-over behavior
-* Restart
-
-### Untangle
-
-* Nodes move correctly
-* Rope intersection detection
-* Solved state
-* Restart
-
-Tests should describe what the player experiences.
-
-Avoid tests that merely assert internal variable names or implementation structure.
+> **The testing methodology lives in `.claude/SKILLS/GAME-TESTING.md`** — what to
+> cover per game, input simulation, randomized games, edge cases, brittleness
+> rules, leaderboard and network-failure cases, responsive viewports, and which
+> suites to run after which kind of change.
+>
+> That file is the single source of truth for testing practice. It is not
+> restated here; this section defines only the architectural shape.
 
 ---
 
-# 33. PWA Tests
-
-The PWA should have dedicated browser-level tests.
-
-Verify:
-
-* Manifest exists
-* Manifest is valid
-* Required icons exist
-* Service worker registers
-* Homepage loads
-* Game pages load
-* Previously visited games work offline
-* Homepage works offline after caching
-* Network failures do not break core gameplay
-* Cache behavior does not unexpectedly include all games
-
-The most important flow is:
-
-```text
-Open site
- ↓
-Open game
- ↓
-Play
- ↓
-Reload
- ↓
-Go offline
- ↓
-Reload
- ↓
-Play
-```
-
----
-
-# 34. Responsive Testing
-
-Every game must be tested at representative:
-
-### Mobile
-
-* Small phone
-* Typical phone
-* Portrait
-* Landscape where relevant
-
-### Desktop
-
-* Typical laptop
-* Large desktop
-
-Check:
-
-* No horizontal scrolling
-* Game fits viewport
-* Controls remain accessible
-* Touch targets are usable
-* Text does not overflow
-* Canvas/SVG scales correctly
-* Game remains playable
-
----
-
-# 35. Testing After Changes
-
-After modifying a game:
-
-### Small change
-
-Run:
-
-```bash
-npm run test
-```
-
-or the relevant game tests.
-
-### Gameplay change
-
-Run:
-
-* Game-specific tests
-* Smoke test for that game
-* Responsive tests
-
-### Shared infrastructure change
-
-Run:
-
-* All smoke tests
-* All affected game tests
-* PWA tests where applicable
-
-### Build/configuration change
-
-Run:
-
-```bash
-npm run validate
-npm run build
-npm run test
-```
-
-### Service-worker/PWA change
-
-Run the full PWA test suite and production build.
-
----
-
-# 36. CI Pipeline
+# 31. CI Pipeline
 
 The production pipeline should be conceptually:
 
@@ -1129,22 +1186,24 @@ Deploy
 
 A failed validation or test should block deployment.
 
+`npm run build` runs validation itself, so a deployed build cannot skip it.
+
 ---
 
-# 37. Development Commands
+# 32. Development Commands
 
 Recommended commands:
 
 ```bash
-npm run dev
-npm run build
-npm run preview
+npm run dev            # Vite dev server on :5173, URLs identical to production
+npm run build          # validate, then vite build -> dist/
+npm run preview        # build, then serve dist/ on :4173
 
 npm run validate
 
 npm run test
-npm run test:smoke
-npm run test:pwa
+npm run test:dev       # Playwright against :5173
+npm run test:preview   # Playwright against :4173
 
 npm run game:new <slug>
 ```
@@ -1153,7 +1212,7 @@ The exact commands may evolve, but the workflow should remain simple.
 
 ---
 
-# 38. New Game Scaffolding
+# 33. New Game Scaffolding
 
 New games should be scaffolded through a script where practical.
 
@@ -1166,20 +1225,20 @@ npm run game:new honeycomb
 The script should create:
 
 ```text
-src/games/honeycomb/
+src/honeycomb/
 ├── index.html
-├── main.js
 ├── game.js
 └── style.css
 ```
 
-It should also create or update the appropriate registry entry where safe.
+It must also add the registry entry, or `npm run validate` will fail the next
+build — which is the intended safety net (§29).
 
 Manual duplication of boilerplate should decrease as the number of games grows.
 
 ---
 
-# 39. Performance Monitoring
+# 34. Performance Monitoring
 
 Performance should be treated as a regression risk.
 
@@ -1199,7 +1258,36 @@ Performance regressions should be investigated before shipping.
 
 ---
 
-# 40. Deployment
+# 35. Configuration and Secrets
+
+Client configuration reaches the browser through Vite's env system.
+
+```text
+Vercel env vars  (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)
+        ↓
+import.meta.env  (statically replaced at build time)
+        ↓
+src/shared/ui/leaderboard.js
+        ↓
+games that opt into the leaderboard
+```
+
+* Only `VITE_`-prefixed variables are exposed to client code.
+* The Supabase anon key is public by design; row-level security protects the
+  data (§27).
+* Always write the full literal `import.meta.env.VITE_SUPABASE_URL`. A computed
+  key such as ``import.meta.env[`VITE_${name}`]`` is **not** statically
+  replaced: it works in dev and silently yields `undefined` in production.
+* **A build must never mutate the working tree.** There is no generated
+  `config.js` and no build command that writes source files.
+* Local development uses `.env.local`, which is gitignored.
+
+A missing variable must degrade to "leaderboard unavailable", never to a broken
+game (§26).
+
+---
+
+# 36. Deployment
 
 The application is deployed as a static site on Vercel.
 
@@ -1218,9 +1306,27 @@ There should be no requirement for a persistent application server for core game
 
 Supabase remains an optional external backend for features such as leaderboards.
 
+## Build contract
+
+| Setting          | Value             |
+| ---------------- | ----------------- |
+| Build command    | `npm run build`   |
+| Output directory | `dist`            |
+| Node             | 22                |
+
+`vercel.json` carries `buildCommand`, `outputDirectory`, `trailingSlash: true`,
+and cache headers. It contains **no** per-game redirects or rewrites: Vercel
+serves `dist/<slug>/index.html` at `/<slug>/` straight from the filesystem, and
+`trailingSlash: true` supersedes the previous seven-row redirect table.
+
+Cache headers:
+
+* `/static/*` — Vite's content-hashed output — immutable, one year.
+* `/assets/*` — stable-filename public assets — revalidating, one day.
+
 ---
 
-# 41. AI-Assisted Development
+# 37. AI-Assisted Development
 
 The architecture is intentionally designed for AI-assisted development.
 
@@ -1244,43 +1350,25 @@ Avoid loading all games into context for a local change.
 
 ---
 
-# 42. Skill Architecture
+# 38. Skills
 
-AI behavior is separated into focused skills.
-
-Recommended structure:
+AI behaviour is separated into focused skill documents. These are the ones that
+exist:
 
 ```text
-.claude/
-└── skills/
-    ├── game-design/
-    │   └── SKILL.md
-    │
-    ├── game-development/
-    │   └── SKILL.md
-    │
-    └── game-review/
-        └── SKILL.md
-
 .claude/SKILLS/
-├── GAME-UI-PHILOSOPHY.md
-├── GAME-UI-REVIEW.md
-└── GAME-UI-REFINEMENT.md
+├── GAME-TESTING.md          how to test a game (§30)
+├── GAME-UI-PHILOSOPHY.md    visual and interaction principles
+├── GAME-UI-REVIEW.md        how to evaluate an interface
+└── GAME-UI-REFINEMENT.md    how to improve an interface without changing the game
 ```
 
 Responsibilities:
 
-### Game Design
+### Game Testing
 
-Defines how games should be conceived and specified.
-
-### Game Development
-
-Defines how games should be implemented within this architecture.
-
-### Game Review
-
-Defines how completed games should be evaluated and improved.
+Defines how to verify a game still works from the player's perspective after any
+functional change. The single source of truth for testing practice (§30).
 
 ### UI Philosophy
 
@@ -1292,11 +1380,15 @@ Defines how to evaluate the interface.
 
 ### UI Refinement
 
-Defines how to improve an existing interface without unnecessarily changing its underlying game.
+Defines how to improve an existing interface without unnecessarily changing its
+underlying game.
+
+Add a skill only when a real, repeated workflow needs one. Do not document
+skills that do not exist.
 
 ---
 
-# 43. Architecture Change Process
+# 39. Architecture Change Process
 
 Architecture should evolve deliberately.
 
@@ -1316,7 +1408,7 @@ Prefer the smallest architectural change that solves the actual problem.
 
 ---
 
-# 44. Scaling Model
+# 40. Scaling Model
 
 The architecture should scale primarily by adding independent game modules.
 
@@ -1342,7 +1434,7 @@ The repository can grow substantially while individual games remain small.
 
 ---
 
-# 45. What This Architecture Explicitly Avoids
+# 41. What This Architecture Explicitly Avoids
 
 Do not introduce these without a strong architectural reason:
 
@@ -1360,10 +1452,18 @@ Do not introduce these without a strong architectural reason:
 * Runtime-generated SEO
 * Excessive abstraction
 * Shared game-specific logic
+* Changing a live game URL
+* A `/games/` URL prefix, or any path restructuring
+* Redirects or rewrites used to reshape game URLs
+* Environment-specific URL mapping
+* Non-module `<script src>` in a page
+* A build step that writes into the source tree
+* Treating Supabase as a required backend
+* A `main.js` that only imports `game.js`
 
 ---
 
-# 46. Final Architectural Principle
+# 42. Final Architectural Principle
 
 Tap When Bored should remain:
 
