@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { games, home, SITE_URL } from "./src/data/games.js";
@@ -100,6 +101,15 @@ function vercelInsights() {
   };
 }
 
+/**
+ * True only for the site homepage.
+ *
+ * ctx.path is "/index.html" for the homepage and "/<slug>/index.html" for a
+ * game, so anything matching the tail of the path matches every page. This has
+ * to be an exact comparison.
+ */
+const isHomepage = (ctx) => ctx.path === "/index.html" || ctx.path === "/";
+
 const escapeHtml = (v) =>
   String(v).replace(
     /[&<>"]/g,
@@ -134,8 +144,7 @@ function homepageFromRegistry() {
       order: "pre",
       handler(html, ctx) {
         // Homepage only; every other page is served untouched.
-        if (!/(^|\/)index\.html$/.test(ctx.path.replace(/^\//, "")) ) return html;
-        if (!html.includes("<!-- games-shelf -->")) return html;
+        if (!isHomepage(ctx)) return html;
 
         const shelf = games.map(card).join("\n\n");
         const hasPart = games
@@ -201,6 +210,121 @@ function sitemap() {
 }
 
 /**
+ * The PWA layer: manifest link, service-worker registration, and the worker
+ * itself.
+ *
+ * The worker is emitted rather than copied from public/ because its precache
+ * list needs the homepage's content-hashed filenames, which only exist after
+ * the bundle is generated. It still lands at /sw.js, which is what gives it
+ * root scope.
+ *
+ * Only the app shell is precached. Games are cached when opened, so installing
+ * does not pull down every game (ARCHITECTURE.md §19).
+ */
+function pwa() {
+  let swSource = "";
+  // Collected from the homepage's final HTML, which is the only place the
+  // content-hashed shell filenames appear.
+  let shellAssets = [];
+  return {
+    name: "twb:pwa",
+    // The precache list needs the emitted homepage, so this plugin's
+    // generateBundle must run after vite:build-html's.
+    enforce: "post",
+
+    buildStart() {
+      swSource = readFileSync(path.join(rootDir, "scripts/sw-template.js"), "utf8");
+      // Rebuild when the template changes during dev.
+      this.addWatchFile?.(path.join(rootDir, "scripts/sw-template.js"));
+    },
+
+    transformIndexHtml: {
+      order: "post",
+      handler: (html, ctx) => {
+        if (isHomepage(ctx)) {
+          shellAssets = [
+            ...String(html).matchAll(/(?:href|src)="(\/static\/[^"]+)"/g),
+          ].map((m) => m[1]);
+        }
+        return [
+        { tag: "link", attrs: { rel: "manifest", href: "/manifest.webmanifest" }, injectTo: "head" },
+        {
+          tag: "link",
+          attrs: { rel: "apple-touch-icon", href: "/icons/icon-192.png" },
+          injectTo: "head",
+        },
+        {
+          // Registered after load so it never competes with the game's own
+          // startup, and failure is swallowed: the PWA is an enhancement and
+          // must never affect whether a game runs.
+          tag: "script",
+          children:
+            'if("serviceWorker"in navigator){' +
+            'addEventListener("load",function(){' +
+            'navigator.serviceWorker.register("/sw.js").catch(function(){})' +
+            "})}",
+          injectTo: "body",
+        },
+      ];
+      },
+    },
+
+    generateBundle(_options, bundle) {
+      // The shell is the homepage document plus the files it loads. Game
+      // chunks are deliberately excluded.
+      const shell = new Set([
+        "/",
+        "/manifest.webmanifest",
+        "/favicon.svg",
+        "/icons/icon-192.png",
+        ...shellAssets,
+      ]);
+
+      // A version that changes whenever any emitted file changes, so activate
+      // can drop every older cache without guessing.
+      const version = createHash("sha256")
+        .update(Object.keys(bundle).sort().join("|"))
+        .update(
+          Object.values(bundle)
+            .map((c) => c.fileName)
+            .sort()
+            .join("|"),
+        )
+        .digest("hex")
+        .slice(0, 12);
+
+      this.emitFile({
+        type: "asset",
+        fileName: "sw.js",
+        source: swSource
+          .replace("__VERSION__", version)
+          .replace("__PRECACHE__", JSON.stringify([...shell], null, 2)),
+      });
+    },
+
+    configureServer(server) {
+      // In dev there are no hashed assets and no bundle, so serve a worker
+      // that only unregisters itself. A caching worker in dev would serve
+      // stale modules and fight HMR — the confusing failure this avoids.
+      server.middlewares.use("/sw.js", (_req, res) => {
+        res.setHeader("Content-Type", "application/javascript");
+        res.end(
+          "// Dev build: caching is disabled so it cannot fight HMR.\n" +
+            "self.addEventListener('install', () => self.skipWaiting());\n" +
+            "self.addEventListener('activate', (e) => e.waitUntil(\n" +
+            "  (async () => {\n" +
+            "    for (const k of await caches.keys()) if (k.startsWith('twb-')) await caches.delete(k);\n" +
+            "    await self.registration.unregister();\n" +
+            "    await self.clients.claim();\n" +
+            "  })()\n" +
+            "));\n",
+        );
+      });
+    },
+  };
+}
+
+/**
  * Warns — never fails — when a production build has no Supabase credentials.
  *
  * Vite only exposes VITE_-prefixed vars to client code, so a build that still
@@ -240,6 +364,7 @@ export default defineConfig({
     homepageFromRegistry(),
     vercelInsights(),
     sitemap(),
+    pwa(),
     warnMissingLeaderboardEnv(),
   ],
   build: {

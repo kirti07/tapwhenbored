@@ -301,15 +301,15 @@ tap-when-bored/
 │   ├── favicon.svg
 │   ├── robots.txt
 │   ├── manifest.webmanifest
-│   ├── sw.js                 must sit at the root to hold root scope
 │   ├── icons/
 │   └── assets/               crawler-facing images at stable, indexed URLs
 │
 └── dist/                     build output (gitignored)
 ```
 
-`sitemap.xml` is deliberately absent from `public/` — it is emitted by a Vite
-plugin from the registry (§28), so it cannot drift.
+`sitemap.xml` and `sw.js` are deliberately absent from `public/` — both are
+emitted by Vite plugins: the sitemap from the registry (§28), and the service
+worker from `scripts/sw-template.js` (§18). Neither can drift.
 
 Games are flat directories under `src/`, not nested under `src/games/`, because
 the source directory name is the production URL (§4, §5).
@@ -699,6 +699,26 @@ The PWA should provide:
 * Offline gameplay for previously cached games
 * Fast repeat visits
 * Graceful handling of network failures
+
+## Where the service worker comes from
+
+The worker must be served from the site root (`/sw.js`) to hold root scope.
+
+It is **generated, not copied from `public/`**: its precache list needs the
+homepage's content-hashed filenames, which do not exist until the bundle has
+been generated. The source lives at `scripts/sw-template.js` — outside `src/`,
+so it is not a page, and outside `public/`, so it is not copied verbatim — and a
+Vite plugin substitutes a build version plus the resolved precache list, then
+emits the result to `/sw.js`.
+
+The dev server deliberately serves a *different* worker: one that clears every
+`twb-*` cache and unregisters itself. A caching worker in development serves
+stale modules and fights HMR, which is a confusing failure worth designing out.
+
+Because this is an MPA, the worker must not use a navigation fallback. Every
+flat URL is a real document (§5); answering a navigation with a cached shell
+would break both gameplay and SEO. A navigation that is offline and uncached is
+an unvisited game, and gets a short page saying so rather than a broken one.
 
 ---
 
