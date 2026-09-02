@@ -156,34 +156,34 @@ html, body {
   width: var(--hex-w);
   height: var(--hex-h);
   transform: translate(-50%, -50%);
-  transition: left 0.28s cubic-bezier(.4, 0, .2, 1), top 0.28s cubic-bezier(.4, 0, .2, 1), transform 0.15s ease;
+  transition: left 0.28s cubic-bezier(.4, 0, .2, 1), top 0.28s cubic-bezier(.4, 0, .2, 1), transform 0.15s ease, filter 0.15s ease;
   cursor: default;
+  filter: drop-shadow(0 2px 2px rgba(46, 38, 74, 0.22));
 }
 
-.tile--movable { cursor: pointer; }
+/* Placement is not movement: suppresses the hop while a board is being laid
+   out or re-laid out (see renderInstant). */
+.board.no-anim .tile { transition: none; }
 
 .tile[data-hidden="true"] { --tile-face: var(--tile-hidden); }
 .tile:not([data-hidden]) { --tile-face: var(--tile-clue); }
+
 
 /* A real honeycomb's cells sit edge-to-edge on one plane — no cell floats
    above its neighbor. So depth stays entirely inside each tile's own
    silhouette: a concentric wall (the rim, sized evenly larger with no
    directional offset) reads as the cell's own boundary, and only a small,
    tight, low-offset shadow lifts it — nowhere near enough reach to fall
-   onto the tile below. Fixed tiles (numbered landmarks, boxed-in hidden
-   ones) get a quieter version; only a movable tile gets the fuller
-   "raised, tap-me" treatment below. */
-.tile {
-  filter: drop-shadow(0 2px 2px rgba(46, 38, 74, 0.22));
-  transition: filter 0.15s ease;
-}
-
-.tile--movable {
+   onto the tile below. Numbered landmarks get a quieter version; every
+   hidden tile is tappable, so they all get the fuller "raised, tap-me"
+   treatment below. */
+.tile--tappable {
+  cursor: pointer;
   filter: drop-shadow(0 3px 3px rgba(46, 38, 74, 0.3));
 }
 
 @media (hover: hover) {
-  .tile--movable:hover {
+  .tile--tappable:hover {
     filter: drop-shadow(0 4px 4px rgba(46, 38, 74, 0.34));
   }
 }
@@ -212,7 +212,7 @@ html, body {
   transition: opacity 0.4s ease, transform 0.1s ease;
 }
 
-.tile--movable:active .tile-hex {
+.tile--tappable:active .tile-hex {
   transform: scale(0.94);
 }
 
@@ -279,6 +279,22 @@ html, body {
 @keyframes burst-pop {
   0% { opacity: 1; transform: scale(0.25); }
   100% { opacity: 0; transform: scale(1.9); }
+}
+
+/* Two thin rings rippling out a beat apart, on top of the warm glow above —
+   the "shockwave" read, distinct from the particle-like burst. */
+.tile-burst-shockwave {
+  position: absolute;
+  inset: -20%;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255, 255, 255, 0.85);
+  opacity: 0; /* stays invisible during tile-burst-shockwave--2's animation-delay */
+  animation: shockwave-pop 0.5s ease-out forwards;
+}
+.tile-burst-shockwave--2 { animation-delay: 90ms; }
+@keyframes shockwave-pop {
+  0% { opacity: 0.9; transform: scale(0.3); }
+  100% { opacity: 0; transform: scale(2.6); }
 }
 
 /* ---- destination flash ----
@@ -528,6 +544,7 @@ html, body {
 .overlay-icon polygon:last-child {
   animation: drift-right 1.6s ease-in-out infinite;
 }
+
 @keyframes drift-left {
   0%, 100% { transform: translateX(0); }
   50% { transform: translateX(-2px); }
@@ -537,15 +554,38 @@ html, body {
   50% { transform: translateX(2px); }
 }
 
-/* HIVE SETTLED — a win, not a failure: the same two hexes read as joined
+/* ALL CLEAR — a win, not a failure: the same two hexes read as joined
    rather than drifting apart, in the success colour instead of danger. */
-.overlay.settled .overlay-title { color: var(--success); }
-.overlay.settled .overlay-icon polygon {
+.overlay.won .overlay-title { color: var(--success); }
+.overlay.won .overlay-icon polygon {
   stroke: var(--success);
   animation: none;
 }
-.overlay.settled .overlay-icon polygon:first-child { transform: translateX(4px); }
-.overlay.settled .overlay-icon polygon:last-child { transform: translateX(-4px); }
+.overlay.won .overlay-icon polygon:first-child { transform: translateX(4px); }
+.overlay.won .overlay-icon polygon:last-child { transform: translateX(-4px); }
+
+/* Says outright whether the run was won or lost, above the title that names
+   what happened. Without it a loss is only implied by the colour. */
+.overlay-status {
+  margin: 0;
+  font-size: clamp(10px, 1.4vh, 12px);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--danger);
+}
+.overlay.won .overlay-status { color: var(--success); }
+
+/* The sentence that names why the run ended. Before this, a run that finished
+   for a reason the player hadn't spotted just looked like it had stopped. */
+.overlay-reason {
+  margin: 0;
+  max-width: min(80vw, 300px);
+  text-align: center;
+  font-size: clamp(13px, 1.9vh, 15px);
+  line-height: 1.45;
+  color: var(--ink);
+  text-wrap: pretty;
+}
 
 .overlay-sub {
   margin: 0;
@@ -612,6 +652,7 @@ html, body {
   .tile.stranded { animation: none; opacity: 0.35; }
   .tile.blasted .tile-hex, .tile.blasted .tile-rim { animation: none; opacity: 0; }
   .tile-burst-ring { animation: none; opacity: 0; }
+  .tile-burst-shockwave { animation: none; opacity: 0; }
   .tile-flash-hex { animation: none; opacity: 0.3; }
   .overlay-icon polygon { animation: none; }
 }
@@ -643,13 +684,14 @@ html, body {
   background: color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
-/* Neon Arcade: same contained-depth cells as light mode, plus glow — a
-   fixed tile sits dim against the dark ground, only a movable tile lights
-   up (tight bright rim + soft wide bloom in its own colour), echoing
-   "selective neon on interaction" rather than a flat glow on every hex
-   regardless of whether it can be touched. Depth stays inside each cell's
-   own silhouette here too — the glow is the only thing allowed to spill
-   past its edge. */
+/* Neon Arcade: same contained-depth cells as light mode, plus glow. Every
+   hidden tile is tappable, so a bright resting glow is a glow on two thirds
+   of the board — the halos merge into one wash and read as decoration rather
+   than as "this one is interactive". So the resting state gets a tight rim
+   and one short bloom that stays inside roughly its own cell, and the wide
+   halo is spent only on the tile being pointed at or pressed. Depth stays
+   inside each cell's silhouette here too — the glow is the only thing
+   allowed to spill past its edge. */
 [data-theme="dark"] .tile-hex {
   background:
     radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 45%),
@@ -659,47 +701,42 @@ html, body {
       var(--tile-face) 58%,
       color-mix(in srgb, var(--tile-face) 100%, black 25%) 100%);
 }
-[data-theme="dark"] .tile-rim {
-  background: color-mix(in srgb, var(--tile-face) 60%, black 40%);
-}
 [data-theme="dark"] .tile {
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
 }
-[data-theme="dark"] .tile--movable {
-  filter:
-    drop-shadow(0 0 1.5px color-mix(in srgb, var(--tile-face) 90%, white 25%))
-    drop-shadow(0 0 6px color-mix(in srgb, var(--tile-face) 70%, transparent))
-    drop-shadow(0 0 16px color-mix(in srgb, var(--tile-face) 45%, transparent))
-    drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
+[data-theme="dark"] .tile--tappable {
+  /* Both states keep the same three-layer shape so `transition: filter` on
+     .tile can interpolate between them. */
+  --tile-glow:
+    drop-shadow(0 0 1.5px color-mix(in srgb, var(--tile-face) 65%, white 20%))
+    drop-shadow(0 0 6px color-mix(in srgb, var(--tile-face) 26%, transparent));
+  --tile-glow-lit:
+    drop-shadow(0 0 2px color-mix(in srgb, var(--tile-face) 90%, white 25%))
+    drop-shadow(0 0 11px color-mix(in srgb, var(--tile-face) 55%, transparent));
+  filter: var(--tile-glow) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
 }
+/* Press, not just hover — on touch there is no hover, so this is the only
+   moment neon gets to confirm which tile the player picked. */
+[data-theme="dark"] .tile--tappable:active { --tile-glow: var(--tile-glow-lit); }
 @media (hover: hover) {
-  [data-theme="dark"] .tile--movable:hover {
-    filter:
-      drop-shadow(0 0 2px color-mix(in srgb, var(--tile-face) 95%, white 25%))
-      drop-shadow(0 0 9px color-mix(in srgb, var(--tile-face) 85%, transparent))
-      drop-shadow(0 0 22px color-mix(in srgb, var(--tile-face) 60%, transparent))
-      drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
-  }
+  [data-theme="dark"] .tile--tappable:hover { --tile-glow: var(--tile-glow-lit); }
 }
 
 [data-theme="dark"] .tile-label {
-  text-shadow: 0 0 6px color-mix(in srgb, var(--tile-face) 80%, transparent);
+  text-shadow: 0 0 4px color-mix(in srgb, var(--tile-face) 38%, transparent);
 }
-
-[data-theme="dark"] .tile-flash-hex { background: var(--accent); }
 
 [data-theme="dark"] .tile.stranded {
   filter:
-    drop-shadow(0 0 2px color-mix(in srgb, var(--danger) 95%, white 25%))
-    drop-shadow(0 0 10px color-mix(in srgb, var(--danger) 80%, transparent))
-    drop-shadow(0 0 20px color-mix(in srgb, var(--danger) 55%, transparent));
+    drop-shadow(0 0 2px color-mix(in srgb, var(--danger) 85%, white 20%))
+    drop-shadow(0 0 13px color-mix(in srgb, var(--danger) 48%, transparent));
 }
 
 [data-theme="dark"] .overlay {
   background: rgba(20, 16, 31, 0.95);
 }
 
-[data-theme="dark"] .overlay.settled .overlay-title {
+[data-theme="dark"] .overlay.won .overlay-title {
   text-shadow: 0 0 8px color-mix(in srgb, var(--success) 60%, transparent);
 }
 

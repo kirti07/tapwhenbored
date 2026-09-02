@@ -1,21 +1,77 @@
 (function () {
   "use strict";
 
-  var MIN_TILES = 20, MAX_TILES = 28;
+  var MIN_TILES = 30, MAX_TILES = 42;
   var REVEAL_MIN = 0.4, REVEAL_MAX = 0.5;
-  var MIN_REVEALED_EDGE = 2; // guarantees a legible first move
-  var MIN_MOVABLE_EDGE = 3;  // guarantees the player always has moves to make
-  var MIN_HEX = 22, MAX_HEX = 56; // px clamp on the hex "radius" (center to vertex)
-  var BEST_KEY = "honeycombBestScore";
+  // Share of each clue value held back from the opening reveal so that TAPPING
+  // a safe tile pays off too. Opening clues and informative taps come from the
+  // same pool — tiles with 1-4 bomb neighbours — and the opening used to take
+  // essentially all of it, leaving the player a hidden pool of tiles that could
+  // not have been a clue in the first place: 73% of safe taps showed a 0, and
+  // 11% of hives had no informative safe tap anywhere on the board. Held back
+  // per clue value rather than off the top, so the tap pool inherits the same
+  // spread of numbers instead of only the leftover 1s.
+  // Measured at 0.4: 47% zeros, 53% informative, and no hive without one.
+  var CLUE_RESERVE_SHARE = 0.4;
+  var MIN_SAFE_TAPS = 6;     // guarantees this many SAFE (non-bomb) hidden tiles at the start
+  // Share of fully-enclosed cells held back as SAFE tiles. Left to itself the
+  // generator makes essentially all of them bombs (see buildWitness), which
+  // turns "blast every enclosed tile" into free, risk-free progress.
+  // Tuned so an enclosed hidden tile is a bomb at the same rate as any other
+  // hidden tile (measured: 55.7% vs a 56.1% hidden-tile baseline) — a boxed-in
+  // "?" then tells the player nothing on its own, which is the point. Re-measure
+  // whenever CLUSTER_BIAS, BOMB_DENSITY or CLUE_RESERVE_SHARE moves: clustering
+  // pulls bombs into the dense middle of the hive, which is exactly where
+  // enclosed cells are, and the reserve share changes the hidden-tile baseline
+  // this is being matched against.
+  var ENCLOSED_SAFE_SHARE = 0.25;
+  // Chance of placing each bomb next to an existing cluster rather than at
+  // random. Clue values are capped by how many bombs happen to touch a tile,
+  // so scattering bombs evenly yields almost nothing above a 2 — this is what
+  // manufactures the 3s and 4s. Rewards growing a 1 or 2, and actively avoids
+  // pushing a cell past MAX_CLUE, since a 5 or 6 can never be shown at all.
+  // Held below the old 0.7 because tight clusters leave whole districts of the
+  // hive with no bomb within reach, and every tile in one shows a 0 however it
+  // is revealed. 0.45 buys ~6 points of informative taps and better bomb-hint
+  // coverage for about half a point of opening 4s.
+  var CLUSTER_BIAS = 0.45;
+  var MAX_HEX = 56; // px cap on the hex "radius" (center to vertex)
+  // Cap on a hive's bounding box, in hex-radius units. computeLayout sizes the
+  // hexes to fit the board box, so a sprawling hive is simply drawn small —
+  // which is why hex size cannot be defended with a lower clamp there (see
+  // computeLayout) and has to be defended here instead. At this cap the
+  // narrowest phone we support (.board-wrap is 331px at a 360px viewport)
+  // still gets ~19px hexes, a 38px-wide tile. Raising it shrinks tiles on
+  // small screens; lowering it rounds hives out and costs shape retries —
+  // 74% of blobs comply at 17, 52% at 16.
+  var MAX_SPAN_UNITS = 17;
+  var BRANCH_BIAS = 0.4;     // probability of preferring an arm-extending frontier cell over a uniform-random one
+  // Whole-blob retries, hunting for a shape that fits MAX_SPAN_UNITS and isn't
+  // clue-eligibility-starved. A rejected blob costs only its own growth — the
+  // bomb layout is skipped — so the headroom is close to free: at 5 attempts
+  // 1.5% of the largest hives still overran the cap, at 8 none do, for 0.1ms
+  // per hive.
+  var SHAPE_ATTEMPTS = 8;
+  var BEST_KEY = "honeycombBestTimeMs";
   // Flat-top axial neighbour offsets.
   var NEIGHBORS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
-  // Same six offsets, in a fixed clockwise scan order starting at 12 o'clock —
-  // this is the deterministic "which open side does a tapped tile slide into" rule.
-  var CLOCKWISE_DIRS = [[0, -1], [1, -1], [1, 0], [0, 1], [-1, 1], [-1, 0]];
+  // The ONE cell a safe tile ever tries: 12 o'clock. It does not scan the
+  // other five — a blocked 12 o'clock is what makes the tile reveal in place
+  // instead of moving, and that choice is the whole game.
+  var TWELVE_OCLOCK = [0, -1];
   var FLASH_MS = 150;
   var BLAST_MS = 400;
-  var BOMB_DENSITY = 0.22; // fraction of total tiles that are bombs — deliberately generous
+  // Safe tiles are the only fuel for prising open an interior bomb (a shift is
+  // the sole way to drop a neighbour's degree without an explosion), so bombs
+  // can't be much over a third of the hive or buildWitness starves.
+  var BOMB_DENSITY = 0.38;
   var MIN_BOMBS = 4;
+  // How long the board sits, cause visible, before the end card replaces it.
+  var BREAK_HOLD_MS = 1500;
+  // Must match the left/top transition on .tile in style.css — a shifted tile
+  // only turns into a number once it has actually arrived. Zero when the
+  // player has asked for less motion, since then the hop is instant.
+  var MOVE_MS = (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) ? 0 : 280;
   var MIN_CLUE = 1, MAX_CLUE = 4; // a revealed tile's number is always in this range
   var GEN_ATTEMPTS = 40; // bomb-layout retries, hunting for enough tiles in [MIN_CLUE, MAX_CLUE]
 
@@ -28,19 +84,19 @@
     return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
   }
 
-  // Calls the submit_honeycomb_score(new_score) RPC, which atomically raises
-  // the single shared row only if this score beats it, and always returns the
-  // current global best. Returns null if unconfigured or the request fails.
-  function submitGlobalScore(score) {
+  // Calls the submit_honeycomb_time(new_time_ms) RPC, which atomically lowers
+  // the single shared row only if this time beats it, and always returns the
+  // current global best time in ms. Returns null if unconfigured or the request fails.
+  function submitGlobalTime(ms) {
     if (!supabaseConfigured()) return Promise.resolve(null);
-    return fetch(SUPABASE_URL + "/rest/v1/rpc/submit_honeycomb_score", {
+    return fetch(SUPABASE_URL + "/rest/v1/rpc/submit_honeycomb_time", {
       method: "POST",
       headers: {
         apikey: SUPABASE_ANON_KEY,
         Authorization: "Bearer " + SUPABASE_ANON_KEY,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ new_score: score }),
+      body: JSON.stringify({ new_time_ms: ms }),
     }).then(function (res) {
       if (!res.ok) return null;
       return res.json();
@@ -51,11 +107,14 @@
 
   var boardEl = document.getElementById("board");
   var tagline = document.getElementById("tagline");
-  var scoreVal = document.getElementById("scoreVal");
+  var timeVal = document.getElementById("timeVal");
   var bestVal = document.getElementById("bestVal");
+  var bombsVal = document.getElementById("bombsVal");
   var newBtn = document.getElementById("newBtn");
   var overlay = document.getElementById("overlay");
+  var overlayStatus = document.getElementById("overlayStatus");
   var overlayTitle = document.getElementById("overlayTitle");
+  var overlayReason = document.getElementById("overlayReason");
   var overlaySub = document.getElementById("overlaySub");
   var globalScoreEl = document.getElementById("globalScoreEl");
   var againBtn = document.getElementById("againBtn");
@@ -68,22 +127,45 @@
   var tiles = [];         // [{id, q, r, revealed, bomb, removed}]
   var posMap = new Map(); // "q,r" -> tile id
   var tileEls = [];       // id-indexed { wrap, hex, label }
-  var score = 0;
+  var audioCtx = null;    // lazily created, reused across every bomb blast this session
   var ended = false;
   var moving = false;     // guards against a second tap landing mid-flash/blast
   var bombsRemaining = 0;
-  var best = readBest();
+  var best = readBest();  // fastest completed run, in ms — null if none yet
+  var runStartTime = 0;
+  var finalElapsedMs = 0;
+  var timerHandle = null;
+  var lastStrandedCount = 0; // how many tiles the losing move cut loose, for the end card
+  var clearedOnSplit = false; // won, but the final blast also cut the hive
+  // Bumped by every generatePuzzle. Deferred work (the destination flash, the
+  // blast, the hold before an end card) captures it and bails if it no longer
+  // matches, so a pending timeout can't land on a board it wasn't started for
+  // — "New hive" mid-explosion used to commit that blast to the fresh hive.
+  var runToken = 0;
+  var endTimer = null;
 
   // ---------- persistence ----------
   function readBest() {
     try {
       var v = localStorage.getItem(BEST_KEY);
-      return v ? parseInt(v, 10) : 0;
-    } catch (e) { return 0; }
+      return v ? parseInt(v, 10) : null;
+    } catch (e) { return null; }
   }
   function writeBest(v) {
     best = v;
     try { localStorage.setItem(BEST_KEY, String(v)); } catch (e) { /* ignore */ }
+  }
+
+  // ---------- timer ----------
+  function formatTime(ms) {
+    if (ms == null) return "--:--";
+    var totalSec = Math.floor(ms / 1000);
+    var m = Math.floor(totalSec / 60);
+    var s = totalSec % 60;
+    return m + ":" + (s < 10 ? "0" : "") + s;
+  }
+  function liveElapsed() {
+    return ended ? finalElapsedMs : (Date.now() - runStartTime);
   }
 
   // ---------- hex math (axial, flat-top) ----------
@@ -95,17 +177,8 @@
   function unitX(q) { return 1.5 * q; }
   function unitY(q, r) { return Math.sqrt(3) * (r + q / 2); }
 
-  function degreeAt(q, r) {
-    var n = 0;
-    for (var i = 0; i < NEIGHBORS.length; i++) {
-      if (posMap.has(key(q + NEIGHBORS[i][0], r + NEIGHBORS[i][1]))) n++;
-    }
-    return n;
-  }
-
   // What a revealed tile displays: how many of its 6 neighbors are bombs —
-  // not how many neighbors it has. Occupancy (degreeAt) still drives
-  // movability/connectivity; this is purely the Minesweeper-style clue.
+  // not how many neighbors it has. This is purely the Minesweeper-style clue.
   function bombCountAt(q, r) {
     var n = 0;
     for (var i = 0; i < NEIGHBORS.length; i++) {
@@ -116,11 +189,12 @@
     return n;
   }
 
-  // Numbered (revealed) tiles are permanent landmarks — they never move,
-  // only their number does, as the hidden tiles around them shift. Only a
-  // hidden, not-yet-blasted tile with an open side is ever a legal tap target.
-  function isMovable(tile) {
-    return !tile.removed && !tile.revealed && degreeAt(tile.q, tile.r) < 6;
+  // Every hidden tile is a legal tap, wherever it sits in the hive — a tile
+  // boxed in on all six sides simply can't SHIFT, so it reveals its number
+  // where it stands. Only numbered landmarks are inert: they've already
+  // shown their count and never move again.
+  function isTappable(tile) {
+    return !tile.removed && !tile.revealed;
   }
 
   function isConnected(map) {
@@ -166,13 +240,12 @@
     bombsRemaining = tiles.filter(function (t) { return t.bomb; }).length;
   }
 
-  // Only builds a fresh random hive — generatePuzzle() below decides whether
-  // to call this or replay the last one instead.
-  function buildRandomTiles() {
+  // Grows one connected blob of `targetCount` tiles by flood-fill from a
+  // single seed, biased toward arm-extending frontier cells (see
+  // pickFrontierCell) for a branchier, less round silhouette.
+  function growBlob(targetCount) {
     tiles = [];
     posMap = new Map();
-
-    var targetCount = MIN_TILES + Math.floor(Math.random() * (MAX_TILES - MIN_TILES + 1));
     var occupied = new Set(["0,0"]);
     posMap.set("0,0", 0);
     tiles.push({ id: 0, q: 0, r: 0, revealed: false, bomb: false, removed: false });
@@ -181,8 +254,7 @@
     addFrontier(0, 0, occupied, frontier);
     var nextId = 1;
     while (occupied.size < targetCount && frontier.size > 0) {
-      var arr = Array.from(frontier);
-      var pick = arr[Math.floor(Math.random() * arr.length)];
+      var pick = pickFrontierCell(frontier, occupied);
       frontier.delete(pick);
       if (occupied.has(pick)) continue;
       occupied.add(pick);
@@ -192,39 +264,107 @@
       nextId++;
       addFrontier(qr[0], qr[1], occupied, frontier);
     }
+  }
 
-    // Bombs are placed first — a revealed tile's number depends on them, and
-    // must always land in [MIN_CLUE, MAX_CLUE], so which tiles even *can* be
-    // revealed is decided after the bomb layout, not before it.
-    var bombCount = Math.min(tiles.length - 1, Math.max(MIN_BOMBS, Math.round(tiles.length * BOMB_DENSITY)));
-    placeBombs(bombCount);
+  // With probability BRANCH_BIAS, prefers a frontier cell that only touches
+  // 2 already-occupied cells (extends an arm) over one that touches 3+
+  // (fills in a concave notch, rounding the blob out) — biases growth toward
+  // a branchier silhouette. Falls back to a degree-1 cell only if no
+  // degree-2 one exists, since a run of degree-1 picks produces a
+  // one-tile-wide corridor whose tiles can never show a clue number above 1
+  // (bombCountAt is capped by a tile's own degree). Otherwise picks
+  // uniformly, same as before, so the blob still fills in naturally.
+  function pickFrontierCell(frontier, occupied) {
+    var arr = Array.from(frontier);
+    if (Math.random() < BRANCH_BIAS) {
+      var twos = arr.filter(function (k) { return degreeInKeySet(k, occupied) === 2; });
+      var biased = twos.length > 0 ? twos : arr.filter(function (k) { return degreeInKeySet(k, occupied) === 1; });
+      if (biased.length > 0) return biased[Math.floor(Math.random() * biased.length)];
+    }
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+
+  // Only builds a fresh random hive — generatePuzzle() below decides whether
+  // to call this or replay the last one instead.
+  function buildRandomTiles() {
+    var targetCount = MIN_TILES + Math.floor(Math.random() * (MAX_TILES - MIN_TILES + 1));
+    var targetEligible = Math.round(targetCount * 0.3);
+
+    // A branchier shape lowers average tile degree, which caps how many
+    // tiles can ever be eligible clues (bombCountAt <= a tile's own degree) — a bomb
+    // layout retry alone can't fix a shape-level cap, so retry the whole
+    // blob, not just the bomb layout, if the best shape found so far is
+    // still well short of the eligibility target.
+    // A shape can also starve the witness of shift room, so shapes are now
+    // scored the same way layouts are: fitting the screen first, then bombs
+    // actually placed, then eligibility.
+    var bestShape = null, bestShapeScore = -1;
+    for (var shapeAttempt = 0; shapeAttempt < SHAPE_ATTEMPTS; shapeAttempt++) {
+      growBlob(targetCount);
+      // A blob that sprawls past MAX_SPAN_UNITS can only be drawn at an
+      // uncomfortably small hex size, so throw it back and grow another rather
+      // than pay for a bomb layout on it. The exception is having nothing else
+      // yet: a board that fits badly still beats no board at all.
+      var bounds = hiveBounds();
+      var span = Math.max(bounds.wUnits, bounds.hUnits);
+      var fits = span <= MAX_SPAN_UNITS;
+      if (!fits && bestShape !== null) continue;
+      var bombCount = Math.min(tiles.length - 1, Math.max(MIN_BOMBS, Math.round(tiles.length * BOMB_DENSITY)));
+      var eligibleCount = placeBombs(bombCount);
+      // eligibleCount < 1000 and bombOrder.length < 1000, so this stays a
+      // plain lexicographic comparison: fits, then bombs, then eligibility.
+      var shapeScore = (fits ? 1000000 : 0) + bombOrder.length * 1000 + eligibleCount;
+      if (shapeScore > bestShapeScore) {
+        bestShapeScore = shapeScore;
+        bestShape = {
+          tiles: tiles,
+          posMap: posMap,
+          bombOrder: bombOrder,
+          reservedSafeKeys: reservedSafeKeys,
+        };
+      }
+      if (fits && bombOrder.length >= bombCount && eligibleCount >= targetEligible * 0.7) break;
+    }
+    tiles = bestShape.tiles;
+    posMap = bestShape.posMap;
+    bombOrder = bestShape.bombOrder;
+    reservedSafeKeys = bestShape.reservedSafeKeys;
     bombsRemaining = bombOrder.length;
 
-    var eligible = tiles.filter(isEligibleClue);
+    // Group the eligible tiles by the number they would show and hold
+    // CLUE_RESERVE_SHARE of EACH group back from the opening, so what stays
+    // hidden for the player to tap has the same spread of 1s to 4s that the
+    // opening does. Taking the reserve off the top instead would just move the
+    // skew: the opening would keep the 3s and 4s and taps would pay in 1s.
+    var byClue = new Map();
+    tiles.filter(isOpeningClueCandidate).forEach(function (t) {
+      var c = bombCountAt(t.q, t.r);
+      if (!byClue.has(c)) byClue.set(c, []);
+      byClue.get(c).push(t);
+    });
+    var eligible = [];
+    byClue.forEach(function (group) {
+      shuffle(group); // randomness within one clue value; the sort below is stable
+      var held = Math.round(group.length * CLUE_RESERVE_SHARE);
+      for (var gi = held; gi < group.length; gi++) eligible.push(group[gi]);
+    });
+
     var revealFraction = REVEAL_MIN + Math.random() * (REVEAL_MAX - REVEAL_MIN);
     var revealCount = Math.min(eligible.length, Math.round(tiles.length * revealFraction));
-    var order = shuffle(eligible.slice());
+    // Prefer revealing the higher bomb-neighbor counts (3-4) over 1s and 2s
+    // when there's a choice — a stable sort by count descending over groups
+    // already shuffled above, so the highest counts get first pick of the
+    // reveal slots while staying random inside each count.
+    var order = eligible.sort(function (a, b) {
+      return bombCountAt(b.q, b.r) - bombCountAt(a.q, a.r);
+    });
     for (var i = 0; i < revealCount; i++) order[i].revealed = true;
 
-    ensureRevealedEdgeTiles(MIN_REVEALED_EDGE);
+    ensureBombHints();
     // Runs last so it's the final word — movability is the hard requirement,
-    // the legibility pass above is just a nicety and must not undo it.
-    ensureMovableEdgeTiles(MIN_MOVABLE_EDGE);
-
-    // Fairness: never let every currently-tappable tile be a bomb. Trimming
-    // off the END of the verified-safe removal order is the only edit that
-    // can't break the solvability guarantee for whatever bombs remain —
-    // every earlier removal's safety was already checked in a graph where
-    // this last-peeled one was still present, so simply never removing it
-    // reproduces exactly those same verified states.
-    while (bombOrder.length > 0) {
-      var openingMoves = tiles.filter(isMovable);
-      var allBombs = openingMoves.length > 0 && openingMoves.every(function (t) { return t.bomb; });
-      if (!allBombs) break;
-      var droppedKey = bombOrder.pop();
-      tiles[posMap.get(droppedKey)].bomb = false;
-      bombsRemaining--;
-    }
+    // the legibility/hint passes above are just niceties and must not undo
+    // it (the live-rechecked guard inside protects the hints, though).
+    ensureSafeTapTargets(MIN_SAFE_TAPS);
   }
 
   // reuseBoard: replay the exact hive from the last run instead of building
@@ -232,6 +372,13 @@
   // can try the same puzzle again with what they've learned.
   function generatePuzzle(reuseBoard) {
     moving = false;
+    clearedOnSplit = false;
+    lastStrandedCount = 0;
+    runToken++;
+    clearTimeout(endTimer);
+    clearTimeout(hintTimer);
+    endTimer = null;
+    hintTimer = null;
     if (reuseBoard && lastBoardSnapshot) {
       restoreSnapshot(lastBoardSnapshot);
     } else {
@@ -239,10 +386,13 @@
       lastBoardSnapshot = snapshotTiles();
     }
 
-    score = 0;
     ended = false;
+    clearInterval(timerHandle);
+    runStartTime = Date.now();
+    finalElapsedMs = 0;
+    timerHandle = setInterval(updateHud, 250);
     buildDom();
-    render();
+    renderInstant();
     hideOverlay();
     updateHud();
     updateTagline();
@@ -257,9 +407,18 @@
     return c >= MIN_CLUE && c <= MAX_CLUE;
   }
 
-  // Same neighbor-walk as degreeAt, but against an arbitrary set of keys
-  // instead of the live posMap — used while searching candidate bomb
-  // layouts on a throwaway copy of the hive.
+  // Which tiles may carry an OPENING clue. Same rule as isEligibleClue, minus
+  // the tiles the witness has to shift out of the way: pre-revealing one
+  // freezes it as a landmark and cuts the proven clearing path. Kept separate
+  // from isEligibleClue because placeBombs scores layouts with that one while
+  // reservedSafeKeys still holds the previous attempt's set.
+  function isOpeningClueCandidate(t) {
+    return isEligibleClue(t) && !reservedSafeKeys.has(key(t.q, t.r));
+  }
+
+  // Counts how many of a cell's six neighbours are present in an arbitrary
+  // set of keys rather than the live posMap — used while searching candidate
+  // bomb layouts on a throwaway copy of the hive.
   function degreeInKeySet(k, keySet) {
     var qr = parseKey(k);
     var n = 0;
@@ -269,58 +428,143 @@
     return n;
   }
 
-  // Every connected graph with 2+ nodes has at least one vertex whose
-  // removal keeps it connected (a leaf of any spanning tree, for one) — so
-  // this can always peel off `bombCount` tiles one at a time, each chosen
-  // to be both tappable (open side) and safe to remove from whatever's left
-  // at that point. The order they're peeled in is, by construction, a
-  // verified-safe removal order: isConnected(map) here works the same as it
-  // does on the live posMap, since it only relies on Map-shaped methods a
-  // plain Set also has.
-  function pickSolvableBombOrder(bombCount, allKeys) {
-    var working = new Set(allKeys);
-    var order = [];
-    for (var i = 0; i < bombCount; i++) {
-      var candidates = [];
-      working.forEach(function (k) {
-        if (degreeInKeySet(k, working) >= 6) return;
-        var trial = new Set(working);
-        trial.delete(k);
-        if (isConnected(trial)) candidates.push(k);
-      });
-      if (candidates.length === 0) break;
-      var chosen = candidates[Math.floor(Math.random() * candidates.length)];
-      order.push(chosen);
-      working.delete(chosen);
+  // Solvability is BUILT, not tested. Rather than scatter bombs and hope a
+  // clearing path exists, this walks a real run forward from the true
+  // starting position and decides what each tapped tile is at the moment it
+  // is tapped. Replaying the taps it records therefore clears every bomb it
+  // placed — that record is a proof, not a sample.
+  //
+  // Each step makes the one move the walk needs: designate the tapped tile a
+  // bomb and remove it, which is only legal if what is left is still
+  // connected. An extreme boundary cell of a connected hex blob is always a
+  // non-cut vertex, so a candidate exists on every step (measured over
+  // thousands of hives, up to a bomb density of 0.70).
+  //
+  // This cannot fail outright, only undershoot `bombTarget`: whatever bombs
+  // it did place are all the bombs the board has, and the recorded path
+  // clears them. A short path just means an easier hive.
+  function buildWitness(bombTarget, allKeys) {
+    var occupied = new Set(allKeys);
+    // An enclosed cell's six neighbours form a ring, so removing it can never
+    // split the hive. That makes it a valid bomb candidate on EVERY step,
+    // while edge cells drop in and out of the running as the shape changes —
+    // so left alone the walk turns nearly all of them into bombs. Holding a
+    // random share back as safe tiles is what keeps a boxed-in "?" genuinely
+    // uncertain rather than a guaranteed bomb.
+    var reserved = new Set();
+    allKeys.forEach(function (k) {
+      if (degreeInKeySet(k, occupied) >= 6 && Math.random() < ENCLOSED_SAFE_SHARE) reserved.add(k);
+    });
+
+    // Bomb clustering. bombAdj tracks, for every cell of the hive, how many
+    // chosen bombs touch it — which IS that cell's future clue number. Cells
+    // are scored by how much a candidate would grow a count that is already
+    // on its way to 3 or 4, and penalised for tipping one past MAX_CLUE.
+    var allCells = new Set(allKeys);
+    var bombSet = new Set();
+    var bombAdj = new Map();
+    function eachNeighbour(k, fn) {
+      var qr = parseKey(k);
+      for (var i = 0; i < NEIGHBORS.length; i++) {
+        var nk = key(qr[0] + NEIGHBORS[i][0], qr[1] + NEIGHBORS[i][1]);
+        if (allCells.has(nk)) fn(nk);
+      }
     }
-    return order;
+    function clusterScore(k) {
+      var score = 0;
+      eachNeighbour(k, function (nk) {
+        if (bombSet.has(nk)) return; // a bomb never shows a number
+        var c = bombAdj.get(nk) || 0;
+        score += c >= MAX_CLUE ? -2 : c;
+      });
+      return score;
+    }
+    function takeBomb(k) {
+      bombSet.add(k);
+      eachNeighbour(k, function (nk) { bombAdj.set(nk, (bombAdj.get(nk) || 0) + 1); });
+    }
+
+    // bombKeys doubles as the proof: replaying those taps in order clears
+    // every bomb on the board.
+    var bombKeys = [];
+    // Each step consumes one hidden tile, so the walk is bounded by the hive.
+    var guard = allKeys.length + 1;
+
+    while (bombKeys.length < bombTarget && guard-- > 0) {
+      // Every remaining tile is a candidate, so the witness has the same
+      // freedom the player does.
+      var bombCands = Array.from(occupied).filter(function (k) {
+        if (reserved.has(k)) return false;
+        var trial = new Set(occupied);
+        trial.delete(k);
+        return isConnected(trial);
+      });
+      if (bombCands.length > 0) {
+        var chosen;
+        if (Math.random() < CLUSTER_BIAS) {
+          var best = -Infinity, top = [];
+          for (var ci = 0; ci < bombCands.length; ci++) {
+            var sc = clusterScore(bombCands[ci]);
+            if (sc > best) { best = sc; top = [bombCands[ci]]; }
+            else if (sc === best) top.push(bombCands[ci]);
+          }
+          chosen = top[Math.floor(Math.random() * top.length)];
+        } else {
+          chosen = bombCands[Math.floor(Math.random() * bombCands.length)];
+        }
+        takeBomb(chosen);
+        bombKeys.push(chosen);
+        occupied.delete(chosen);
+        continue;
+      }
+
+      // Nothing tappable can be blasted without splitting the hive. Stopping
+      // here just leaves a hive with fewer bombs than the target — still
+      // fully clearable by the steps already recorded, only easier. (Measured
+      // over thousands of hives: never once reached.)
+      break;
+    }
+
+    return { bombKeys: bombKeys, reservedKeys: reserved };
   }
 
-  // Tries several verified-solvable bomb layouts and keeps whichever gives
-  // the most tiles a shot at being revealed (see isEligibleClue) — this is
-  // what "design the hive structure" around the 1-4 clue rule actually
-  // means: don't settle for a layout that leaves almost nothing revealable.
-  // bombOrder (module-level) is kept around so the fairness step below can
-  // trim it without breaking the solvability guarantee — see its comment.
+  // Tries several proven-clearable layouts and keeps the best: first by how
+  // many bombs the witness actually managed to place, then by how many tiles
+  // have a shot at being revealed (see isEligibleClue) — this is what
+  // "design the hive structure" around the 1-4 clue rule actually means.
+  //
+  // bombOrder is the witness's bomb tap order — its length is the hive's real
+  // bomb count, since the witness can undershoot the target.
+  // reservedSafeKeys are the enclosed cells buildWitness held back as safe.
+  // They only create uncertainty while they are still a "?", so the
+  // opening-clue passes must leave them hidden.
   var bombOrder = [];
+  var reservedSafeKeys = new Set();
   function placeBombs(bombCount) {
     var allKeys = tiles.map(function (t) { return key(t.q, t.r); });
-    var targetEligible = Math.max(MIN_REVEALED_EDGE, Math.round(tiles.length * 0.3));
-    var bestOrder = [], bestEligible = -1;
+    var targetEligible = Math.round(tiles.length * 0.3);
+    var bestOrder = [], bestReserved = new Set(), bestEligible = -1, bestScore = -1;
     for (var attempt = 0; attempt < GEN_ATTEMPTS; attempt++) {
-      var candidateOrder = pickSolvableBombOrder(bombCount, allKeys);
-      var bombKeys = new Set(candidateOrder);
+      var candidate = buildWitness(bombCount, allKeys);
+      var bombKeys = new Set(candidate.bombKeys);
       tiles.forEach(function (t) { t.bomb = bombKeys.has(key(t.q, t.r)); });
       var eligibleCount = tiles.filter(isEligibleClue).length;
-      if (eligibleCount > bestEligible) {
+      // Bomb count dominates; eligibility breaks ties. eligibleCount can
+      // never reach 1000, so this is a plain lexicographic comparison.
+      var score = candidate.bombKeys.length * 1000 + eligibleCount;
+      if (score > bestScore) {
+        bestScore = score;
         bestEligible = eligibleCount;
-        bestOrder = candidateOrder;
+        bestOrder = candidate.bombKeys;
+        bestReserved = candidate.reservedKeys;
       }
-      if (eligibleCount >= targetEligible) break;
+      if (candidate.bombKeys.length >= bombCount && eligibleCount >= targetEligible) break;
     }
     bombOrder = bestOrder;
+    reservedSafeKeys = bestReserved;
     var finalBombKeys = new Set(bombOrder);
     tiles.forEach(function (t) { t.bomb = finalBombKeys.has(key(t.q, t.r)); });
+    return bestEligible;
   }
 
   function addFrontier(q, r, occupied, frontier) {
@@ -330,22 +574,72 @@
     }
   }
 
-  function ensureRevealedEdgeTiles(minCount) {
-    var edgeTiles = tiles.filter(function (t) { return degreeAt(t.q, t.r) < 6; });
-    var revealedEdge = edgeTiles.filter(function (t) { return t.revealed; });
-    if (revealedEdge.length >= minCount) return;
-    var candidatesLeft = shuffle(edgeTiles.filter(function (t) { return !t.revealed && isEligibleClue(t); }));
-    var need = minCount - revealedEdge.length;
-    for (var i = 0; i < need && i < candidatesLeft.length; i++) candidatesLeft[i].revealed = true;
+  // Would un-revealing `tile` leave any of its bomb neighbors with zero
+  // revealed neighbors? Must be re-checked against the CURRENT board state
+  // immediately before each individual flip in a batch — two tiles can each
+  // look like a safe flip in isolation while being each other's sole backup
+  // hint for the same bomb, so pre-filtering a static list is not safe.
+  function revealIsHintCritical(tile) {
+    for (var i = 0; i < NEIGHBORS.length; i++) {
+      var nk = key(tile.q + NEIGHBORS[i][0], tile.r + NEIGHBORS[i][1]);
+      var nid = posMap.get(nk);
+      if (nid === undefined || !tiles[nid].bomb) continue;
+      var bomb = tiles[nid];
+      var hasOtherHint = false;
+      for (var j = 0; j < NEIGHBORS.length; j++) {
+        var nk2 = key(bomb.q + NEIGHBORS[j][0], bomb.r + NEIGHBORS[j][1]);
+        if (nk2 === key(tile.q, tile.r)) continue;
+        var nid2 = posMap.get(nk2);
+        if (nid2 !== undefined && tiles[nid2].revealed) { hasOtherHint = true; break; }
+      }
+      if (!hasOtherHint) return true;
+    }
+    return false;
   }
 
-  function ensureMovableEdgeTiles(minCount) {
-    var edgeTiles = tiles.filter(function (t) { return degreeAt(t.q, t.r) < 6; });
-    var movable = edgeTiles.filter(isMovable);
-    if (movable.length >= minCount) return;
-    var flippable = shuffle(edgeTiles.filter(function (t) { return t.revealed; }));
-    var need = minCount - movable.length;
-    for (var i = 0; i < need && i < flippable.length; i++) flippable[i].revealed = false;
+  // Best-effort: give every bomb at least one adjacent revealed clue. Can't
+  // be a hard guarantee at this bomb density — a bomb boxed in by other
+  // bombs, or whose only non-bomb neighbors would show a count above
+  // MAX_CLUE, has no eligible neighbor to reveal, and is just left as-is.
+  function ensureBombHints() {
+    tiles.forEach(function (b) {
+      if (!b.bomb) return;
+      var hasHint = false;
+      var candidates = [];
+      for (var i = 0; i < NEIGHBORS.length; i++) {
+        var nk = key(b.q + NEIGHBORS[i][0], b.r + NEIGHBORS[i][1]);
+        var nid = posMap.get(nk);
+        if (nid === undefined) continue;
+        var neighbor = tiles[nid];
+        if (neighbor.revealed) { hasHint = true; break; }
+        if (isOpeningClueCandidate(neighbor)) candidates.push(neighbor);
+      }
+      if (hasHint || candidates.length === 0) return;
+      // Deliberately uniform. This used to prefer an INTERIOR neighbour, to
+      // avoid spending tiles from the edge pool that was the only tappable
+      // one. Every tile is tappable now, so that preference had no upside
+      // left and one sharp downside: it stripped the safe tiles out of the
+      // interior, which made every boxed-in hidden tile a guaranteed bomb —
+      // and since removing a boxed-in tile can never split the hive (its six
+      // neighbours form a ring), "blast all the enclosed ones first" became a
+      // free, risk-free opening worth a fifth of the objective.
+      shuffle(candidates)[0].revealed = true;
+    });
+  }
+
+  // A floor on SAFE (non-bomb) hidden tiles specifically — a hidden bomb is
+  // also a legal tap, that's how blasting works, but counting it toward this
+  // floor wouldn't give the player any actual room to manoeuvre.
+  function ensureSafeTapTargets(minCount) {
+    var safeHidden = tiles.filter(function (t) { return isTappable(t) && !t.bomb; });
+    if (safeHidden.length >= minCount) return;
+    var flippable = shuffle(tiles.filter(function (t) { return t.revealed; }));
+    var have = safeHidden.length;
+    for (var i = 0; i < flippable.length && have < minCount; i++) {
+      if (revealIsHintCritical(flippable[i])) continue;
+      flippable[i].revealed = false;
+      have++;
+    }
   }
 
   // ---------- DOM ----------
@@ -367,11 +661,14 @@
       hex.appendChild(label);
       wrap.appendChild(hex);
       boardEl.appendChild(wrap);
-      return { wrap: wrap, rim: rim, hex: hex, label: label };
+      return { wrap: wrap, label: label };
     });
   }
 
-  function computeLayout() {
+  // The hive's bounding box in hex-radius units — the units computeLayout
+  // divides the available space by, so a span measured here is directly
+  // comparable to the space a board is going to be given.
+  function hiveBounds() {
     var minUX = Infinity, maxUX = -Infinity, minUY = Infinity, maxUY = -Infinity;
     posMap.forEach(function (_, k) {
       var qr = parseKey(k);
@@ -381,14 +678,25 @@
       if (y < minUY) minUY = y;
       if (y > maxUY) maxUY = y;
     });
+    return {
+      minUX: minUX,
+      minUY: minUY,
+      wUnits: (maxUX - minUX) + 2,
+      hUnits: (maxUY - minUY) + Math.sqrt(3),
+    };
+  }
 
+  function computeLayout() {
+    var b = hiveBounds();
     var rect = boardEl.parentElement.getBoundingClientRect();
-    var gridWUnits = (maxUX - minUX) + 2;
-    var gridHUnits = (maxUY - minUY) + Math.sqrt(3);
-    var size = Math.min(rect.width / gridWUnits, rect.height / gridHUnits);
-    size = Math.max(MIN_HEX, Math.min(MAX_HEX, size));
-
-    return { size: size, minUX: minUX, minUY: minUY, w: gridWUnits * size, h: gridHUnits * size };
+    // Capped from above only. A lower clamp here would draw the hive wider
+    // than the box it was handed, and since body is overflow:hidden anything
+    // past the viewport is not merely ugly but untappable: with the old 22px
+    // floor, a 360px phone pushed the hive out of .board-wrap on 73% of boards
+    // and clean off the screen on 27% of them. Hex size cannot be defended
+    // here — only at generation time, by MAX_SPAN_UNITS.
+    var size = Math.min(MAX_HEX, rect.width / b.wUnits, rect.height / b.hUnits);
+    return { size: size, minUX: b.minUX, minUY: b.minUY, w: b.wUnits * size, h: b.hUnits * size };
   }
 
   function pixelFor(layout, q, r) {
@@ -411,18 +719,25 @@
       var p = pixelFor(layout, t.q, t.r);
       el.wrap.style.left = p.x + "px";
       el.wrap.style.top = p.y + "px";
-      el.wrap.classList.toggle("tile--movable", isMovable(t));
+      el.wrap.classList.toggle("tile--tappable", isTappable(t));
       if (t.revealed) {
         el.label.textContent = String(bombCountAt(t.q, t.r));
         el.wrap.removeAttribute("data-hidden");
       } else {
-        // Blank, not "?" — hidden tiles are never revealed by anything the
-        // player does, so a "?" mark (implying an eventual reveal) would be
-        // misleading. The colour alone marks a tile as hidden.
-        el.label.textContent = "";
+        // "?" is honest now: tapping a safe hidden tile always turns it into
+        // a number, so the mark promises something the player can actually
+        // cash in.
+        el.label.textContent = "?";
         el.wrap.setAttribute("data-hidden", "true");
       }
     });
+  }
+
+  function renderInstant() {
+    boardEl.classList.add("no-anim");
+    render();
+    void boardEl.getBoundingClientRect(); // flush, so the class can't be coalesced away
+    boardEl.classList.remove("no-anim");
   }
 
   function triggerShake(el) {
@@ -432,16 +747,15 @@
   }
 
   // ---------- deterministic move resolution ----------
-  // An edge tile (degree < 6) always has at least one open side, so this
-  // always finds a destination — the whole point is that it never asks the
-  // player to choose one.
+  // A safe tile checks exactly one cell — 12 o'clock. Free, and it shifts
+  // there; taken, and this returns null, which means "stay put and reveal
+  // where you stand". Either way the tile ends up numbered.
+  function twelveOClockKey(tile) {
+    return key(tile.q + TWELVE_OCLOCK[0], tile.r + TWELVE_OCLOCK[1]);
+  }
   function resolveDestination(tile) {
-    for (var i = 0; i < CLOCKWISE_DIRS.length; i++) {
-      var d = CLOCKWISE_DIRS[i];
-      var k = key(tile.q + d[0], tile.r + d[1]);
-      if (!posMap.has(k)) return k;
-    }
-    return null;
+    var k = twelveOClockKey(tile);
+    return posMap.has(k) ? null : k;
   }
 
   function showFlash(destKey) {
@@ -462,17 +776,29 @@
   function tapTile(id) {
     if (moving || ended) return;
     var tile = tiles[id];
-    if (!isMovable(tile)) { triggerShake(tileEls[id].wrap); return; }
+    // The only tile that can't be tapped is one that has already shown its
+    // number. A bare shake reads as "the game ignored me", so say why.
+    if (!isTappable(tile)) {
+      triggerShake(tileEls[id].wrap);
+      showTapHint("That tile already showed its number — landmarks never move.");
+      return;
+    }
 
     if (tile.bomb) { blastTile(id); return; }
 
     var destKey = resolveDestination(tile);
+    // 12 o'clock is occupied: nothing moves, so there is nothing to
+    // telegraph and no way this can break the hive.
+    if (destKey === null) { commitReveal(id); return; }
+
     moving = true;
+    var token = runToken;
     var flash = showFlash(destKey);
     setTimeout(function () {
+      if (token !== runToken) return;
       flash.remove();
+      // commitMove clears `moving` itself, once the tile has landed.
       commitMove(id, destKey);
-      moving = false;
     }, FLASH_MS);
   }
 
@@ -486,16 +812,72 @@
     var ring = document.createElement("div");
     ring.className = "tile-burst-ring";
     wrap.appendChild(ring);
+    var wave1 = document.createElement("div");
+    wave1.className = "tile-burst-shockwave";
+    wrap.appendChild(wave1);
+    var wave2 = document.createElement("div");
+    wave2.className = "tile-burst-shockwave tile-burst-shockwave--2";
+    wrap.appendChild(wave2);
     boardEl.appendChild(wrap);
     return wrap;
+  }
+
+  // A low pitch-sweeping thump plus a short filtered noise burst, synthesized
+  // rather than a shipped audio file — created and played in the same call,
+  // directly inside the click handler, so the AudioContext starts as a
+  // direct result of the user gesture per browser autoplay rules.
+  function playBombSound() {
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      if (!audioCtx) audioCtx = new Ctx();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      var now = audioCtx.currentTime;
+
+      var osc = audioCtx.createOscillator();
+      var oscGain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(150, now);
+      osc.frequency.exponentialRampToValueAtTime(38, now + 0.28);
+      oscGain.gain.setValueAtTime(0.001, now);
+      oscGain.gain.exponentialRampToValueAtTime(0.9, now + 0.02);
+      oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.34);
+      osc.connect(oscGain);
+      oscGain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.36);
+
+      var bufferSize = Math.floor(audioCtx.sampleRate * 0.22);
+      var buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      var data = buffer.getChannelData(0);
+      for (var i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+      }
+      var noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+      var filter = audioCtx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(1400, now);
+      var noiseGain = audioCtx.createGain();
+      noiseGain.gain.setValueAtTime(0.001, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.55, now + 0.01);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      noise.connect(filter);
+      filter.connect(noiseGain);
+      noiseGain.connect(audioCtx.destination);
+      noise.start(now);
+    } catch (e) { /* sound is a nice-to-have, never block the blast */ }
   }
 
   function blastTile(id) {
     moving = true;
     var tile = tiles[id];
     tileEls[id].wrap.classList.add("blasted");
+    playBombSound();
     var burst = showBurst(tile.q, tile.r);
+    var token = runToken;
     setTimeout(function () {
+      if (token !== runToken) return;
       burst.remove();
       commitBlast(id);
       moving = false;
@@ -515,15 +897,26 @@
     bombsRemaining--;
 
     render();
+    updateHud(); // don't wait up to 250ms for the timer tick to show it
 
-    if (connected) {
-      score++;
-      updateHud();
-      if (bombsRemaining === 0) { handleCleared(); return; }
-      if (!tiles.some(isMovable)) handleSettled();
-    } else {
-      handleBreak(newPosMap, newPosMap.keys().next().value);
-    }
+    // The all-clear outranks a split. Blasting the final bomb wins the run
+    // even if that same explosion cut the hive in two — there is nothing
+    // left to keep connected, and being told you lost after clearing the
+    // board reads as a bug to the player.
+    //
+    // It is also the only ending other than a split: every hidden tile is
+    // tappable and a bomb stays hidden until it is blasted, so there is
+    // always a legal tap left while any bomb is.
+    if (bombsRemaining === 0) { handleCleared(!connected); return; }
+
+    if (!connected) handleBreak(newPosMap, newPosMap.keys().next().value);
+  }
+
+  // 12 o'clock was taken, so the tile stays where it is and just turns into a
+  // numbered landmark. No tile moved, so the hive cannot have come apart.
+  function commitReveal(id) {
+    tiles[id].revealed = true;
+    render();
   }
 
   function commitMove(id, destKey) {
@@ -539,27 +932,45 @@
     tile.q = qr[0];
     tile.r = qr[1];
 
-    render();
+    render(); // starts the slide; the tile is still a "?" while in flight
 
-    if (connected) {
-      score++;
-      updateHud();
-      if (!tiles.some(isMovable)) handleSettled();
-    } else {
-      handleBreak(newPosMap, destKey);
-    }
+    // A safe tile always ends up numbered, but it reads the count from the
+    // cell it LANDS on, so the number belongs on arrival rather than
+    // mid-flight. `moving` stays set across the slide, which also stops the
+    // tile being tapped a second time while it is still hidden.
+    var token = runToken;
+    setTimeout(function () {
+      if (token !== runToken) return;
+      tile.revealed = true;
+      render();
+      moving = false;
+      if (!connected) handleBreak(newPosMap, destKey);
+    }, MOVE_MS);
   }
 
-  function handleSettled() {
-    tagline.textContent = "The hive has settled.";
+  // Stops the clock at the moment the run actually ended and holds the board
+  // for `holdMs` so the cause stays visible. The stamp has to happen here,
+  // not in endRun: `ended` makes liveElapsed() read finalElapsedMs, so
+  // leaving it unset showed 0:00 in the HUD for the whole hold.
+  function finishRun(reason, holdMs) {
     ended = true;
-    setTimeout(function () { endRun("settled"); }, 300);
+    finalElapsedMs = Date.now() - runStartTime;
+    clearInterval(timerHandle);
+    updateHud();
+    var token = runToken;
+    clearTimeout(endTimer);
+    endTimer = setTimeout(function () {
+      if (token !== runToken) return;
+      endRun(reason);
+    }, holdMs);
   }
 
-  function handleCleared() {
+  function handleCleared(splitOnLastBlast) {
+    clearedOnSplit = Boolean(splitOnLastBlast);
     tagline.textContent = "Every bomb is gone.";
-    ended = true;
-    setTimeout(function () { endRun("cleared"); }, 300);
+    // A touch longer when the last blast also broke the hive, so the board
+    // isn't replaced before the player has seen what happened.
+    finishRun("cleared", clearedOnSplit ? 900 : 300);
   }
 
   function handleBreak(map, seedKey) {
@@ -573,36 +984,60 @@
         if (map.has(nk) && !seen.has(nk)) { seen.add(nk); stack.push(nk); }
       }
     }
+    var stranded = 0;
     tiles.forEach(function (t) {
       if (t.removed) return;
-      if (!seen.has(key(t.q, t.r))) tileEls[t.id].wrap.classList.add("stranded");
+      if (!seen.has(key(t.q, t.r))) {
+        tileEls[t.id].wrap.classList.add("stranded");
+        stranded++;
+      }
     });
+    // The piece the seed didn't reach is whichever side is smaller to name;
+    // seen/stranded is arbitrary, so report the count the player can see
+    // turning red.
+    lastStrandedCount = stranded;
     tagline.textContent = "The hive split apart.";
-    ended = true;
-    setTimeout(function () { endRun("broken"); }, 650);
+    // Hold on the red group long enough to read it — the whole reason a lost
+    // run used to feel like it just stopped.
+    finishRun("broken", BREAK_HOLD_MS);
   }
 
   function endRun(reason) {
+    // finishRun has already stopped the timer and stamped finalElapsedMs.
+    // Clearing every bomb is now the only win, so one flag covers both jobs:
+    // whether Play Again gets a fresh board, and whether the run counts
+    // toward best time / the leaderboard. Running out of moves used to bank a
+    // best time with bombs still on the board.
     wonLastRun = reason === "cleared";
-    if (score > best) writeBest(score);
+
+    if (wonLastRun && (best === null || finalElapsedMs < best)) writeBest(finalElapsedMs);
     updateHud();
     showOverlay(reason);
-    submitGlobalScore(score).then(function (globalBest) {
-      if (globalBest === null) {
+
+    if (!wonLastRun) {
+      globalScoreEl.hidden = true;
+      globalScoreEl.classList.remove("new-global");
+      return;
+    }
+    submitGlobalTime(finalElapsedMs).then(function (globalBestMs) {
+      if (globalBestMs === null) {
         globalScoreEl.hidden = false;
         globalScoreEl.textContent = "GLOBAL BEST UNAVAILABLE";
         return;
       }
-      var isNew = score > 0 && score >= globalBest;
+      var isNew = finalElapsedMs <= globalBestMs;
       globalScoreEl.hidden = false;
-      globalScoreEl.textContent = isNew ? "★ NEW GLOBAL HIGH SCORE ★" : "Global best " + globalBest;
+      globalScoreEl.textContent = isNew ? "★ NEW GLOBAL BEST TIME ★" : "Global best " + formatTime(globalBestMs);
       globalScoreEl.classList.toggle("new-global", isNew);
     });
   }
 
   function updateHud() {
-    scoreVal.textContent = String(score);
-    bestVal.textContent = String(best);
+    timeVal.textContent = formatTime(liveElapsed());
+    bestVal.textContent = formatTime(best);
+    // Clearing every bomb is the only win, so the count left is the only
+    // real progress indicator the board doesn't already show.
+    bombsVal.textContent = String(bombsRemaining);
   }
 
   // "New hive" (top bar) always starts a fresh random puzzle, regardless of
@@ -623,30 +1058,63 @@
     tagline.textContent = "Clear every bomb without breaking the hive.";
   }
 
+  // Borrows the tagline to explain a tap that couldn't do anything, then puts
+  // it back. Guarded on runToken so it can't overwrite a new hive's tagline.
+  var hintTimer = null;
+  function showTapHint(msg) {
+    if (ended) return;
+    tagline.textContent = msg;
+    clearTimeout(hintTimer);
+    var token = runToken;
+    hintTimer = setTimeout(function () {
+      if (token !== runToken) return;
+      updateTagline();
+    }, 2400);
+  }
+
   // ---------- overlay / share / howto ----------
+  function plural(n, word) {
+    return n + " " + word + (n === 1 ? "" : "s");
+  }
+
+  // Every card names its cause. The old overlay gave a title and a time, so a
+  // run that ended for a reason the player hadn't noticed just looked like it
+  // had stopped on its own.
+  function reasonText(reason) {
+    if (reason === "cleared") {
+      return clearedOnSplit
+        ? "The last bomb took the hive apart with it — but every bomb was gone, so the run still counts."
+        : "Every bomb cleared, and the hive never came apart.";
+    }
+    return "That move cut " + plural(lastStrandedCount, "tile") + " loose from the hive — " +
+      plural(bombsRemaining, "bomb") + " still live.";
+  }
+
   function showOverlay(reason) {
-    var success = reason === "settled" || reason === "cleared";
-    overlay.classList.toggle("settled", success);
-    overlayTitle.textContent =
-      reason === "cleared" ? "ALL CLEAR" :
-      reason === "settled" ? "HIVE SETTLED" :
-      "PATTERN BROKEN";
+    var won = reason === "cleared";
+    overlay.classList.toggle("won", won);
+    // The title names WHAT happened; this names the outcome, so a loss is
+    // never left to be inferred from the colour.
+    overlayStatus.textContent = won ? "GAME WON" : "GAME LOST";
+    overlayTitle.textContent = won ? "ALL CLEAR" : "HIVE SPLIT";
+    overlayReason.textContent = reasonText(reason);
     globalScoreEl.hidden = true;
     globalScoreEl.classList.remove("new-global");
-    overlaySub.textContent = "Score " + score + " · Best " + best;
+    overlaySub.textContent = "Time " + formatTime(finalElapsedMs) + " · Best " + formatTime(best);
     shareNote.classList.remove("show");
     overlay.classList.add("show");
   }
   function hideOverlay() {
-    overlay.classList.remove("show", "settled");
+    overlay.classList.remove("show", "won");
   }
 
   function shareResult() {
     var url = new URL(location.href);
     url.search = "";
     url.hash = "";
-    var text = "I kept my HONEYCOMB hive connected for " + score + (score === 1 ? " move" : " moves") +
-      ". Can you beat it?";
+    var text = wonLastRun
+      ? "I cleared HONEYCOMB in " + formatTime(finalElapsedMs) + ". Can you beat it?"
+      : "I lasted " + formatTime(finalElapsedMs) + " in HONEYCOMB before the hive beat me. Can you beat it?";
 
     if (navigator.share) {
       navigator.share({ title: "Honeycomb", text: text, url: url.toString() }).catch(function () {});
@@ -682,7 +1150,7 @@
   shareBtn.addEventListener("click", shareResult);
   howtoBtn.addEventListener("click", openHowto);
   howtoBackdrop.addEventListener("click", closeHowto);
-  window.addEventListener("resize", function () { render(); });
+  window.addEventListener("resize", function () { renderInstant(); });
 
   updateHud();
   generatePuzzle(false);
