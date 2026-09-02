@@ -1,3 +1,15 @@
-config.js
+node_modules/
+dist/
+
+# Vite loads these; only VITE_-prefixed vars reach the browser.
+# .env.example is committed as the template.
+.env
+.env.local
+.env*.local
+
 .DS_Store
 .architecture.md
+
+# Playwright
+test-results/
+playwright-report/

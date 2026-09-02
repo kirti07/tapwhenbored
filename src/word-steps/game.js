@@ -1,7 +1,8 @@
+import * as DATA from "./data.js";
+
 (function () {
   "use strict";
 
-  var DATA = window.WORD_STEPS_DATA;
   var PUZZLES = DATA.PUZZLES;
   var DICTIONARY = (function () {
     var set = Object.create(null);

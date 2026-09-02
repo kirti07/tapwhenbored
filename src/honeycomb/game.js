@@ -1,3 +1,5 @@
+import { submitScore } from "../shared/ui/leaderboard.js";
+
 (function () {
   "use strict";
 
@@ -74,36 +76,6 @@
   var MOVE_MS = (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) ? 0 : 280;
   var MIN_CLUE = 1, MAX_CLUE = 4; // a revealed tile's number is always in this range
   var GEN_ATTEMPTS = 40; // bomb-layout retries, hunting for enough tiles in [MIN_CLUE, MAX_CLUE]
-
-  // Real values live in config.js, which is gitignored and never committed.
-  // See config.example.js for the template and README-supabase.sql for setup.
-  var SUPABASE_URL = (window.TWB_CONFIG && window.TWB_CONFIG.SUPABASE_URL) || "";
-  var SUPABASE_ANON_KEY = (window.TWB_CONFIG && window.TWB_CONFIG.SUPABASE_ANON_KEY) || "";
-
-  function supabaseConfigured() {
-    return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
-  }
-
-  // Calls the submit_honeycomb_time(new_time_ms) RPC, which atomically lowers
-  // the single shared row only if this time beats it, and always returns the
-  // current global best time in ms. Returns null if unconfigured or the request fails.
-  function submitGlobalTime(ms) {
-    if (!supabaseConfigured()) return Promise.resolve(null);
-    return fetch(SUPABASE_URL + "/rest/v1/rpc/submit_honeycomb_time", {
-      method: "POST",
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: "Bearer " + SUPABASE_ANON_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ new_time_ms: ms }),
-    }).then(function (res) {
-      if (!res.ok) return null;
-      return res.json();
-    }).then(function (data) {
-      return typeof data === "number" ? data : null;
-    }).catch(function () { return null; });
-  }
 
   var boardEl = document.getElementById("board");
   var tagline = document.getElementById("tagline");
@@ -1019,7 +991,7 @@
       globalScoreEl.classList.remove("new-global");
       return;
     }
-    submitGlobalTime(finalElapsedMs).then(function (globalBestMs) {
+    submitScore("honeycomb", finalElapsedMs).then(function (globalBestMs) {
       if (globalBestMs === null) {
         globalScoreEl.hidden = false;
         globalScoreEl.textContent = "GLOBAL BEST UNAVAILABLE";

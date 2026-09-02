@@ -1,38 +1,7 @@
+import { isLeaderboardAvailable, submitScore } from "../shared/ui/leaderboard.js";
+
 (() => {
   "use strict";
-
-  // ---------- global high score (Supabase) ----------
-  // Real values live in config.js, which is gitignored and never committed.
-  // See config.example.js for the template and README-supabase.sql for setup.
-  const SUPABASE_URL = (window.TWB_CONFIG && window.TWB_CONFIG.SUPABASE_URL) || "";
-  const SUPABASE_ANON_KEY = (window.TWB_CONFIG && window.TWB_CONFIG.SUPABASE_ANON_KEY) || "";
-
-  function supabaseConfigured() {
-    return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
-  }
-
-  // Calls the submit_score(new_score) RPC, which atomically raises the
-  // single shared row only if this score beats it, and always returns the
-  // current global best. Returns null if unconfigured or the request fails.
-  async function submitGlobalScore(score) {
-    if (!supabaseConfigured()) return null;
-    try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/submit_score`, {
-        method: "POST",
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ new_score: score }),
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      return typeof data === "number" ? data : null;
-    } catch (e) {
-      return null;
-    }
-  }
 
   // ---------- config ----------
   const CONFIG = {
@@ -549,14 +518,14 @@
     bestScoreEl.textContent = "BEST " + pad(best, 5);
     gameOverOverlay.classList.remove("hidden");
 
-    if (!supabaseConfigured()) {
+    if (!isLeaderboardAvailable()) {
       globalScoreEl.classList.add("hidden");
       return;
     }
     globalScoreEl.classList.remove("hidden");
     globalScoreEl.classList.remove("new-global");
     globalScoreEl.textContent = "GLOBAL BEST …";
-    submitGlobalScore(state.score).then((globalBest) => {
+    submitScore("bubble-tap", state.score).then((globalBest) => {
       if (globalBest === null) {
         globalScoreEl.textContent = "GLOBAL BEST UNAVAILABLE";
         return;

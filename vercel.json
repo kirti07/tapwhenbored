@@ -1,13 +1,23 @@
 {
-  "buildCommand": "node scripts/gen-config.js",
-  "outputDirectory": ".",
-  "redirects": [
-    { "source": "/bubble-tap", "destination": "/bubble-tap/", "permanent": true },
-    { "source": "/marble-nostalgia", "destination": "/marble-nostalgia/", "permanent": true },
-    { "source": "/slide-n-order", "destination": "/slide-n-order/", "permanent": true },
-    { "source": "/doodle-on", "destination": "/doodle-on/", "permanent": true },
-    { "source": "/word-steps", "destination": "/word-steps/", "permanent": true },
-    { "source": "/untangle", "destination": "/untangle/", "permanent": true },
-    { "source": "/honeycomb", "destination": "/honeycomb/", "permanent": true }
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "trailingSlash": true,
+  "headers": [
+    {
+      "source": "/static/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        }
+      ]
+    }
   ]
 }
