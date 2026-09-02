@@ -1,3 +1,5 @@
+import { isLeaderboardAvailable, submitScore } from "../shared/ui/leaderboard.js";
+
 (function () {
   "use strict";
 
@@ -22,6 +24,7 @@
   var overlay = document.getElementById("overlay");
   var overlayTitle = document.getElementById("overlayTitle");
   var overlaySub = document.getElementById("overlaySub");
+  var globalBest = document.getElementById("globalBest");
   var againBtn = document.getElementById("againBtn");
   var howtoBtn = document.getElementById("howtoBtn");
   var howtoSheet = document.getElementById("howtoSheet");
@@ -358,11 +361,40 @@
       ended = true;
       var lastKey = Object.keys(marbleEls)[0];
       if (lastKey) marbleEls[lastKey].classList.add("win-glow");
-      setTimeout(function () { showOverlay("SOLVED", "1 marble left"); }, 500);
+      setTimeout(function () {
+        showOverlay("SOLVED", "1 marble left");
+        showGlobalBest(1);
+      }, 500);
     } else if (!anyMovesLeft()) {
       ended = true;
-      setTimeout(function () { showOverlay("NO MORE MOVES", n + " marbles left"); }, 200);
+      setTimeout(function () {
+        showOverlay("NO MORE MOVES", n + " marbles left");
+        showGlobalBest(n);
+      }, 200);
     }
+  }
+
+  // Fewest marbles left wins, so a perfect game scores 1 and the record
+  // saturates there quickly. That is the game, not a flaw in the leaderboard.
+  function showGlobalBest(marblesLeft) {
+    if (!isLeaderboardAvailable()) {
+      globalBest.hidden = true;
+      return;
+    }
+    globalBest.hidden = false;
+    globalBest.classList.remove("new-global");
+    globalBest.textContent = "Global best \u2026";
+    submitScore("marble-nostalgia", marblesLeft).then(function (best) {
+      if (best === null) {
+        globalBest.textContent = "Global best unavailable";
+        return;
+      }
+      var isRecord = marblesLeft <= best;
+      globalBest.textContent = isRecord
+        ? "\u2605 New global best \u2605"
+        : "Global best " + best + (best === 1 ? " marble" : " marbles");
+      globalBest.classList.toggle("new-global", isRecord);
+    });
   }
 
   function showOverlay(title, sub) {

@@ -1,4 +1,5 @@
 import * as DATA from "./data.js";
+import { isLeaderboardAvailable, localDay, submitScore } from "../shared/ui/leaderboard.js";
 
 (function () {
   "use strict";
@@ -81,6 +82,7 @@ import * as DATA from "./data.js";
   var overlaySub = document.getElementById("overlaySub");
   var overlaySteps = document.getElementById("overlaySteps");
   var overlayBest = document.getElementById("overlayBest");
+  var globalBest = document.getElementById("globalBest");
   var againBtn = document.getElementById("againBtn");
   var shareBtn = document.getElementById("shareBtn");
   var shareNote = document.getElementById("shareNote");
@@ -367,6 +369,30 @@ import * as DATA from "./data.js";
     countdownEl.textContent = pad(h) + ":" + pad(m) + ":" + pad(s);
   }
 
+  // Fewest steps for TODAY's puzzle. The day is sent from the player's local
+  // date because that is what chose the puzzle; the server picks its own day in
+  // UTC and would otherwise file a late-night score against a different puzzle.
+  function showGlobalBest(steps) {
+    if (!isLeaderboardAvailable()) {
+      globalBest.hidden = true;
+      return;
+    }
+    globalBest.hidden = false;
+    globalBest.classList.remove("new-global");
+    globalBest.textContent = "Global best \u2026";
+    submitScore("word-steps", steps, localDay()).then(function (best) {
+      if (best === null) {
+        globalBest.textContent = "Global best unavailable";
+        return;
+      }
+      var isRecord = steps <= best;
+      globalBest.textContent = isRecord
+        ? "\u2605 Best today, worldwide \u2605"
+        : "Best today, worldwide: " + stepLabel(best);
+      globalBest.classList.toggle("new-global", isRecord);
+    });
+  }
+
   function showOverlay() {
     var steps = state.solvedSteps;
     var perfect = steps === puzzle.b;
@@ -378,6 +404,7 @@ import * as DATA from "./data.js";
     } else {
       overlayBest.textContent = "★ Best today: " + stepLabel(state.bestSteps);
     }
+    showGlobalBest(steps);
     shareNote.classList.remove("show");
     overlay.classList.add("show");
     tickCountdown();

@@ -60,7 +60,7 @@ import { isLeaderboardAvailable, submitScore } from "../shared/ui/leaderboard.js
   const gameOverOverlay = document.getElementById("gameOverOverlay");
   const finalScoreEl = document.getElementById("finalScore");
   const bestScoreEl = document.getElementById("bestScore");
-  const globalScoreEl = document.getElementById("globalScore");
+  const globalScoreEl = document.getElementById("globalBest");
   const restartBtn = document.getElementById("restartBtn");
   const shareBtn = document.getElementById("shareBtn");
   const restartFromSettingsBtn = document.getElementById("restartFromSettingsBtn");

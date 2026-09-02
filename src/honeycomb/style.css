@@ -4,12 +4,15 @@
 @import "../shared/css/base.css";
 @import "../shared/css/shell.css";
 @import "../shared/css/howto.css";
+@import "../shared/css/leaderboard.css";
 
 /* Soft Pop — a very subtle lemon-yellow ground with two flat, meaningful
    tile colours: one for hidden tiles, one for revealed clue tiles. Colour
    only ever marks that one distinction — never clue value, never anything
    else — so it can't be read as information the game doesn't actually have. */
 :root {
+  /* Colour for a beaten record on the end card. */
+  --record: var(--danger);
   /* This game's scrim is purple-tinted rather than the shared warm
      neutral; the shared backdrop reads it from here. */
   --scrim: rgba(55, 47, 82, 0.3);
@@ -476,14 +479,6 @@ html, body {
   letter-spacing: 0.08em;
 }
 
-.overlay-global {
-  margin: 0;
-  font-size: clamp(11px, 1.6vh, 13px);
-  color: var(--accent-dark);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-}
-.overlay-global.new-global { color: var(--danger); }
 
 .overlay-actions {
   display: flex;

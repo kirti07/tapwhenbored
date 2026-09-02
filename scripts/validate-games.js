@@ -58,8 +58,25 @@ for (const g of games) {
   for (const f of REQUIRED_FIELDS) {
     if (g[f] === undefined || g[f] === "") err(`${where}: missing field "${f}"`);
   }
-  for (const f of ["hasRestart", "hasOverlay", "leaderboard"]) {
+  for (const f of ["hasRestart", "hasOverlay"]) {
     if (typeof g[f] !== "boolean") err(`${where}: "${f}" must be a boolean`);
+  }
+
+  // leaderboard is either false, or a descriptor the end card uses to label the
+  // number. The direction also lives in Supabase (game_config), which is what
+  // the SQL function actually enforces — this copy is only for presentation, so
+  // the two must agree.
+  const lb = g.leaderboard;
+  if (lb !== false) {
+    if (typeof lb !== "object" || lb === null) {
+      err(`${where}: "leaderboard" must be false or a descriptor object`);
+    } else {
+      if (typeof lb.lowerIsBetter !== "boolean")
+        err(`${where}: leaderboard.lowerIsBetter must be a boolean`);
+      if (typeof lb.daily !== "boolean")
+        err(`${where}: leaderboard.daily must be a boolean`);
+      if (!lb.unit) err(`${where}: leaderboard.unit must name what is measured`);
+    }
   }
 
   if (!g.slug) continue;
@@ -140,6 +157,14 @@ for (const g of games) {
     err(`src/${g.slug}/index.html: how-to sheet must use <ul class="howto-list">`);
   if (!html.includes("<summary>What is this?</summary>"))
     err(`src/${g.slug}/index.html: the seo-info summary should read "What is this?"`);
+
+  // A game with a leaderboard must have a line to put it on, and a game
+  // without one must not pretend to.
+  const hasGlobalEl = html.includes('id="globalBest"');
+  if (g.leaderboard && !hasGlobalEl)
+    err(`src/${g.slug}/index.html: leaderboard is enabled but there is no #globalBest`);
+  if (!g.leaderboard && hasGlobalEl)
+    err(`src/${g.slug}/index.html: has #globalBest but leaderboard is false`);
 
   const canonical = html.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
   const expected = `${SITE_URL}${g.path}`;
