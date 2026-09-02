@@ -23,7 +23,8 @@ export default defineConfig({
     { name: "mobile", use: { ...devices["Pixel 5"] } },
   ],
   webServer: {
-    command: isDev ? "npm run dev" : "npm run build && npm run preview",
+    // `preview` builds first, so this always tests fresh output.
+    command: isDev ? "npm run dev" : "npm run preview",
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

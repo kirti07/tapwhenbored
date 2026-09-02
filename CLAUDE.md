@@ -46,7 +46,7 @@ When refining or improving an existing game's UI:
 ```bash
 npm run dev              # :5173 — same URLs as production
 npm run build            # validate, then build to dist/
-npm run preview          # serve dist/ on :4173
+npm run preview          # build, then serve dist/ on :4173
 npm run validate         # registry <-> filesystem, metadata, assets
 npm test                 # Playwright (builds and previews first)
 npm run check:bundles    # per-page gzipped weight vs the §23 budgets
