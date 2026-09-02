@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f6fb">
+<!-- theme-bootstrap -->
+<title>Tap When Bored — Free Online Games, No Download</title>
+<meta name="description" content="Free browser games for a quick break — Bubble Tap, Marble Nostalgia, Slide N Order, and Doodle On. No download, no signup, nothing to load but the game you pick.">
+<link rel="canonical" href="https://www.tapwhenbored.com/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Tap When Bored — Free Online Games, No Download">
+<meta property="og:description" content="A small shelf of free, single-player browser games. Pick one, it opens instantly.">
+<meta property="og:url" content="https://www.tapwhenbored.com/">
+<meta property="og:image" content="https://www.tapwhenbored.com/assets/bubble-tap-og.jpg">
+<meta property="og:image:width" content="640">
+<meta property="og:image:height" content="640">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Tap When Bored — Free Online Games, No Download">
+<meta name="twitter:description" content="A small shelf of free, single-player browser games. Pick one, it opens instantly.">
+<meta name="twitter:image" content="https://www.tapwhenbored.com/assets/bubble-tap-og.jpg">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Tap When Bored",
+  "url": "https://www.tapwhenbored.com/",
+  "description": "A small shelf of free, single-player browser games.",
+  "hasPart": []
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Are the games on Tap When Bored free?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Every game is free to play, with no in-app purchases." }
+    },
+    {
+      "@type": "Question",
+      "name": "Do I need to sign up or download anything?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. There's no signup and nothing to install — each game opens straight in your browser." }
+    },
+    {
+      "@type": "Question",
+      "name": "Do the games work on mobile?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Every game is built for touch and works on phones, tablets, and desktop browsers." }
+    }
+  ]
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="hub">
+  <header class="hub-header">
+    <div class="brand">
+      <h1 class="brand-name">Tap <span class="brand-pop brand-pop--warm">When</span> <span class="brand-pop brand-pop--cool">Bored</span></h1>
+      <p class="tagline">Tiny games. Big breaks.</p>
+    </div>
+    <div class="theme-toggle">
+      <span class="theme-toggle-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </span>
+      <button class="theme-switch" id="themeSwitch" type="button" role="switch" aria-checked="false" aria-label="Switch to dark theme">
+        <span class="theme-switch-thumb"></span>
+      </button>
+      <span class="theme-toggle-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </span>
+    </div>
+  </header>
+
+  <main class="shelf" aria-label="Games">
+    <!-- games-shelf -->
+  </main>
+
+  <section class="faq" aria-label="Frequently asked questions">
+    <h2 class="faq-title">Questions</h2>
+    <details class="faq-item">
+      <summary>Are the games on Tap When Bored free?</summary>
+      <p>Yes. Every game is free to play, with no in-app purchases.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Do I need to sign up or download anything?</summary>
+      <p>No. There's no signup and nothing to install — each game opens straight in your browser.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Do the games work on mobile?</summary>
+      <p>Yes. Every game is built for touch and works on phones, tablets, and desktop browsers.</p>
+    </details>
+  </section>
+
+  <p class="intro">
+    A small shelf of free online games for whenever you've got a spare minute — work a
+    peg-solitaire board, pop bubble wrap, slide tiles back into order, doodle in one
+    unbroken line, solve today's word ladder, or drag the dots straight in Untangle.
+    Every game is single-player, runs straight in your browser, and needs no download
+    or signup.
+  </p>
+
+  <footer class="hub-footer">More tiny games coming soon.</footer>
+</div>
+<script>
+(function () {
+  var root = document.documentElement;
+  var btn = document.getElementById("themeSwitch");
+  var metaColor = document.querySelector('meta[name="theme-color"]');
+  function sync() {
+    var isDark = root.getAttribute("data-theme") === "dark";
+    btn.setAttribute("aria-checked", isDark ? "true" : "false");
+    btn.setAttribute("aria-label", isDark ? "Switch to light theme" : "Switch to dark theme");
+  }
+  btn.addEventListener("click", function () {
+    var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    if (metaColor) metaColor.setAttribute("content", next === "dark" ? "#0d0e1a" : "#f6f6fb");
+    try { localStorage.setItem("theme", next); } catch (e) {}
+    sync();
+  });
+  sync();
+})();
+</script>
+</body>
+</html>

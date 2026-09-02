@@ -1,0 +1,369 @@
+/* Shared first: game rules below must be able to override them, and
+   @import inlines in source order in both dev and build. */
+@import "../shared/css/tokens.css";
+@import "../shared/css/base.css";
+@import "../shared/css/shell.css";
+@import "../shared/css/howto.css";
+
+:root {
+  --bg: #eaf6ee;
+  --paper: #fdfbf6;
+  --paper-edge: #d3ecda;
+  --ink: #262b3d;
+  --ink-soft: #767b8c;
+  --line: #d2ecd9;
+
+  --purple: #7c5cff;
+  --purple-dark: #6a3ff0;
+  /* Aliases for shared components, which speak --accent. This game's own
+     rules keep using --purple. */
+  --accent: var(--purple);
+  --accent-dark: var(--purple-dark);
+  --pink: #ff5f96;
+  --orange: #ff9a3d;
+  --teal: #2ee6b8;
+  --yellow: #ffd93d;
+  --rainbow: linear-gradient(90deg, var(--orange), var(--pink), var(--purple), #4fb8ff, var(--teal), var(--yellow));
+
+  --font-display: "Nunito", ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif;
+}
+
+
+html, body {
+  margin: 0;
+  height: 100%;
+  height: 100dvh; /* iOS Safari sizes vh against the chrome-hidden viewport, so a plain
+                     100% here can be taller than what's actually visible on load */
+  background: var(--bg);
+  color: var(--ink);
+  font-family: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.stage {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 2.4vh 4vw 2.2vh;
+}
+
+/* ---- top bar ---- */
+
+
+
+.back-link:hover { color: var(--ink); }
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(16px, 2.6vh, 21px);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+
+.title-accent {
+  background: linear-gradient(90deg, var(--pink), var(--purple));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+
+
+
+.icon-btn:active {
+  background: rgba(124, 92, 255, 0.12);
+  border-color: var(--purple);
+  color: var(--purple-dark);
+  transform: scale(0.94);
+}
+
+.tagline-accent {
+  color: var(--purple);
+  font-weight: 700;
+}
+
+/* ---- canvas ---- */
+
+.canvas-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 2vh 0;
+}
+
+.canvas-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 22px;
+  background-color: var(--paper);
+  background-image: radial-gradient(circle, rgba(43, 38, 32, 0.1) 1px, transparent 1.6px);
+  background-size: 22px 22px;
+  background-position: 11px 11px;
+  border: 1.5px solid var(--paper-edge);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6), 0 1vh 2.2vh rgba(40, 90, 65, 0.12);
+  overflow: hidden;
+}
+
+canvas#canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.idle-prompt {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2vh;
+  text-align: center;
+  padding: 0 6vw;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.idle-prompt svg {
+  color: var(--purple);
+  opacity: 0.85;
+}
+
+.idle-heading {
+  margin: 0;
+  font-size: clamp(15px, 2.2vh, 19px);
+  font-weight: 800;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.idle-hint {
+  margin: 0;
+  padding: 0.8vh 4vw;
+  border: 1.5px dashed var(--purple);
+  border-radius: 999px;
+  background: rgba(124, 92, 255, 0.06);
+  font-size: clamp(11px, 1.6vh, 13px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--purple-dark);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+.idle-prompt.hide {
+  opacity: 0;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+/* ---- how to play ---- */
+
+
+.seo-info summary {
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  list-style: none;
+}
+.seo-info summary::-webkit-details-marker { display: none; }
+.seo-info summary::after { content: " ▾"; }
+.seo-info[open] summary::after { content: " ▴"; }
+.seo-info p {
+  margin: 4px 0 0;
+  line-height: 1.5;
+  text-align: left;
+}
+
+
+
+
+
+
+
+
+/* ---- game over overlay ----
+   Translucent, not opaque: the whole point of the finished doodle is that it
+   stays visible as the player's result, so the overlay only needs to sit on
+   top of it, not hide it. */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: max(6vh, env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgba(234, 246, 238, 0.92) 0%, rgba(234, 246, 238, 0.55) 40%, rgba(234, 246, 238, 0) 75%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.overlay.show {
+  opacity: 1;
+}
+
+.overlay-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.6vh;
+  pointer-events: none;
+}
+
+.overlay.show .overlay-content {
+  pointer-events: auto;
+}
+
+.overlay-icon {
+  color: var(--purple);
+  margin-bottom: -0.4vh;
+}
+
+.overlay-title-row {
+  display: flex;
+  align-items: center;
+  gap: 2.2vw;
+}
+
+.overlay-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(20px, 4vh, 30px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: linear-gradient(90deg, var(--pink), var(--orange));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.deco {
+  font-size: clamp(12px, 2vh, 16px);
+  line-height: 1;
+}
+.deco-1 { color: var(--purple); }
+.deco-2 { color: var(--orange); }
+
+.overlay-sub {
+  margin: 0;
+  font-size: clamp(12px, 1.8vh, 14px);
+  color: var(--ink-soft);
+  letter-spacing: 0.04em;
+}
+
+.overlay-actions {
+  display: flex;
+  gap: 3vw;
+  margin-top: 0.6vh;
+}
+
+.again-btn,
+.share-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 1.2vh 4vw;
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-size: clamp(12px, 1.8vh, 14px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+.again-btn:active,
+.share-btn:active { transform: scale(0.96); }
+
+.again-btn {
+  border: none;
+  background: linear-gradient(135deg, var(--purple), var(--purple-dark));
+  color: #fff;
+  box-shadow: 0 0.8vh 1.8vh rgba(124, 92, 255, 0.4);
+}
+
+.share-btn {
+  border: 1.5px solid var(--purple);
+  background: transparent;
+  color: var(--purple-dark);
+}
+
+.share-note {
+  margin: 0;
+  font-size: clamp(11px, 1.5vh, 13px);
+  color: var(--ink-soft);
+  letter-spacing: 0.06em;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.share-note.show {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .idle-hint { animation: none; }
+}
+
+/* ==== Neon Arcade (dark theme) ====
+   The drawing surface goes dark too — a rainbow line glowing on black reads
+   as "neon light drawing," which fits the theme far better than a cream
+   paper would. The <canvas> itself only ever draws the stroke (clearRect,
+   never filled), so this is a pure CSS change with no drawing-code risk. */
+
+:root[data-theme="dark"] {
+  --bg: #0d0e1a;
+  --paper: #14132a;
+  --paper-edge: #2c2850;
+  --ink: #f0eefa;
+  --ink-soft: #9b96c4;
+  --line: #2c2850;
+
+  --purple: #b06bff;
+  --purple-dark: #9d4dff;
+  --pink: #ff4fc4;
+  --orange: #ffb84d;
+  --teal: #3df0d4;
+  --yellow: #ffe066;
+}
+
+[data-theme="dark"] .canvas-wrap {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1.6px);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 0 0 1.5px color-mix(in srgb, var(--purple) 35%, transparent), 0 0 3vh color-mix(in srgb, var(--purple) 20%, transparent);
+}
+
+[data-theme="dark"] .idle-hint {
+  background: color-mix(in srgb, var(--purple) 14%, transparent);
+}
+
+[data-theme="dark"] .overlay {
+  background: linear-gradient(to top, rgba(13, 14, 26, 0.94) 0%, rgba(13, 14, 26, 0.6) 40%, rgba(13, 14, 26, 0) 75%);
+}
+
+[data-theme="dark"] .again-btn {
+  box-shadow: 0 0.8vh 1.8vh color-mix(in srgb, var(--purple) 50%, transparent);
+}
+
+/* ---- short viewports (phone landscape) ----
+   The canvas box is just "whatever's left" after the surrounding rows —
+   on a short/rotated viewport those fixed rows eat a disproportionate
+   share of it, so trim the least essential ones to give the canvas back
+   its room. Purely cosmetic: nothing here is removed from the DOM, so it
+   stays in the page source for crawlers, it's just not rendered here. */
+@media (max-height: 480px) {
+  .stage { padding-top: 1.4vh; padding-bottom: 1.2vh; }
+  .subtitle, .seo-info { display: none; }
+  .back-link { margin-bottom: 0.3vh; }
+  .howto-link { padding-top: 0.4vh; }
+}

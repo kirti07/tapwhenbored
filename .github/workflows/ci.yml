@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push to the same branch makes an in-flight run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Structural checks first: they are fast, and they catch the class of
+      # mistake that would otherwise surface as a confusing test failure.
+      - name: Validate repository
+        run: npm run validate
+
+      - name: Production build
+        run: npm run build
+
+      # Guards ARCHITECTURE.md §23. Deliberately a warning-level check on
+      # per-page JS, not a hard cap, so a justified increase is a conversation
+      # rather than a blocked deploy.
+      - name: Check bundle sizes
+        run: node scripts/check-bundles.js
+
+      - name: Install browsers
+        run: npx playwright install --with-deps chromium
+
+      # Runs against the built output via vite preview, because dev mode is not
+      # sufficient for final verification (GAME-TESTING.md §18).
+      - name: Browser tests
+        run: npm test
+
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

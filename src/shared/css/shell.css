@@ -1,0 +1,74 @@
+/* The page shell shared by every game that uses the standard template: the
+ * top bar, back link, subtitle, icon buttons and the SEO disclosure.
+ *
+ * Every rule here was byte-identical in all six template-conforming games
+ * before it was extracted, which is what makes this safe. Rules that varied —
+ * `html, body`, `.title`, `.icon-btn:hover/:active` (per-game accent tint) and
+ * `.howto-link` — deliberately stayed in each game.
+ *
+ * Depends on the game defining --ink, --ink-soft and --line. bubble-tap uses
+ * --paper and its own topbar markup, so it does not import this file; see
+ * ARCHITECTURE.md §16. */
+
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.top-actions {
+  display: flex;
+  gap: 2vw;
+}
+
+.back-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 0.8vh;
+  color: var(--ink-soft);
+  font-size: clamp(10px, 1.4vh, 12px);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+}
+
+.subtitle {
+  margin: 0.4em 0 0;
+  font-size: clamp(10px, 1.4vh, 12px);
+  letter-spacing: 0.3em;
+  color: var(--ink-soft);
+}
+
+.seo-info {
+  flex-shrink: 0;
+  align-self: center;
+  max-width: 90vw;
+  margin-top: 0.6vh;
+  font-size: 9px;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+/* word-steps adds an opacity transition and re-declares this after the import,
+   so its own version wins there. */
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}

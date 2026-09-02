@@ -1,0 +1,24 @@
+{
+  "name": "tapwhenbored",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run validate && vite build",
+    "preview": "npm run build && vite preview",
+    "validate": "node scripts/validate-games.js",
+    "test": "playwright test",
+    "test:dev": "PW_BASE_URL=http://localhost:5173 playwright test",
+    "test:preview": "PW_BASE_URL=http://localhost:4173 playwright test",
+    "game:new": "node scripts/new-game.js",
+    "check:bundles": "node scripts/check-bundles.js",
+    "preview:only": "vite preview"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "vite": "^7.1.0"
+  }
+}

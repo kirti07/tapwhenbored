@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#eaf6ee">
+<!-- theme-bootstrap -->
+<title>Doodle On — Free Online Drawing Game, One Continuous Line</title>
+<meta name="description" content="A free online doodle game. Keep drawing without lifting your finger — the moment you lift, the game ends. No score, no timer, no signup.">
+<link rel="canonical" href="https://www.tapwhenbored.com/doodle-on/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Doodle On — Free Online Drawing Game, One Continuous Line">
+<meta property="og:description" content="Keep drawing without lifting your finger. The moment you lift, whatever you drew is your result.">
+<meta property="og:url" content="https://www.tapwhenbored.com/doodle-on/">
+<meta property="og:image" content="https://www.tapwhenbored.com/assets/doodle-on-og.jpg">
+<meta property="og:image:width" content="640">
+<meta property="og:image:height" content="640">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Doodle On — Free Online Drawing Game, One Continuous Line">
+<meta name="twitter:description" content="Keep drawing without lifting your finger. The moment you lift, whatever you drew is your result.">
+<meta name="twitter:image" content="https://www.tapwhenbored.com/assets/doodle-on-og.jpg">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Game",
+  "name": "Doodle On",
+  "url": "https://www.tapwhenbored.com/doodle-on/",
+  "description": "A free online drawing game. Keep doodling in one continuous stroke — the moment you lift your finger, the game ends.",
+  "image": "https://www.tapwhenbored.com/assets/doodle-on-og.jpg",
+  "genre": "Casual",
+  "playMode": "SinglePlayer",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Tap When Bored", "item": "https://www.tapwhenbored.com/" },
+    { "@type": "ListItem", "position": 2, "name": "Doodle On", "item": "https://www.tapwhenbored.com/doodle-on/" }
+  ]
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="stage">
+    <header class="topbar">
+      <div class="brand">
+        <a class="back-link" href="/">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <span>Games</span>
+        </a>
+        <h1 class="title">DOODLE <span class="title-accent">ON</span></h1>
+        <p class="subtitle">DRAW</p>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" id="restartBtn" title="Clear" aria-label="Clear">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.9-6.16"/><path d="M20 4v5h-5"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="canvas-area">
+      <div class="canvas-wrap" id="canvasWrap">
+        <canvas id="canvas"></canvas>
+        <div class="idle-prompt" id="idlePrompt">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11.5V6a1.5 1.5 0 0 1 3 0v4.5M12 10.5V5a1.5 1.5 0 0 1 3 0v6M15 10.5V7a1.5 1.5 0 0 1 3 0v6.5c0 3.5-2 6.5-6 6.5s-6-2-7-4l-1.5-3a1.3 1.3 0 0 1 2.2-1.3L7 13"/></svg>
+          <p class="idle-heading">Keep doodling.<br><span class="tagline-accent">Don't lift your finger!</span></p>
+          <p class="idle-hint">Tap anywhere to start</p>
+        </div>
+      </div>
+    </div>
+
+    <button class="howto-link" id="howtoBtn">How to play</button>
+
+    <details class="seo-info">
+      <summary>What is this?</summary>
+      <p>
+        Doodle On is a free online drawing game with one rule: don't lift your finger.
+        The moment you lift, the game ends and whatever you drew is your result. No
+        score, no timer, no signup — just see how far one continuous line can take you.
+      </p>
+    </details>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="overlay-content">
+      <svg class="overlay-icon" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 15c-2 0-3.5-1.3-3.5-3S4 9 6 9s3.5 1.3 3.5 3-1.5 3-3.5 3Zm9-9c2 0 3.5 1.3 3.5 3S17 12 15 12s-3.5-1.3-3.5-3S13 6 15 6Z"/><path d="M9.5 12 15 6"/></svg>
+      <div class="overlay-title-row">
+        <span class="deco deco-1">&#10022;</span>
+        <p class="overlay-title">GAME OVER</p>
+        <span class="deco deco-2">&#10022;</span>
+      </div>
+      <p class="overlay-sub" id="overlaySub">You lifted your finger.</p>
+      <div class="overlay-actions">
+        <button class="again-btn" id="againBtn">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.9-6.16"/><path d="M20 4v5h-5"/></svg>
+          Play again
+        </button>
+        <button class="share-btn" id="shareBtn">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.7 15.7 6.6M8.3 13.3l7.4 4.1"/></svg>
+          Share
+        </button>
+      </div>
+      <p class="share-note" id="shareNote">Saved</p>
+    </div>
+  </div>
+
+  <div class="howto-backdrop" id="howtoBackdrop"></div>
+  <div class="howto-sheet" id="howtoSheet">
+    <div class="howto-handle"></div>
+    <p class="howto-title">How to play</p>
+    <ul class="howto-list">
+      <li>Touch the canvas and start drawing.</li>
+      <li>Keep your finger down — lifting ends the game.</li>
+      <li>Draw anywhere, cross your own line as much as you like.</li>
+      <li>No score, no timer — just see how far you can go.</li>
+    </ul>
+  </div>
+
+  <script type="module" src="./game.js"></script>
+</body>
+</html>
