@@ -100,6 +100,60 @@ function vercelInsights() {
   };
 }
 
+const escapeHtml = (v) =>
+  String(v).replace(
+    /[&<>"]/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+  );
+
+/**
+ * Fills the homepage's game shelf and its WebSite/hasPart JSON-LD from the
+ * registry, replacing what used to be seven hand-maintained card blocks and a
+ * parallel hand-maintained list of the same seven games.
+ *
+ * Build-time rather than a runtime render, because this is indexable content
+ * and essential structured data: ARCHITECTURE.md §28 requires it be static in
+ * the output HTML. transformIndexHtml runs in dev too, so what you see locally
+ * is what ships.
+ */
+function homepageFromRegistry() {
+  const card = (g) => `    <a class="card ${g.cardClass}" href="${g.path}">
+      <img class="thumb" src="${g.thumb}" width="640" height="640" alt="${escapeHtml(g.thumbAlt)}">
+      <div class="card-body">
+        <div class="card-text">
+          <h2 class="card-name">${escapeHtml(g.title)}</h2>
+          <p class="card-desc">${escapeHtml(g.tagline)}</p>
+        </div>
+        <span class="play-btn" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>
+      </div>
+    </a>`;
+
+  return {
+    name: "twb:homepage-from-registry",
+    transformIndexHtml: {
+      order: "pre",
+      handler(html, ctx) {
+        // Homepage only; every other page is served untouched.
+        if (!/(^|\/)index\.html$/.test(ctx.path.replace(/^\//, "")) ) return html;
+        if (!html.includes("<!-- games-shelf -->")) return html;
+
+        const shelf = games.map(card).join("\n\n");
+        const hasPart = games
+          .map(
+            (g) =>
+              `    { "@type": "Game", "name": ${JSON.stringify(g.title)}, ` +
+              `"url": ${JSON.stringify(SITE_URL + g.path)} }`,
+          )
+          .join(",\n");
+
+        return html
+          .replace("    <!-- games-shelf -->", shelf)
+          .replace('  "hasPart": []', `  "hasPart": [\n${hasPart}\n  ]`);
+      },
+    },
+  };
+}
+
 /**
  * Emits sitemap.xml from the registry.
  *
@@ -183,6 +237,7 @@ export default defineConfig({
   appType: "mpa",
   plugins: [
     trailingSlashParity(),
+    homepageFromRegistry(),
     vercelInsights(),
     sitemap(),
     warnMissingLeaderboardEnv(),

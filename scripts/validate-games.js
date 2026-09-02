@@ -162,10 +162,22 @@ if (!existsSync(homepage)) {
   err("src/index.html is missing");
 } else {
   const html = readFileSync(homepage, "utf8");
-  for (const g of games) {
-    if (g.slug && !html.includes(`href="${g.path}"`))
-      err(`src/index.html: no link to ${g.path}`);
+
+  // The shelf and the WebSite/hasPart JSON-LD are filled from the registry at
+  // build time, so the source holds markers rather than links. A missing marker
+  // would silently ship a homepage with no games on it and no structured data,
+  // which is why it is checked here rather than trusted.
+  for (const [marker, what] of [
+    ["<!-- games-shelf -->", "game shelf"],
+    ['"hasPart": []', "WebSite hasPart JSON-LD"],
+  ]) {
+    const n = html.split(marker).length - 1;
+    if (n !== 1)
+      err(
+        `src/index.html: expected exactly one ${what} marker \`${marker}\`, found ${n}`,
+      );
   }
+
   const relAsset = html.match(/(?:src|href)="assets\//);
   if (relAsset)
     err(
