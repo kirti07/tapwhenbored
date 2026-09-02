@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+  <defs>
+    <filter id="hcShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#372f52" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <rect width="640" height="640" rx="28" fill="#fdf8e9"/>
+  <g font-family="Nunito, ui-rounded, -apple-system, sans-serif" font-weight="800" fill="#372f52" text-anchor="middle" filter="url(#hcShadow)">
+    <polygon points="96,274.6 160,274.6 192,330 160,385.4 96,385.4 64,330" fill="#b7d6ee"/>
+    <polygon points="288,163.7 352,163.7 384,219.1 352,274.5 288,274.5 256,219.1" fill="#b9c2ee"/>
+    <polygon points="192,219.2 256,219.2 288,274.6 256,330 192,330 160,274.6" fill="#b7d6ee"/>
+    <polygon points="288,274.6 352,274.6 384,330 352,385.4 288,385.4 256,330" fill="#cbb8ee"/>
+    <polygon points="384,219.2 448,219.2 480,274.6 448,330 384,330 352,274.6" fill="#bfe0c4"/>
+    <polygon points="192,330 256,330 288,385.4 256,440.8 192,440.8 160,385.4" fill="#bfe0c4"/>
+    <polygon points="384,330 448,330 480,385.4 448,440.8 384,440.8 352,385.4" fill="#b7d6ee"/>
+    <polygon points="288,385.5 352,385.5 384,440.9 352,496.3 288,496.3 256,440.9" fill="#b9c2ee"/>
+    <polygon points="480,385.5 544,385.5 576,440.9 544,496.3 480,496.3 448,440.9" fill="#cbb8ee"/>
+  </g>
+  <g font-family="Nunito, ui-rounded, -apple-system, sans-serif" font-weight="800" fill="#372f52" text-anchor="middle" dominant-baseline="central">
+    <text x="128" y="331" font-size="30">?</text>
+    <text x="320" y="220" font-size="30">1</text>
+    <text x="224" y="276" font-size="30">2</text>
+    <text x="320" y="331" font-size="30">?</text>
+    <text x="416" y="276" font-size="30">3</text>
+    <text x="224" y="386" font-size="30">?</text>
+    <text x="416" y="386" font-size="30">2</text>
+    <text x="320" y="441" font-size="30">1</text>
+    <text x="512" y="441" font-size="30">?</text>
+  </g>
+</svg>
