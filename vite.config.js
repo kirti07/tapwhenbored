@@ -116,6 +116,53 @@ const escapeHtml = (v) =>
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
   );
 
+// The homepage's dark theme-color. Games carry their own in the registry.
+const HOME_DARK_THEME_COLOR = "#0d0e1a";
+
+/**
+ * Inlines the theme bootstrap into every page in place of its
+ * `<!-- theme-bootstrap -->` marker.
+ *
+ * The snippet stays inline and parser-blocking in the built output — that is
+ * the only way it can set data-theme before the first stylesheet applies, which
+ * is what stops dark-mode players seeing a white flash. So this does not remove
+ * the duplication from the *output*; it removes it from the *source*, where it
+ * was eight near-copies drifting apart.
+ *
+ * The dark theme-color is per page and comes from the registry, because it has
+ * to match that game's dark --bg or the mobile status bar clashes with the page.
+ */
+function themeBootstrap() {
+  const snippet = readFileSync(path.join(rootDir, "scripts/theme-bootstrap.js"), "utf8")
+    // Strip the file's own explanatory header; it documents the build contract,
+    // not the runtime behaviour, so it does not belong in every page.
+    .replace(/^(?:\/\/.*\n)+/, "")
+    // Collapse to one line. This is parser-blocking in the <head> of every
+    // page, so it should not carry source indentation. Safe for this snippet:
+    // it contains no template literals and no string with a significant run of
+    // whitespace.
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const darkFor = new Map(games.map((g) => [g.slug, g.darkThemeColor]));
+
+  return {
+    name: "twb:theme-bootstrap",
+    transformIndexHtml: {
+      // "pre" so Vite still sees a plain <head> when it injects preloads.
+      order: "pre",
+      handler(html, ctx) {
+        const slug = ctx.path.replace(/^\//, "").split("/")[0];
+        const color = darkFor.get(slug) ?? HOME_DARK_THEME_COLOR;
+        return html.replace(
+          "<!-- theme-bootstrap -->",
+          `<script>${snippet.replace("__DARK_THEME_COLOR__", color)}</script>`,
+        );
+      },
+    },
+  };
+}
+
 /**
  * Fills the homepage's game shelf and its WebSite/hasPart JSON-LD from the
  * registry, replacing what used to be seven hand-maintained card blocks and a
@@ -361,6 +408,7 @@ export default defineConfig({
   appType: "mpa",
   plugins: [
     trailingSlashParity(),
+    themeBootstrap(),
     homepageFromRegistry(),
     vercelInsights(),
     sitemap(),

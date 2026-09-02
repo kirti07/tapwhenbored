@@ -41,6 +41,25 @@ When refining or improving an existing game's UI:
 
 `.claude/SKILLS/GAME-UI-REFINEMENT.md`
 
+## Commands
+
+```bash
+npm run dev              # :5173 — same URLs as production
+npm run build            # validate, then build to dist/
+npm run preview          # serve dist/ on :4173
+npm run validate         # registry <-> filesystem, metadata, assets
+npm test                 # Playwright (builds and previews first)
+npm run check:bundles    # per-page gzipped weight vs the §23 budgets
+npm run game:new <slug>  # scaffold src/<slug>/ + the registry entry
+```
+
+## Adding a game
+
+Two things: `src/<slug>/` and one entry in `src/data/games.js`. The homepage
+card, structured data, sitemap entry and smoke coverage all follow from the
+registry. Never edit `vite.config.js`, `sitemap.xml` or `vercel.json` to add a
+game — if that seems necessary, something is wrong.
+
 ## Testing
 After any functional or gameplay change, use `.claude/SKILLS/GAME-TESTING.md` and run the relevant tests before considering the change complete.
 
@@ -53,6 +72,10 @@ Before considering a change complete:
 * Check for console errors.
 * Run broader tests when shared code is changed.
 * Run the production build before shipping.
+
+Note that `npm run build` exits 0 even when a page ships a broken script tag, so
+"the build succeeded" is not evidence a game works. Verify against
+`npm run preview`.
 
 ## Changes
 

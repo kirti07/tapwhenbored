@@ -119,6 +119,16 @@ for (const g of games) {
         `(would not be bundled or emitted)`,
     );
 
+  // The theme bootstrap is inlined from one source at build time. Losing the
+  // marker does not error — it silently drops FOUC protection, so dark-mode
+  // players get a white flash and nothing else reports it. Hence this check.
+  const markers = html.split("<!-- theme-bootstrap -->").length - 1;
+  if (markers !== 1)
+    err(
+      `src/${g.slug}/index.html: expected exactly one <!-- theme-bootstrap --> ` +
+        `marker, found ${markers}`,
+    );
+
   const canonical = html.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
   const expected = `${SITE_URL}${g.path}`;
   if (!canonical) err(`src/${g.slug}/index.html: no canonical link`);
@@ -170,6 +180,7 @@ if (!existsSync(homepage)) {
   for (const [marker, what] of [
     ["<!-- games-shelf -->", "game shelf"],
     ['"hasPart": []', "WebSite hasPart JSON-LD"],
+    ["<!-- theme-bootstrap -->", "theme bootstrap"],
   ]) {
     const n = html.split(marker).length - 1;
     if (n !== 1)
