@@ -2,7 +2,7 @@
 // and precache placeholders below and emits the result to /sw.js, which is the
 // only path that gives it root scope.
 //
-// Two rules shape everything here (ARCHITECTURE.md §19):
+// Three rules shape everything here (ARCHITECTURE.md §19):
 //
 // 1. Installing must not download every game. Only the app shell is
 //    precached; a game's page and assets enter the cache the first time it is
@@ -12,6 +12,10 @@
 // 2. This is an MPA, so there is no navigation fallback. Every flat URL is a
 //    real document; answering a navigation with a cached shell would break both
 //    gameplay and SEO.
+//
+// 3. Documents are network-first, everything else cache-first. See the fetch
+//    handler: a document is the only file here that is not content-hashed, so
+//    it is the only one a stale cache entry can serve against a new build.
 
 const VERSION = "__VERSION__";
 const SHELL_CACHE = `twb-shell-${VERSION}`;
@@ -40,9 +44,10 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
-      // Drop every cache from an older build. Hashed filenames mean a stale
-      // entry can never be served against a new document, so there is nothing
-      // to preserve across versions.
+      // Drop every cache from an older build. What survives a version bump is
+      // only ever a fallback: hashed assets cannot collide across builds, and
+      // documents are re-fetched (see the fetch handler), so there is nothing
+      // worth preserving across versions.
       const keys = await caches.keys();
       await Promise.all(
         keys
@@ -73,39 +78,65 @@ self.addEventListener("fetch", (event) => {
   // explicit: nothing under /rest/v1/ is ever served from cache.
   if (url.pathname.startsWith("/rest/v1/")) return;
 
+  // Documents are network-first. Everything else is cache-first.
+  //
+  // The split is not a preference, it is the one asymmetry in the output: a
+  // document is the only thing here whose filename is not content-hashed.
+  // Serving HTML cache-first means a returning player gets the *previous*
+  // build's document — its old title, its old structured data, its old social
+  // image, its old /static/ hashes — and only meets the new build on the visit
+  // after that. A page is a couple of kB against a cache that is otherwise
+  // instant, so paying one round trip to be on the current build is the right
+  // trade. Offline still works: the cached copy is the fallback, not the
+  // default.
   event.respondWith(
-    (async () => {
-      const cached = await caches.match(request, { ignoreVary: true });
-      if (cached) {
-        // Cache-first, then refresh in the background so a returning player
-        // gets the new build on the visit after it ships.
-        event.waitUntil(refresh(request));
-        return cached;
-      }
-
-      try {
-        const response = await fetch(request);
-        // Store what this visit actually used. That is what makes a game
-        // offline-capable by being played, rather than by being installed.
-        if (response.ok && response.type === "basic") {
-          const cache = await caches.open(RUNTIME_CACHE);
-          cache.put(request, response.clone());
-        }
-        return response;
-      } catch {
-        // Offline and never cached. For a document this is an unvisited game,
-        // so say so rather than showing a broken page.
-        if (request.mode === "navigate") {
-          return new Response(offlinePage(), {
-            status: 503,
-            headers: { "Content-Type": "text/html; charset=utf-8" },
-          });
-        }
-        return Response.error();
-      }
-    })(),
+    request.mode === "navigate" ? networkFirst(request) : cacheFirst(request, event),
   );
 });
+
+/** Documents: the network, falling back to whatever was last cached. */
+async function networkFirst(request) {
+  try {
+    const response = await fetch(request);
+    if (response.ok && response.type === "basic") {
+      const cache = await caches.open(RUNTIME_CACHE);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    const cached = await caches.match(request, { ignoreVary: true });
+    if (cached) return cached;
+    // Offline and never visited. That is an unvisited game, so say so rather
+    // than showing a broken page.
+    return new Response(offlinePage(), {
+      status: 503,
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
+  }
+}
+
+/** Everything else: hashed and immutable, so the cache is always right. */
+async function cacheFirst(request, event) {
+  const cached = await caches.match(request, { ignoreVary: true });
+  if (cached) {
+    // Refresh in the background, for the unhashed files under /assets/.
+    event.waitUntil(refresh(request));
+    return cached;
+  }
+
+  try {
+    const response = await fetch(request);
+    // Store what this visit actually used. That is what makes a game
+    // offline-capable by being played, rather than by being installed.
+    if (response.ok && response.type === "basic") {
+      const cache = await caches.open(RUNTIME_CACHE);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    return Response.error();
+  }
+}
 
 async function refresh(request) {
   try {

@@ -152,6 +152,36 @@ for (const g of games) {
       }
     });
 
+    // The test above passes in desktop Chromium for reasons that do not hold
+    // on a phone: there `vh`, `svh`, `lvh` and `dvh` are all the same number,
+    // the disclosure is closed, and the webfont may not have arrived. Each of
+    // those hides overflow. This runs with every one of them turned against the
+    // page, on the shortest viewport a phone realistically has, because the
+    // combination is what shipped the bug: a shared link opening with the top
+    // bar above the top of the screen.
+    test("the stage still fits with the disclosure open and the font loaded", async ({
+      page,
+    }) => {
+      // 560 and not 480: at 480 doodle-on and word-steps hide .seo-info on
+      // purpose (phone landscape), and there would be nothing to open.
+      await page.setViewportSize({ width: 360, height: 560 });
+      await page.goto(g.path);
+
+      // Wait for the webfont, then open "What is this?" — the tallest the page
+      // can legitimately get without the player scrolling.
+      await page.evaluate(() => document.fonts.ready);
+      await page.locator("details.seo-info summary").click();
+      await expect(page.locator("details.seo-info[open]")).toHaveCount(1);
+
+      const over = await page.evaluate(
+        () => document.documentElement.scrollHeight - window.innerHeight,
+      );
+      expect(
+        over,
+        `${g.slug} overflows by ${over}px with the disclosure open`,
+      ).toBeLessThanOrEqual(1);
+    });
+
     // The regression this guards: `overflow: hidden` on html/body still makes
     // the document a scroll container, so a browser that reports a taller
     // viewport than it shows (an in-app browser handing off from another app,

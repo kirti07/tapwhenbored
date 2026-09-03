@@ -174,8 +174,13 @@ function themeBootstrap() {
  * is what ships.
  */
 function homepageFromRegistry() {
-  const card = (g) => `    <a class="card ${g.cardClass}" href="${g.path}">
-      <img class="thumb" src="${g.thumb}" width="640" height="640" alt="${escapeHtml(g.thumbAlt)}">
+  // The shelf is two columns on a phone, so roughly the first four cards are at
+  // or near the fold: those are fetched eagerly, the first as the LCP
+  // candidate, and everything below waits until it is scrolled towards.
+  const card = (g, i) => `    <a class="card ${g.cardClass}" href="${g.path}">
+      <img class="thumb" src="${g.thumb}" width="640" height="640" decoding="async"${
+        i === 0 ? ' fetchpriority="high"' : ""
+      }${i < 4 ? "" : ' loading="lazy"'} alt="${escapeHtml(g.thumbAlt)}">
       <div class="card-body">
         <div class="card-text">
           <h2 class="card-name">${escapeHtml(g.title)}</h2>
@@ -324,6 +329,12 @@ function pwa() {
         "/manifest.webmanifest",
         "/favicon.svg",
         "/icons/icon-192.png",
+        // The display webfont. Precached with the shell rather than left to the
+        // runtime cache because it is render-blocking-adjacent: every page but
+        // bubble-tap paints its title in it, and the whole point of self-hosting
+        // it was that a cold start should never wait on a network round trip.
+        "/fonts/nunito-latin-700.woff2",
+        "/fonts/nunito-latin-800.woff2",
         ...shellAssets,
       ]);
 

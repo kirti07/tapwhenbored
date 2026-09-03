@@ -12,7 +12,7 @@
 
 .overlay-global {
   margin: 0;
-  font-size: clamp(11px, 1.6vh, 13px);
+  font-size: clamp(11px, 1.6svh, 13px);
   color: var(--accent-dark);
   font-weight: 600;
   letter-spacing: 0.06em;

@@ -197,7 +197,12 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
     undoBtn.classList.toggle("disabled", locked || history.length <= 1);
     restartBtn.classList.toggle("disabled", locked || history.length <= 1);
 
-    ladderWrap.scrollTop = ladderWrap.scrollHeight;
+    // One read of scrollHeight, used for both the pin-to-newest-step and the
+    // edge fade, so the fade is only paid for on a ladder long enough to need
+    // it (see .ladder-wrap.is-scrollable).
+    var overflows = ladderWrap.scrollHeight > ladderWrap.clientHeight + 1;
+    ladderWrap.classList.toggle("is-scrollable", overflows);
+    if (overflows) ladderWrap.scrollTop = ladderWrap.scrollHeight;
   }
 
   // Tap a letter tile to open a picker sheet; choosing a letter there fills

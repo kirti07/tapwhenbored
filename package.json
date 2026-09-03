@@ -16,8 +16,7 @@
     "test:dev": "PW_BASE_URL=http://localhost:5173 playwright test",
     "test:preview": "PW_BASE_URL=http://localhost:4173 playwright test",
     "game:new": "node scripts/new-game.js",
-    "check:bundles": "node scripts/check-bundles.js",
-    "preview:only": "vite preview"
+    "check:bundles": "node scripts/check-bundles.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

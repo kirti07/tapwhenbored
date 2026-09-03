@@ -57,7 +57,7 @@ const html = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#f6f6fb">
 <!-- theme-bootstrap -->
 <title>${title} — Free Online Game</title>
@@ -98,9 +98,8 @@ const html = `<!doctype html>
   ]
 }
 </script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<link rel="preload" href="/fonts/nunito-latin-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/nunito-latin-800.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -329,7 +328,6 @@ const entry = `  {
     thumbAlt: ${JSON.stringify(`${title} — preview`)},
     ogImage: ${JSON.stringify(`/assets/${slug}-og.jpg`)},
     cardClass: ${JSON.stringify(`card--${slug}`)},
-    category: "Puzzle",
     darkThemeColor: "#0d0e1a",
     updated: ${JSON.stringify(today)},
     changefreq: "monthly",

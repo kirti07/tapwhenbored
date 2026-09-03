@@ -1,5 +1,6 @@
 node_modules/
 dist/
+.vite/
 
 # Vite loads these; only VITE_-prefixed vars reach the browser.
 # .env.example is committed as the template.

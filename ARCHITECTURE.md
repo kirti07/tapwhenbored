@@ -406,16 +406,16 @@ export const games = [
   {
     slug: "honeycomb",
     title: "Honeycomb",
+    tagline: "Tap · Reshape",       // the homepage card's second line
     description: "...",
     path: "/honeycomb/",            // flat (§5) — must equal "/" + slug + "/"
     thumb: "/assets/honeycomb-thumb.svg",
+    thumbAlt: "...",                // the homepage card's img alt
     ogImage: "/assets/honeycomb-og.jpg",
     cardClass: "card--honeycomb",   // homepage modifier; not always the slug
     darkThemeColor: "#14101f",      // must match this game's dark --bg
-    category: "puzzle",
     updated: "2026-08-24",          // sitemap lastmod; bump on real change only
-    featured: true,
-    pwa: true,
+    changefreq: "monthly",          // sitemap changefreq
     hasRestart: false,              // restarts via the overlay, not a topbar button
     hasOverlay: true,
     leaderboard: {                  // or false ⇒ never contacts Supabase
@@ -425,7 +425,21 @@ export const games = [
     }
   }
 ];
+
+// The homepage is not a game, but it has metadata of its own.
+export const home = {
+  path: "/",
+  ogImage: "/assets/tapwhenbored-og.jpg",   // the site's card, not a game's
+  updated: "2026-09-03",
+  changefreq: "monthly",
+  priority: "1.0",
+};
 ```
+
+Every field here has a consumer. A field nothing reads is worse than no field:
+it looks like a contract, and it drifts. `category` was one — validated,
+scaffolded into every new game, and read by nothing — and it was removed rather
+than wired up, because nothing on the site groups games by category.
 
 ## Registry constraints
 
@@ -655,6 +669,32 @@ Avoid creating a global component library unless repeated requirements justify i
 
 The visual identity of individual games should remain flexible.
 
+## Viewport height is spelled `svh`, everywhere
+
+A game fills the viewport and is not meant to scroll, so it must be sized
+against the *smallest* the viewport ever gets:
+
+```css
+html, body { height: 100svh; }   /* not vh, not dvh */
+```
+
+and every length inside — paddings, gaps, board dimensions, `clamp()` bounds —
+uses `svh` too. Mixing them is the bug this rule exists to prevent: sizing
+`html`/`body` in `dvh` while the contents used a bare `vh` (which means `lvh`,
+the chrome-*hidden* height) laid the contents out against a viewport up to 20%
+taller than their own container, and the difference became real overflow. On a
+document that stays scrollable by design (see `shared/css/base.css`) that
+overflow is what let a game open from a shared link with its top bar above the
+top of the screen.
+
+`svh` also does not change when the URL bar collapses, so a game never
+re-lays-out mid-gesture. The cost is a strip of page background below the game
+once the browser chrome hides, which for a page that does not scroll is the
+right trade.
+
+Code that needs the true current height for something other than layout should
+ask JS, not CSS.
+
 ---
 
 # 17. Design System
@@ -760,13 +800,26 @@ This keeps installation lightweight.
 
 The cache should generally contain:
 
-### App shell
+### Documents
 
-Cache-first.
+**Network-first**, falling back to the cache.
 
-### Previously visited game assets
+This is the one exception to cache-first, and it follows from the build rather
+than from taste: a document is the only thing served here whose filename is not
+content-hashed, so it is the only thing a stale cache entry can serve against a
+new build. Cache-first HTML meant a returning player got the *previous* build's
+document — its old title, its old structured data, its old `og:image`, its old
+`/static/` hashes — and only met the new build on the visit after that. A page
+is a couple of kB; being a deploy behind is not worth the milliseconds.
 
-Cache-first where appropriate.
+Offline is unaffected: the cached copy is the fallback, and a navigation that is
+both offline and uncached still gets the short "not available offline" page.
+
+### App shell, and previously visited game assets
+
+Cache-first. Everything under `/static/` is content-hashed, so a cache hit is
+by definition the right answer. `/assets/` and `/fonts/` are not hashed but are
+stable, and get a background refresh after being served.
 
 ### Network-dependent APIs
 
@@ -955,6 +1008,31 @@ If an image appears in any absolute metadata URL, it is Tier 1.
 
 Social platforms render SVG `og:image` poorly or not at all, so an OG image
 should be a raster format even when the on-page artwork is a vector.
+
+The homepage needs its own OG image, not a game's. Borrowing one means sharing
+the site previews as a single game — `home.ogImage` in the registry exists so
+that it is validated (§29) rather than left to drift. It is also the one page
+whose card is `summary_large_image`; the games' images are 640² squares, where
+`summary` is correct.
+
+Replacing an OG image means a **new filename**. Social networks cache previews
+keyed on the URL and will keep serving the old picture indefinitely, on top of
+the 24-hour CDN TTL `vercel.json` gives `/assets/*`.
+
+## Fonts are local
+
+`public/fonts/` holds the display webfont, subset to latin, one file per weight,
+alongside its licence. Nothing is loaded from a font CDN.
+
+This is a first-paint decision, not a privacy or licensing one. A cross-origin
+stylesheet in the `<head>` blocks rendering until it arrives, and the service
+worker only handles same-origin requests — so on an installed cold start every
+byte of the app came from cache *except* that one request, and the splash screen
+sat there waiting for it. Local files are precached with the shell (§19) and the
+page paints offline.
+
+The same reasoning is why the font is subset and why a page that does not use it
+does not link it: `bubble-tap` is deliberately system-font and loads none.
 
 ---
 
