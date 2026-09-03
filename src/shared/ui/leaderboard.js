@@ -28,12 +28,11 @@ const TIMEOUT_MS = 4000;
 const RPC = "submit_game_score";
 
 /**
- * Whether a leaderboard is configured at all.
- *
- * Games use this to decide whether to show a global-best line before they have
- * anything to put in it.
+ * Whether a leaderboard is configured at all. Internal: a game asks for its
+ * global-best line and gets "unavailable" rendered into it, rather than testing
+ * this itself first.
  */
-export function isLeaderboardAvailable() {
+function isLeaderboardAvailable() {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 }
 
@@ -56,7 +55,7 @@ export function isLeaderboardAvailable() {
  * abort the rest of that handler, so a leaderboard hiccup would cost the player
  * their overlay, share button and replay control.
  */
-export async function submitScore(slug, score, day) {
+async function submitScore(slug, score, day) {
   if (!isLeaderboardAvailable()) return null;
   // A broken timer or counter must not become a 400 the player waits 4s for.
   if (!Number.isFinite(score)) return null;

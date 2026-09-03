@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="ball" cx="0.34" cy="0.28" r="0.85">
+      <stop offset="0" stop-color="#ff7a95"/>
+      <stop offset="0.45" stop-color="#f43f5e"/>
+      <stop offset="1" stop-color="#c81e42"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="114" fill="#c9a4f0"/>
+
+  <g fill="none" stroke="#1e1b3a" stroke-width="16" stroke-linecap="round">
+    <path d="M 342.7 84.6 A 108 108 0 0 1 394.7 146.6"/>
+    <path d="M 366.2 61.3 A 140 140 0 0 1 421.8 127.6"/>
+  </g>
+
+  <circle cx="292" cy="180" r="78" fill="url(#ball)" stroke="#1e1b3a" stroke-width="13"/>
+  <ellipse cx="264" cy="150" rx="25" ry="17" fill="#ffffff" opacity="0.92" transform="rotate(-35 264 150)"/>
+
+  <g fill="none" stroke="#ffffff" stroke-width="15" stroke-linecap="round">
+    <path d="M 166.5 337.9 A 50 50 0 0 1 245.0 288.5"/>
+    <path d="M 141.2 336.6 A 76 76 0 0 1 256.0 264.0"/>
+  </g>
+
+  <g transform="rotate(-8 250 400)">
+    <path fill="#fdfdff" stroke="#1e1b3a" stroke-width="13" stroke-linejoin="round"
+          d="M 196 326
+             a 19 19 0 0 1 38 0
+             l 0 70
+             a 19 19 0 0 1 38 2
+             a 19 19 0 0 1 38 4
+             a 18 18 0 0 1 34 8
+             l 0 18
+             a 38 38 0 0 1 -38 38
+             l -64 0
+             a 32 32 0 0 1 -32 -32
+             z"/>
+  </g>
+</svg>

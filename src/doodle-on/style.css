@@ -24,28 +24,27 @@
   --teal: #2ee6b8;
   --yellow: #ffd93d;
   --rainbow: linear-gradient(90deg, var(--orange), var(--pink), var(--purple), #4fb8ff, var(--teal), var(--yellow));
-
-  --font-display: "Nunito", ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif;
 }
 
 
 html, body {
   margin: 0;
   height: 100%;
-  height: 100dvh; /* iOS Safari sizes vh against the chrome-hidden viewport, so a plain
-                     100% here can be taller than what's actually visible on load */
+  height: 100svh; /* the *small* viewport, deliberately — see base.css */
   background: var(--bg);
   color: var(--ink);
   font-family: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  /* kills double-tap-to-zoom; a play surface that needs more sets its own. */
+  touch-action: manipulation;
 }
 
 .stage {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 2.4vh 4vw 2.2vh;
+  padding: 2.4svh 4vw 2.2svh;
 }
 
 /* ---- top bar ---- */
@@ -55,7 +54,7 @@ html, body {
 .title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(16px, 2.6vh, 21px);
+  font-size: clamp(16px, 2.6svh, 21px);
   font-weight: 700;
   letter-spacing: 0.01em;
   color: var(--ink);
@@ -84,11 +83,11 @@ html, body {
 .timer {
   margin: 0;
   min-width: 52px;
-  padding: 0.7vh 2.4vw;
+  padding: 0.7svh 2.4vw;
   border: 1.5px solid var(--line);
   border-radius: 999px;
   font-family: var(--font-display);
-  font-size: clamp(13px, 1.9vh, 15px);
+  font-size: clamp(13px, 1.9svh, 15px);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
@@ -106,9 +105,9 @@ html, body {
 
 .prompt {
   flex-shrink: 0;
-  margin: 1vh 0 0;
+  margin: 1svh 0 0;
   text-align: center;
-  font-size: clamp(13px, 2vh, 16px);
+  font-size: clamp(13px, 2svh, 16px);
   font-weight: 700;
   line-height: 1.35;
   color: var(--ink-soft);
@@ -149,7 +148,7 @@ html, body {
   align-items: center;
   justify-content: center;
   min-height: 0;
-  padding: 1.6vh 0;
+  padding: 1.6svh 0;
 }
 
 .canvas-wrap {
@@ -165,7 +164,7 @@ html, body {
   background-size: 22px 22px;
   background-position: 11px 11px;
   border: 1.5px solid var(--paper-edge);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6), 0 1vh 2.2vh rgba(40, 90, 65, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6), 0 1svh 2.2svh rgba(40, 90, 65, 0.12);
   overflow: hidden;
 }
 
@@ -223,11 +222,11 @@ html, body {
 
 .idle-hint {
   margin: 0;
-  padding: 0.8vh 4vw;
+  padding: 0.8svh 4vw;
   border: 1.5px dashed var(--purple);
   border-radius: 999px;
   background: rgba(124, 92, 255, 0.06);
-  font-size: clamp(11px, 1.6vh, 13px);
+  font-size: clamp(11px, 1.6svh, 13px);
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--purple-dark);
@@ -281,7 +280,7 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.1vh;
+  gap: 1.1svh;
   transition: opacity 0.3s ease;
 }
 
@@ -368,17 +367,17 @@ html, body {
 .done-btn {
   margin-left: 1vw;
   min-width: 78px;
-  padding: 1vh 4vw;
+  padding: 1svh 4vw;
   border: none;
   border-radius: 999px;
   background: linear-gradient(135deg, var(--purple), var(--purple-dark));
   color: #fff;
   font-family: var(--font-display);
-  font-size: clamp(12px, 1.8vh, 14px);
+  font-size: clamp(12px, 1.8svh, 14px);
   font-weight: 700;
   letter-spacing: 0.02em;
   cursor: pointer;
-  box-shadow: 0 0.6vh 1.4vh rgba(124, 92, 255, 0.35);
+  box-shadow: 0 0.6svh 1.4svh rgba(124, 92, 255, 0.35);
   transition: transform 0.1s ease;
 }
 
@@ -412,7 +411,7 @@ html, body {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding-bottom: max(6vh, env(safe-area-inset-bottom));
+  padding-bottom: max(6svh, env(safe-area-inset-bottom));
   background: linear-gradient(to top, rgba(234, 246, 238, 0.92) 0%, rgba(234, 246, 238, 0.55) 40%, rgba(234, 246, 238, 0) 75%);
   opacity: 0;
   pointer-events: none;
@@ -427,7 +426,7 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.6vh;
+  gap: 1.6svh;
   pointer-events: none;
 }
 
@@ -437,7 +436,7 @@ html, body {
 
 .overlay-icon {
   color: var(--purple);
-  margin-bottom: -0.4vh;
+  margin-bottom: -0.4svh;
 }
 
 .overlay-title-row {
@@ -449,7 +448,7 @@ html, body {
 .overlay-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(20px, 4vh, 30px);
+  font-size: clamp(20px, 4svh, 30px);
   font-weight: 700;
   letter-spacing: 0.02em;
   background: linear-gradient(90deg, var(--pink), var(--orange));
@@ -459,7 +458,7 @@ html, body {
 }
 
 .deco {
-  font-size: clamp(12px, 2vh, 16px);
+  font-size: clamp(12px, 2svh, 16px);
   line-height: 1;
 }
 .deco-1 { color: var(--purple); }
@@ -467,7 +466,7 @@ html, body {
 
 .overlay-sub {
   margin: 0;
-  font-size: clamp(12px, 1.8vh, 14px);
+  font-size: clamp(12px, 1.8svh, 14px);
   color: var(--ink-soft);
   letter-spacing: 0.04em;
 }
@@ -475,7 +474,7 @@ html, body {
 .overlay-actions {
   display: flex;
   gap: 3vw;
-  margin-top: 0.6vh;
+  margin-top: 0.6svh;
 }
 
 .again-btn,
@@ -483,10 +482,10 @@ html, body {
   display: flex;
   align-items: center;
   gap: 0.5em;
-  padding: 1.2vh 4vw;
+  padding: 1.2svh 4vw;
   border-radius: 999px;
   font-family: var(--font-display);
-  font-size: clamp(12px, 1.8vh, 14px);
+  font-size: clamp(12px, 1.8svh, 14px);
   font-weight: 600;
   letter-spacing: 0.02em;
   cursor: pointer;
@@ -499,7 +498,7 @@ html, body {
   border: none;
   background: linear-gradient(135deg, var(--purple), var(--purple-dark));
   color: #fff;
-  box-shadow: 0 0.8vh 1.8vh rgba(124, 92, 255, 0.4);
+  box-shadow: 0 0.8svh 1.8svh rgba(124, 92, 255, 0.4);
 }
 
 .share-btn {
@@ -510,7 +509,7 @@ html, body {
 
 .share-note {
   margin: 0;
-  font-size: clamp(11px, 1.5vh, 13px);
+  font-size: clamp(11px, 1.5svh, 13px);
   color: var(--ink-soft);
   letter-spacing: 0.06em;
   opacity: 0;
@@ -556,7 +555,7 @@ html, body {
 
 [data-theme="dark"] .canvas-wrap {
   background-image: radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1.6px);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 0 0 1.5px color-mix(in srgb, var(--purple) 35%, transparent), 0 0 3vh color-mix(in srgb, var(--purple) 20%, transparent);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 0 0 1.5px color-mix(in srgb, var(--purple) 35%, transparent), 0 0 3svh color-mix(in srgb, var(--purple) 20%, transparent);
 }
 
 [data-theme="dark"] .idle-hint {
@@ -568,7 +567,7 @@ html, body {
 }
 
 [data-theme="dark"] .done-btn {
-  box-shadow: 0 0.6vh 1.4vh color-mix(in srgb, var(--purple) 45%, transparent);
+  box-shadow: 0 0.6svh 1.4svh color-mix(in srgb, var(--purple) 45%, transparent);
 }
 
 [data-theme="dark"] .overlay {
@@ -576,7 +575,7 @@ html, body {
 }
 
 [data-theme="dark"] .again-btn {
-  box-shadow: 0 0.8vh 1.8vh color-mix(in srgb, var(--purple) 50%, transparent);
+  box-shadow: 0 0.8svh 1.8svh color-mix(in srgb, var(--purple) 50%, transparent);
 }
 
 /* ---- short viewports (phone landscape) ----
@@ -587,16 +586,16 @@ html, body {
    tighter. Purely cosmetic: nothing here is removed from the DOM, so it
    stays in the page source for crawlers, it's just not rendered here. */
 @media (max-height: 480px) {
-  .stage { padding-top: 1.4vh; padding-bottom: 1.2vh; }
+  .stage { padding-top: 1.4svh; padding-bottom: 1.2svh; }
   .subtitle, .seo-info { display: none; }
-  .back-link { margin-bottom: 0.3vh; }
-  .howto-link { padding-top: 0.4vh; }
-  .prompt { margin-top: 0.5vh; font-size: 12px; }
-  .canvas-area { padding: 1vh 0; }
-  .toolbar { gap: 0.6vh; }
+  .back-link { margin-bottom: 0.3svh; }
+  .howto-link { padding-top: 0.4svh; }
+  .prompt { margin-top: 0.5svh; font-size: 12px; }
+  .canvas-area { padding: 1svh 0; }
+  .toolbar { gap: 0.6svh; }
   .swatch { width: 28px; height: 28px; padding: 3px; }
   .tool { width: 32px; height: 32px; border-radius: 10px; }
   .tool svg { width: 16px; height: 16px; }
-  .done-btn { min-width: 66px; padding: 0.8vh 3vw; }
-  .timer { padding: 0.5vh 2vw; min-width: 46px; }
+  .done-btn { min-width: 66px; padding: 0.8svh 3vw; }
+  .timer { padding: 0.5svh 2vw; min-width: 46px; }
 }

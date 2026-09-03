@@ -29,7 +29,6 @@
   --danger: #e0788a;
   --success: #1f9974;
 
-  --font-display: "Nunito", ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif;
   color-scheme: light;
 }
 
@@ -37,7 +36,7 @@
 html, body {
   margin: 0;
   height: 100%;
-  height: 100dvh;
+  height: 100svh; /* the *small* viewport, deliberately — see base.css */
   background: var(--bg);
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
@@ -50,7 +49,7 @@ html, body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 2.4vh 4vw 3vh;
+  padding: 2.4svh 4vw 3svh;
 }
 
 /* ---- top bar ---- */
@@ -62,7 +61,7 @@ html, body {
 .title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(15px, 2.4vh, 20px);
+  font-size: clamp(15px, 2.4svh, 20px);
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--ink);
@@ -79,9 +78,9 @@ html, body {
 }
 
 .tagline {
-  margin: 1.6vh 0 0;
+  margin: 1.6svh 0 0;
   text-align: center;
-  font-size: clamp(12px, 1.7vh, 14px);
+  font-size: clamp(12px, 1.7svh, 14px);
   color: var(--ink-soft);
   letter-spacing: 0.03em;
   flex-shrink: 0;
@@ -95,14 +94,14 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2.2vh;
+  gap: 2.2svh;
   min-height: 0;
 }
 
 .board-wrap {
   position: relative;
-  width: min(92vw, 60vh, 560px);
-  height: min(92vw, 60vh, 560px);
+  width: min(92vw, 60svh, 560px);
+  height: min(92vw, 60svh, 560px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -298,7 +297,7 @@ html, body {
   justify-content: center;
   gap: 7vw;
   width: min(80vw, 380px);
-  padding-top: 1.8vh;
+  padding-top: 1.8svh;
   border-top: 1px solid var(--line);
   flex-shrink: 0;
 }
@@ -307,18 +306,18 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3vh;
+  gap: 0.3svh;
 }
 
 .stat-label {
-  font-size: clamp(9px, 1.3vh, 11px);
+  font-size: clamp(9px, 1.3svh, 11px);
   letter-spacing: 0.18em;
   color: var(--accent-dark);
   text-transform: uppercase;
 }
 
 .stat-value {
-  font-size: clamp(16px, 2.4vh, 20px);
+  font-size: clamp(16px, 2.4svh, 20px);
   font-weight: 700;
   color: var(--ink);
   letter-spacing: 0.03em;
@@ -338,7 +337,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: clamp(10px, 1.3vh, 12px);
+  font-size: clamp(10px, 1.3svh, 12px);
   color: var(--ink-soft);
 }
 
@@ -398,7 +397,7 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2vh;
+  gap: 2svh;
   pointer-events: none;
 }
 
@@ -409,7 +408,7 @@ html, body {
 .overlay-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(18px, 3.2vh, 26px);
+  font-size: clamp(18px, 3.2svh, 26px);
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--ink);
@@ -452,7 +451,7 @@ html, body {
    what happened. Without it a loss is only implied by the colour. */
 .overlay-status {
   margin: 0;
-  font-size: clamp(10px, 1.4vh, 12px);
+  font-size: clamp(10px, 1.4svh, 12px);
   font-weight: 700;
   letter-spacing: 0.22em;
   color: var(--danger);
@@ -465,7 +464,7 @@ html, body {
   margin: 0;
   max-width: min(80vw, 300px);
   text-align: center;
-  font-size: clamp(13px, 1.9vh, 15px);
+  font-size: clamp(13px, 1.9svh, 15px);
   line-height: 1.45;
   color: var(--ink);
   text-wrap: pretty;
@@ -473,7 +472,7 @@ html, body {
 
 .overlay-sub {
   margin: 0;
-  font-size: clamp(12px, 1.8vh, 14px);
+  font-size: clamp(12px, 1.8svh, 14px);
   color: var(--ink-soft);
   letter-spacing: 0.08em;
 }
@@ -482,16 +481,16 @@ html, body {
 .overlay-actions {
   display: flex;
   gap: 3vw;
-  margin-top: 0.6vh;
+  margin-top: 0.6svh;
 }
 
 .pill-btn,
 .share-btn {
   font-family: var(--font-display);
   font-weight: 600;
-  padding: 1.2vh 4vw;
+  padding: 1.2svh 4vw;
   border-radius: 999px;
-  font-size: clamp(12px, 1.8vh, 14px);
+  font-size: clamp(12px, 1.8svh, 14px);
   letter-spacing: 0.06em;
   cursor: pointer;
   transition: transform 0.1s ease;
@@ -503,7 +502,7 @@ html, body {
   border: none;
   background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   color: #fff;
-  box-shadow: 0 0.8vh 1.8vh rgba(139, 111, 217, 0.35);
+  box-shadow: 0 0.8svh 1.8svh rgba(139, 111, 217, 0.35);
 }
 
 .share-btn {
@@ -514,7 +513,7 @@ html, body {
 
 .share-note {
   margin: 0;
-  font-size: clamp(11px, 1.5vh, 13px);
+  font-size: clamp(11px, 1.5svh, 13px);
   color: var(--ink-soft);
   letter-spacing: 0.06em;
   opacity: 0;
@@ -617,5 +616,5 @@ html, body {
 }
 
 [data-theme="dark"] .pill-btn {
-  box-shadow: 0 0.8vh 1.8vh color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 0.8svh 1.8svh color-mix(in srgb, var(--accent) 45%, transparent);
 }

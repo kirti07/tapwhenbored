@@ -1,5 +1,16 @@
-/* Site-wide tokens: only values that are genuinely identical in every game
-   that uses them.
+/* The display webfont, and the token that names it.
+ *
+ * Nunito is self-hosted rather than loaded from fonts.googleapis.com. The
+ * reason is first paint: a cross-origin stylesheet in the <head> blocks
+ * rendering until it arrives, and the service worker only handles same-origin
+ * requests (scripts/sw-template.js), so on an installed cold start every byte
+ * of the app came from cache *except* that one request — and the splash screen
+ * sat there waiting for it. Same-origin files are precached with the shell and
+ * the page paints offline.
+ *
+ * Latin subset only, both weights, straight from Google's own CSS: 16.2 kB +
+ * 16.5 kB. Nunito is SIL OFL 1.1, which permits this and asks that the licence
+ * travel with the files — see public/fonts/Nunito-OFL.txt.
  *
  * A game's palette is part of its identity and lives in its own style.css.
  * This file must never set --bg, --ink, --line, --accent, or any other colour a
@@ -8,7 +19,25 @@
  * everywhere (pointless) or flatten a game's look (harmful).
  *
  * Not imported by bubble-tap, which loads no webfont and is deliberately
- * system-font. */
+ * system-font. The homepage imports this file and nothing else shared. */
+
+@font-face {
+  font-family: "Nunito";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/nunito-latin-700.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Nunito";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("/fonts/nunito-latin-800.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
 :root {
   --font-display: "Nunito", ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif;

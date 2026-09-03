@@ -18,21 +18,20 @@
   --accent-dark: #146b53;
   --mark: #d9822b;
   --error: #d9694f;
-
-  --font-display: "Nunito", ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif;
 }
 
 
 html, body {
   margin: 0;
   height: 100%;
-  height: 100dvh; /* iOS Safari sizes vh against the chrome-hidden viewport, so a plain
-                     100% here can be taller than what's actually visible on load */
+  height: 100svh; /* the *small* viewport, deliberately — see base.css */
   background: var(--bg);
   color: var(--ink);
   font-family: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  /* kills double-tap-to-zoom; a play surface that needs more sets its own. */
+  touch-action: manipulation;
 }
 
 .stage {
@@ -41,7 +40,7 @@ html, body {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  padding: 2.4vh 4vw 2.2vh;
+  padding: 2.4svh 4vw 2.2svh;
 }
 
 /* ---- top bar ---- */
@@ -53,7 +52,7 @@ html, body {
 .title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(16px, 2.6vh, 21px);
+  font-size: clamp(16px, 2.6svh, 21px);
   font-weight: 700;
   letter-spacing: 0.01em;
   color: var(--ink);
@@ -101,7 +100,7 @@ html, body {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 1.6vh 0 0;
+  padding: 1.6svh 0 0;
 }
 
 .puzzle-bar {
@@ -111,12 +110,12 @@ html, body {
   justify-content: center;
   flex-wrap: wrap;
   gap: 2vw;
-  padding-bottom: 1.6vh;
+  padding-bottom: 1.6svh;
 }
 
 .puzzle-word {
   font-family: var(--font-display);
-  font-size: clamp(15px, 2.4vh, 19px);
+  font-size: clamp(15px, 2.4svh, 19px);
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--ink);
@@ -132,11 +131,11 @@ html, body {
 
 .step-pill {
   margin-left: 1vw;
-  padding: 0.5vh 2.6vw;
+  padding: 0.5svh 2.6vw;
   border-radius: 999px;
   background: rgba(31, 153, 116, 0.1);
   color: var(--accent-dark);
-  font-size: clamp(10px, 1.5vh, 12px);
+  font-size: clamp(10px, 1.5svh, 12px);
   font-weight: 700;
   letter-spacing: 0.04em;
 }
@@ -145,19 +144,25 @@ html, body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+}
+.ladder-wrap::-webkit-scrollbar { display: none; }
+
+/* The fade exists to say "there is more ladder past this edge", so it is only
+   applied when there actually is. A mask on a scroll container forces its own
+   layer to be re-rasterised on every scroll frame, and a three-step ladder that
+   fits should not pay for that. render() owns the class. */
+.ladder-wrap.is-scrollable {
   mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 6px), transparent 100%);
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 6px), transparent 100%);
 }
-.ladder-wrap::-webkit-scrollbar { display: none; }
 
 .ladder {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.4vh;
-  padding: 1.4vh 0 1vh;
+  gap: 0.4svh;
+  padding: 1.4svh 0 1svh;
 }
 
 .step-arrow {
@@ -186,7 +191,7 @@ html, body {
   background: var(--paper);
   border: 1.5px solid var(--line);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6);
-  font-size: clamp(16px, 2.6vh, 21px);
+  font-size: clamp(16px, 2.6svh, 21px);
   font-weight: 800;
   color: var(--ink);
   text-align: center;
@@ -254,8 +259,8 @@ html, body {
   bottom: 0;
   background: var(--bg);
   border-radius: 20px 20px 0 0;
-  box-shadow: 0 -1vh 3vh rgba(0, 0, 0, 0.25);
-  padding: 1.6vh 6vw calc(3vh + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -1svh 3svh rgba(0, 0, 0, 0.25);
+  padding: 1.6svh 6vw calc(3svh + env(safe-area-inset-bottom, 0px));
   transform: translateY(100%);
   transition: transform 0.3s cubic-bezier(.4,0,.2,1);
   z-index: 11;
@@ -269,12 +274,12 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 1.8vh;
+  margin-bottom: 1.8svh;
 }
 
 .letter-sheet-title {
   margin: 0;
-  font-size: clamp(13px, 1.9vh, 15px);
+  font-size: clamp(13px, 1.9svh, 15px);
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--ink-soft);
@@ -336,15 +341,15 @@ html, body {
   left: 50%;
   z-index: 20;
   margin: 0;
-  padding: 1.4vh 6vw;
+  padding: 1.4svh 6vw;
   border-radius: 999px;
   background: var(--error);
   color: #fff;
-  font-size: clamp(12px, 1.9vh, 15px);
+  font-size: clamp(12px, 1.9svh, 15px);
   font-weight: 700;
   letter-spacing: 0.02em;
   white-space: nowrap;
-  box-shadow: 0 1.2vh 3vh rgba(140, 100, 20, 0.22);
+  box-shadow: 0 1.2svh 3svh rgba(140, 100, 20, 0.22);
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, -50%) scale(0.9);
@@ -388,7 +393,7 @@ html, body {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding-bottom: max(6vh, env(safe-area-inset-bottom));
+  padding-bottom: max(6svh, env(safe-area-inset-bottom));
   background: linear-gradient(to top, rgba(253, 243, 217, 0.94) 0%, rgba(253, 243, 217, 0.6) 40%, rgba(253, 243, 217, 0) 75%);
   opacity: 0;
   pointer-events: none;
@@ -403,7 +408,7 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.1vh;
+  gap: 1.1svh;
   max-width: 90vw;
   text-align: center;
   pointer-events: none;
@@ -415,7 +420,7 @@ html, body {
 
 .overlay-icon {
   color: var(--accent);
-  margin-bottom: -0.4vh;
+  margin-bottom: -0.4svh;
 }
 
 .overlay-title-row {
@@ -427,7 +432,7 @@ html, body {
 .overlay-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(20px, 4vh, 30px);
+  font-size: clamp(20px, 4svh, 30px);
   font-weight: 700;
   letter-spacing: 0.02em;
   background: linear-gradient(90deg, var(--accent), var(--accent-dark));
@@ -437,14 +442,14 @@ html, body {
 }
 
 .deco {
-  font-size: clamp(12px, 2vh, 16px);
+  font-size: clamp(12px, 2svh, 16px);
   line-height: 1;
 }
 .deco-1, .deco-2 { color: var(--accent); }
 
 .overlay-sub {
   margin: 0;
-  font-size: clamp(14px, 2.1vh, 17px);
+  font-size: clamp(14px, 2.1svh, 17px);
   font-weight: 700;
   color: var(--ink);
   letter-spacing: 0.06em;
@@ -452,13 +457,13 @@ html, body {
 
 .overlay-steps {
   margin: 0;
-  font-size: clamp(12px, 1.8vh, 14px);
+  font-size: clamp(12px, 1.8svh, 14px);
   color: var(--ink-soft);
 }
 
 .overlay-best {
-  margin: 0 0 0.4vh;
-  font-size: clamp(12px, 1.8vh, 14px);
+  margin: 0 0 0.4svh;
+  font-size: clamp(12px, 1.8svh, 14px);
   font-weight: 700;
   color: var(--accent-dark);
 }
@@ -466,7 +471,7 @@ html, body {
 .overlay-actions {
   display: flex;
   gap: 3vw;
-  margin-top: 0.6vh;
+  margin-top: 0.6svh;
 }
 
 .again-btn,
@@ -474,10 +479,10 @@ html, body {
   display: flex;
   align-items: center;
   gap: 0.5em;
-  padding: 1.2vh 4vw;
+  padding: 1.2svh 4vw;
   border-radius: 999px;
   font-family: var(--font-display);
-  font-size: clamp(12px, 1.8vh, 14px);
+  font-size: clamp(12px, 1.8svh, 14px);
   font-weight: 600;
   letter-spacing: 0.02em;
   cursor: pointer;
@@ -490,7 +495,7 @@ html, body {
   border: none;
   background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   color: #fff;
-  box-shadow: 0 0.8vh 1.8vh rgba(31, 153, 116, 0.4);
+  box-shadow: 0 0.8svh 1.8svh rgba(31, 153, 116, 0.4);
 }
 
 .share-btn {
@@ -501,7 +506,7 @@ html, body {
 
 .share-note {
   margin: 0;
-  font-size: clamp(11px, 1.5vh, 13px);
+  font-size: clamp(11px, 1.5svh, 13px);
   color: var(--ink-soft);
   letter-spacing: 0.06em;
   opacity: 0;
@@ -516,12 +521,12 @@ html, body {
   display: flex;
   align-items: center;
   gap: 0.5em;
-  margin: 1vh 0 0;
-  padding: 1vh 5vw;
+  margin: 1svh 0 0;
+  padding: 1svh 5vw;
   border-radius: 999px;
   background: rgba(31, 153, 116, 0.12);
   border: 1px solid rgba(31, 153, 116, 0.3);
-  font-size: clamp(12px, 1.9vh, 14px);
+  font-size: clamp(12px, 1.9svh, 14px);
   font-weight: 700;
   color: var(--accent-dark);
   letter-spacing: 0.02em;
@@ -529,12 +534,15 @@ html, body {
 .next-puzzle span {
   font-variant-numeric: tabular-nums;
   font-weight: 800;
-  font-size: clamp(13px, 2.1vh, 16px);
+  font-size: clamp(13px, 2.1svh, 16px);
   color: var(--accent-dark);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .icon-btn, .again-btn, .share-btn, .tile-active, .letter-btn { transition: none; }
+  /* tileBounce loops until the first edit, so it has to be stopped here too —
+     a transition:none alone leaves it running. */
+  .tile-active.hint-bounce { animation: none; }
 }
 
 /* ==== Neon Arcade (dark theme) ====
@@ -573,10 +581,10 @@ html, body {
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 [data-theme="dark"] .again-btn {
-  box-shadow: 0 0.8vh 1.8vh color-mix(in srgb, var(--accent) 50%, transparent);
+  box-shadow: 0 0.8svh 1.8svh color-mix(in srgb, var(--accent) 50%, transparent);
 }
 [data-theme="dark"] .hint-msg {
-  box-shadow: 0 1.2vh 3vh color-mix(in srgb, var(--error) 45%, transparent);
+  box-shadow: 0 1.2svh 3svh color-mix(in srgb, var(--error) 45%, transparent);
 }
 [data-theme="dark"] .overlay {
   background: linear-gradient(to top, rgba(13, 14, 26, 0.94) 0%, rgba(13, 14, 26, 0.6) 40%, rgba(13, 14, 26, 0) 75%);
@@ -584,8 +592,8 @@ html, body {
 
 /* ---- short viewports (phone landscape) ---- */
 @media (max-height: 480px) {
-  .stage { padding-top: 1.4vh; padding-bottom: 1.2vh; }
+  .stage { padding-top: 1.4svh; padding-bottom: 1.2svh; }
   .subtitle, .seo-info { display: none; }
-  .back-link { margin-bottom: 0.3vh; }
-  .howto-link { padding-top: 0.4vh; }
+  .back-link { margin-bottom: 0.3svh; }
+  .howto-link { padding-top: 0.4svh; }
 }

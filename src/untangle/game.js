@@ -533,7 +533,23 @@
   shareBtn.addEventListener("click", shareResult);
   howtoBtn.addEventListener("click", openHowto);
   howtoBackdrop.addEventListener("click", closeHowto);
-  window.addEventListener("resize", render);
+  // Coalesced to one render a frame. A resize arrives in bursts — an
+  // orientation change, a window drag — and render() measures the board and
+  // then rewrites an SVG attribute per node and per edge, which is far too
+  // much to run several times inside a single frame.
+  var resizeFrame = 0;
+  window.addEventListener("resize", function () {
+    if (resizeFrame) return;
+    resizeFrame = requestAnimationFrame(function () {
+      resizeFrame = 0;
+      render();
+    });
+  });
+
+  // Node positions are measured against the board's box, which sits under a
+  // top bar whose height depends on a webfont that may still be loading. A
+  // font swap does not fire `resize`, so re-render once it settles.
+  if (document.fonts) document.fonts.ready.then(render);
 
   function clearSelection() {
     if (selectedIndex >= 0) nodeEls[selectedIndex].classList.remove("active");

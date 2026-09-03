@@ -4,15 +4,20 @@
    with either game's own colors (cool glass for Bubble Tap, wood + blue
    marbles for Marble Nostalgia) — it just gives them a common, cozy shelf
    to sit on. */
+
+/* The one shared file the homepage takes: the self-hosted Nunito faces and the
+   token that names them. It shares none of the game shell (no base, no shell,
+   no howto) — but the webfont is platform, not identity, and a second copy of
+   the @font-face rules would be two things to keep in step. */
+@import "shared/css/tokens.css";
+
 :root {
   --bg: #f6f6fb;
   --surface: #ffffff;
-  --surface-elevated: #fefeff;
   --text: #262b3d;
   --text-secondary: #767a8c;
   --border: #e6e4f2;
   --accent: #8b7fe0;
-  --font-display: "Nunito", ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif;
   color-scheme: light;
 }
 
@@ -80,12 +85,17 @@ html, body {
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease;
 }
 
-.theme-switch[aria-checked="true"] {
+/* Driven by data-theme, not by aria-checked. The theme bootstrap sets
+   data-theme in the <head>, before the first paint; aria-checked can only be
+   set once the button exists, at the end of <body>. Keying the visual on the
+   attribute that lands first is what stops a dark-mode reload from painting
+   the knob in the off position and then flipping it. */
+[data-theme="dark"] .theme-switch {
   background: var(--accent);
   border-color: var(--accent);
 }
 
-.theme-switch[aria-checked="true"] .theme-switch-thumb {
+[data-theme="dark"] .theme-switch .theme-switch-thumb {
   transform: translateX(20px);
   background: #ffffff;
 }
@@ -174,15 +184,27 @@ html, body {
   text-decoration: none;
   color: inherit;
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  /* Cards below the fold skip layout and paint entirely until they scroll into
+     view. The shelf is a uniform grid of square-thumbnail cards, so the
+     placeholder size is a good guess and the scrollbar does not jump. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 240px;
 }
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(38,43,61,0.12);
-  border-color: var(--accent);
-}
-.card:active { transform: scale(0.98); }
 
-.card:hover .card-desc { color: var(--accent); }
+/* Hover is a pointer affordance, and on a touchscreen it is worse than
+   useless: Android leaves the hovered state stuck on the last card tapped,
+   which keeps a lifted transform and a blurred glow shadow live and repainting
+   for the rest of the scroll. :active still gives touch its feedback. */
+@media (hover: hover) {
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(38,43,61,0.12);
+    border-color: var(--accent);
+  }
+  .card:hover .card-desc { color: var(--accent); }
+}
+
+.card:active { transform: scale(0.98); }
 
 .card--marble { --accent: #1684d1; }
 .card--bubble { --accent: #4fb6e0; }
@@ -242,7 +264,9 @@ html, body {
   transition: transform 0.15s ease;
 }
 
-.card:hover .play-btn { transform: scale(1.08); }
+@media (hover: hover) {
+  .card:hover .play-btn { transform: scale(1.08); }
+}
 .card:active .play-btn { transform: scale(0.94); }
 
 .hub-footer {
@@ -277,7 +301,6 @@ html, body {
 :root[data-theme="dark"] {
   --bg: #0d0e1a;
   --surface: #14132a;
-  --surface-elevated: #1a1832;
   --text: #f0eefa;
   --text-secondary: #9b96c4;
   --border: #2c2850;
@@ -299,8 +322,10 @@ html, body {
 [data-theme="dark"] .card {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent), 0 0 22px color-mix(in srgb, var(--accent) 14%, transparent);
 }
-[data-theme="dark"] .card:hover {
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent), 0 0 30px color-mix(in srgb, var(--accent) 26%, transparent);
+@media (hover: hover) {
+  [data-theme="dark"] .card:hover {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent), 0 0 30px color-mix(in srgb, var(--accent) 26%, transparent);
+  }
 }
 
 /* the thumbnails are static light-mode art; re-tone rather than ship a second
