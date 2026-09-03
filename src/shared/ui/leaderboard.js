@@ -12,11 +12,13 @@
 // The game still owns the *presentation* of a result: whether to say "new
 // record", and how to format its own number.
 
-// Statically replaced at build time. Always write the full literal: a computed
-// key like import.meta.env[`VITE_${n}`] is NOT replaced, so it works in dev and
-// silently yields undefined in production.
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+// Statically replaced at build time. These two are named without a VITE_
+// prefix, so Vite does not expose them on its own — vite.config.js injects
+// them by name through `define`. Always write the full literal: a computed key
+// like import.meta.env[`SUPABASE_${n}`] is NOT replaced, so it works in dev
+// and silently yields undefined in production. See ARCHITECTURE.md §35.
+const SUPABASE_URL = import.meta.env.SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = import.meta.env.SUPABASE_ANON_KEY || "";
 
 // The run is already over by the time this is called, so all that is waiting on
 // the network is one line of text on the end card. Not worth making a player

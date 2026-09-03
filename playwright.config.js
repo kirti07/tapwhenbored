@@ -38,8 +38,8 @@ export default defineConfig({
     // fails fast instead of reaching a real leaderboard. Vite prefers real
     // process env over .env files, so these win locally too.
     env: {
-      VITE_SUPABASE_URL: "https://leaderboard.test.invalid",
-      VITE_SUPABASE_ANON_KEY: "playwright-anon-key",
+      SUPABASE_URL: "https://leaderboard.test.invalid",
+      SUPABASE_ANON_KEY: "playwright-anon-key",
     },
   },
 });
