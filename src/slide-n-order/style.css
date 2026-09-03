@@ -361,29 +361,6 @@ html, body {
   color: var(--ink);
 }
 
-.overlay-tile {
-  width: 56px;
-  height: 56px;
-  border-radius: 16%;
-  background: linear-gradient(155deg, var(--correct-hi) 0%, var(--correct-mid) 55%, var(--correct-lo) 100%);
-  box-shadow:
-    inset 0 0 0 1.5px var(--tile-rim),
-    inset 0 0.4vh 0.5vh rgba(255, 255, 255, 0.5),
-    0 0 3vh rgba(139, 127, 224, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--correct-ink);
-  animation: glow 1.6s ease-in-out infinite;
-}
-
-@keyframes glow {
-  0%, 100% { box-shadow: inset 0 0 0 1.5px var(--tile-rim), inset 0 0.4vh 0.5vh rgba(255, 255, 255, 0.5), 0 0 1.5vh rgba(139, 127, 224, 0.5); }
-  50% { box-shadow: inset 0 0 0 1.5px var(--tile-rim), inset 0 0.4vh 0.5vh rgba(255, 255, 255, 0.5), 0 0 3.5vh rgba(139, 127, 224, 0.9); }
-}
-
 .overlay-sub {
   margin: 0;
   font-size: clamp(12px, 1.8vh, 14px);
@@ -440,7 +417,6 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   .tile { transition: none; }
   .tile.movable.bounce { animation: none; }
-  .overlay-tile { animation: none; }
 }
 
 /* ==== Neon Arcade (dark theme) ==== */
@@ -510,23 +486,6 @@ html, body {
   background: rgba(13, 14, 26, 0.94);
 }
 
-[data-theme="dark"] .overlay-tile {
-  box-shadow:
-    inset 0 0 0 1.5px var(--tile-rim),
-    inset 0 0.4vh 0.5vh rgba(255, 255, 255, 0.5),
-    0 0 3vh color-mix(in srgb, var(--accent) 70%, transparent);
-}
-
 [data-theme="dark"] .again-btn {
   box-shadow: 0 0.8vh 1.8vh color-mix(in srgb, var(--accent) 45%, transparent);
-}
-
-@keyframes glow-dark {
-  0%, 100% { box-shadow: inset 0 0 0 1.5px var(--tile-rim), inset 0 0.4vh 0.5vh rgba(255, 255, 255, 0.5), 0 0 1.5vh rgba(168, 85, 247, 0.6); }
-  50% { box-shadow: inset 0 0 0 1.5px var(--tile-rim), inset 0 0.4vh 0.5vh rgba(255, 255, 255, 0.5), 0 0 4vh rgba(168, 85, 247, 1); }
-}
-[data-theme="dark"] .overlay-tile { animation-name: glow-dark; }
-
-@media (prefers-reduced-motion: reduce) {
-  [data-theme="dark"] .overlay-tile { animation: none; }
 }
