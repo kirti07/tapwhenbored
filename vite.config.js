@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
@@ -380,23 +380,51 @@ function pwa() {
  * It warns rather than fails because gameplay must not depend on the
  * leaderboard (ARCHITECTURE.md §26).
  */
-function warnMissingLeaderboardEnv() {
+function warnMissingLeaderboardEnv(env) {
   return {
     name: "twb:warn-missing-leaderboard-env",
     apply: "build",
     configResolved(config) {
-      if (!config.env.VITE_SUPABASE_URL || !config.env.VITE_SUPABASE_ANON_KEY) {
+      if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
         config.logger.warn(
-          "\n[twb] VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are not set.\n" +
+          "\n[twb] SUPABASE_URL / SUPABASE_ANON_KEY are not set.\n" +
             "      Games will build and play, but every leaderboard will read\n" +
-            "      as unavailable. Vite only exposes VITE_-prefixed variables.\n",
+            "      as unavailable.\n",
+        );
+      }
+
+      // These are neighbours of SUPABASE_ANON_KEY in the same Supabase project
+      // and in the env list the Supabase/Vercel integration writes. None of
+      // them may ever reach a browser bundle, so fail the build rather than
+      // ship one. This is why the two public values are injected by name in
+      // `define` instead of widening envPrefix to "SUPABASE_", which would
+      // have exposed every one of these automatically.
+      const secrets = Object.keys(env).filter((k) =>
+        /^(SUPABASE_.*(SERVICE|SECRET|PASSWORD|JWT)|POSTGRES_)/.test(k),
+      );
+      if (secrets.length) {
+        throw new Error(
+          `[twb] refusing to build: ${secrets.join(", ")} is present in the ` +
+            "build environment. Nothing here reads it, but its name says it is " +
+            "a server-side secret and it must not sit next to values that get " +
+            "inlined into public JavaScript. Remove it from this project's " +
+            "build environment (Vercel > Settings > Environment Variables).",
         );
       }
     },
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // The leaderboard credentials are named without a VITE_ prefix, so Vite will
+  // not expose them by itself. The "" prefix here loads every variable — from
+  // .env files and from the real process env — so `.env.local` keeps working
+  // locally and Vercel's variables work in CI (ARCHITECTURE.md §35). Nothing
+  // from this object reaches the browser except the two names listed in
+  // `define` below.
+  const env = loadEnv(mode, rootDir, "");
+
+  return {
   root: srcDir,
   base: "/",
   publicDir,
@@ -413,8 +441,17 @@ export default defineConfig({
     vercelInsights(),
     sitemap(),
     pwa(),
-    warnMissingLeaderboardEnv(),
+    warnMissingLeaderboardEnv(env),
   ],
+  // An allowlist of exactly two names, statically replaced at build time just
+  // as import.meta.env.VITE_* would be. Written out in full so the strings the
+  // client reads are greppable from here (ARCHITECTURE.md §35).
+  define: {
+    "import.meta.env.SUPABASE_URL": JSON.stringify(env.SUPABASE_URL || ""),
+    "import.meta.env.SUPABASE_ANON_KEY": JSON.stringify(
+      env.SUPABASE_ANON_KEY || "",
+    ),
+  },
   build: {
     outDir: distDir,
     // Required: outDir is outside root, so Vite otherwise refuses to clean it
@@ -428,4 +465,5 @@ export default defineConfig({
   },
   server: { port: 5173, strictPort: true },
   preview: { port: 4173, strictPort: true },
+  };
 });

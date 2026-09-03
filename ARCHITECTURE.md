@@ -1328,7 +1328,9 @@ Performance regressions should be investigated before shipping.
 Client configuration reaches the browser through Vite's env system.
 
 ```text
-Vercel env vars  (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)
+Vercel env vars
+        ↓
+vite.config.js 
         ↓
 import.meta.env  (statically replaced at build time)
         ↓
@@ -1337,12 +1339,25 @@ src/shared/ui/leaderboard.js
 games that opt into the leaderboard
 ```
 
-* Only `VITE_`-prefixed variables are exposed to client code.
+* Vite exposes only `VITE_`-prefixed variables on its own, and these two carry
+  no prefix — they are named the way the Supabase integration writes them. So
+  `vite.config.js` reads the full environment with `loadEnv(mode, rootDir, "")`
+  and injects **exactly these two names** through `define`.
+* **The allowlist is the point.** Widening `envPrefix` to `"SUPABASE_"` would
+  have been one line, and would also have exposed `SUPABASE_SERVICE_ROLE_KEY`
+  and `SUPABASE_JWT_SECRET` — which the Supabase/Vercel integration adds to the
+  same project — by inlining them into public JavaScript. Two names cannot leak
+  a third. The build additionally **fails** if a variable matching
+  `SUPABASE_*(SERVICE|SECRET|PASSWORD|JWT)` or `POSTGRES_*` is present, so that
+  mistake cannot ship even by accident.
 * The Supabase anon key is public by design; row-level security protects the
-  data (§27).
-* Always write the full literal `import.meta.env.VITE_SUPABASE_URL`. A computed
-  key such as ``import.meta.env[`VITE_${name}`]`` is **not** statically
+  data (§27). The service-role key is not, and never reaches the client.
+* Always write the full literal `import.meta.env.SUPABASE_URL`. A computed key
+  such as ``import.meta.env[`SUPABASE_${name}`]`` is **not** statically
   replaced: it works in dev and silently yields `undefined` in production.
+* Renaming either variable means changing `define` in `vite.config.js` too —
+  they are a matched pair, and there is no runtime lookup that would paper over
+  a mismatch.
 * **A build must never mutate the working tree.** There is no generated
   `config.js` and no build command that writes source files.
 * Local development uses `.env.local`, which is gitignored.
