@@ -5,19 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#eaf6ee">
 <!-- theme-bootstrap -->
-<title>Doodle On — Free Online Drawing Game, One Continuous Line</title>
-<meta name="description" content="A free online doodle game. Keep drawing without lifting your finger — the moment you lift, the game ends. No score, no timer, no signup.">
+<title>Doodle On — Free 30-Second Drawing Game, Random Prompts</title>
+<meta name="description" content="A free online drawing game. Get a random shape and a random idea, then turn one into the other in 30 seconds. Draw, fill, share. No score, no signup.">
 <link rel="canonical" href="https://www.tapwhenbored.com/doodle-on/">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Doodle On — Free Online Drawing Game, One Continuous Line">
-<meta property="og:description" content="Keep drawing without lifting your finger. The moment you lift, whatever you drew is your result.">
+<meta property="og:title" content="Doodle On — Free 30-Second Drawing Game, Random Prompts">
+<meta property="og:description" content="A circle and &quot;something that flies&quot;. You get 30 seconds to turn one into the other.">
 <meta property="og:url" content="https://www.tapwhenbored.com/doodle-on/">
 <meta property="og:image" content="https://www.tapwhenbored.com/assets/doodle-on-og.jpg">
 <meta property="og:image:width" content="640">
 <meta property="og:image:height" content="640">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Doodle On — Free Online Drawing Game, One Continuous Line">
-<meta name="twitter:description" content="Keep drawing without lifting your finger. The moment you lift, whatever you drew is your result.">
+<meta name="twitter:title" content="Doodle On — Free 30-Second Drawing Game, Random Prompts">
+<meta name="twitter:description" content="A circle and &quot;something that flies&quot;. You get 30 seconds to turn one into the other.">
 <meta name="twitter:image" content="https://www.tapwhenbored.com/assets/doodle-on-og.jpg">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <script type="application/ld+json">
@@ -26,7 +26,7 @@
   "@type": "Game",
   "name": "Doodle On",
   "url": "https://www.tapwhenbored.com/doodle-on/",
-  "description": "A free online drawing game. Keep doodling in one continuous stroke — the moment you lift your finger, the game ends.",
+  "description": "A free online drawing game. Every round gives you a starting shape and a creative direction — turn a circle into something that lives in water, in 30 seconds.",
   "image": "https://www.tapwhenbored.com/assets/doodle-on-og.jpg",
   "genre": "Casual",
   "playMode": "SinglePlayer",
@@ -57,23 +57,51 @@
           <span>Games</span>
         </a>
         <h1 class="title">DOODLE <span class="title-accent">ON</span></h1>
-        <p class="subtitle">DRAW</p>
+        <p class="subtitle">DRAW &middot; 30s</p>
       </div>
       <div class="top-actions">
-        <button class="icon-btn" id="restartBtn" title="Clear" aria-label="Clear">
+        <p class="timer" id="timerPill"><span id="timerVal">0:30</span></p>
+        <button class="icon-btn" id="restartBtn" title="New prompt" aria-label="New prompt">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.9-6.16"/><path d="M20 4v5h-5"/></svg>
         </button>
       </div>
     </header>
 
+    <p class="prompt" id="promptText">Turn this <span class="prompt-shape" id="promptShape">circle</span> into <span class="prompt-dir" id="promptDir">something that lives in water</span></p>
+
     <div class="canvas-area">
       <div class="canvas-wrap" id="canvasWrap">
-        <canvas id="canvas"></canvas>
-        <div class="idle-prompt" id="idlePrompt">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11.5V6a1.5 1.5 0 0 1 3 0v4.5M12 10.5V5a1.5 1.5 0 0 1 3 0v6M15 10.5V7a1.5 1.5 0 0 1 3 0v6.5c0 3.5-2 6.5-6 6.5s-6-2-7-4l-1.5-3a1.3 1.3 0 0 1 2.2-1.3L7 13"/></svg>
-          <p class="idle-heading">Keep doodling.<br><span class="tagline-accent">Don't lift your finger!</span></p>
-          <p class="idle-hint">Tap anywhere to start</p>
+        <!-- Both layers share one wrapper so the finished doodle can be
+             animated as a single object, leaving the paper and its dot grid
+             still underneath. -->
+        <div class="layers" id="layers">
+          <canvas id="paintCanvas"></canvas>
+          <canvas id="canvas"></canvas>
         </div>
+        <div class="timer-bar" id="timerBar"></div>
+        <div class="idle-prompt" id="idlePrompt">
+          <p class="idle-hint">Tap to start drawing &mdash; 30 seconds</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="swatches" id="swatches" role="radiogroup" aria-label="Colour"></div>
+      <div class="tool-row" role="toolbar" aria-label="Drawing tools">
+        <button class="tool" id="pencilTool" type="button" aria-pressed="true" title="Pencil" aria-label="Pencil">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 3.6a2.1 2.1 0 0 1 3 3L8.2 17.9 4 19l1.1-4.2Z"/><path d="M14.5 5.6l3.9 3.9"/></svg>
+        </button>
+        <button class="tool" id="paintTool" type="button" aria-pressed="false" title="Paint" aria-label="Paint">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12.5 11 5l7.5 7.5-7.5 7.5Z"/><path d="M8.6 7.4 6 4.8"/><path d="M19.6 14.4c1.1 1.5 1.9 2.5 1.9 3.5a1.9 1.9 0 0 1-3.8 0c0-1 .8-2 1.9-3.5Z"/></svg>
+        </button>
+        <span class="tool-sep" aria-hidden="true"></span>
+        <button class="tool" id="undoTool" type="button" title="Undo" aria-label="Undo" disabled>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h9.5a5 5 0 0 1 0 10H9"/><path d="M7.5 6 3.5 10l4 4"/></svg>
+        </button>
+        <button class="tool" id="clearTool" type="button" title="Clear" aria-label="Clear the drawing">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="M14.6 4.6 20 10l-6.6 6.6H8.4L4 12.2Z"/></svg>
+        </button>
+        <button class="done-btn" id="doneBtn" type="button">Done</button>
       </div>
     </div>
 
@@ -82,26 +110,27 @@
     <details class="seo-info">
       <summary>What is this?</summary>
       <p>
-        Doodle On is a free online drawing game with one rule: don't lift your finger.
-        The moment you lift, the game ends and whatever you drew is your result. No
-        score, no timer, no signup — just see how far one continuous line can take you.
+        Doodle On is a free online drawing game. Each round hands you a starting
+        shape and an unrelated idea — a spiral, and "something that flies" — plus
+        30 seconds to turn one into the other. Pencil, paint bucket, six colours,
+        one-step undo. No score, no signup. Share the result as a picture.
       </p>
     </details>
   </div>
 
   <div class="overlay" id="overlay">
     <div class="overlay-content">
-      <svg class="overlay-icon" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 15c-2 0-3.5-1.3-3.5-3S4 9 6 9s3.5 1.3 3.5 3-1.5 3-3.5 3Zm9-9c2 0 3.5 1.3 3.5 3S17 12 15 12s-3.5-1.3-3.5-3S13 6 15 6Z"/><path d="M9.5 12 15 6"/></svg>
+      <svg class="overlay-icon" viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true"><path d="M12 2.5c0 4.7 2.3 7 7 7-4.7 0-7 2.3-7 7 0-4.7-2.3-7-7-7 4.7 0 7-2.3 7-7Z"/></svg>
       <div class="overlay-title-row">
         <span class="deco deco-1">&#10022;</span>
-        <p class="overlay-title">GAME OVER</p>
+        <p class="overlay-title" id="overlayTitle">YOU MADE THIS</p>
         <span class="deco deco-2">&#10022;</span>
       </div>
-      <p class="overlay-sub" id="overlaySub">You lifted your finger.</p>
+      <p class="overlay-sub" id="overlaySub">Circle &rarr; something that lives in water</p>
       <div class="overlay-actions">
         <button class="again-btn" id="againBtn">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.9-6.16"/><path d="M20 4v5h-5"/></svg>
-          Play again
+          New prompt
         </button>
         <button class="share-btn" id="shareBtn">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.7 15.7 6.6M8.3 13.3l7.4 4.1"/></svg>
@@ -117,10 +146,10 @@
     <div class="howto-handle"></div>
     <p class="howto-title">How to play</p>
     <ul class="howto-list">
-      <li>Touch the canvas and start drawing.</li>
-      <li>Keep your finger down — lifting ends the game.</li>
-      <li>Draw anywhere, cross your own line as much as you like.</li>
-      <li>No score, no timer — just see how far you can go.</li>
+      <li>Every round gives you a shape and a direction.</li>
+      <li>You get 30 seconds to turn one into the other. The clock starts on your first mark.</li>
+      <li>Pencil to draw, bucket to fill a closed area, tap a colour to change it.</li>
+      <li>Undo takes back the last thing you did. Hit Done when you're happy, then share it.</li>
     </ul>
   </div>
 

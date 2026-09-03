@@ -82,21 +82,21 @@ export const games = [
   {
     slug: "doodle-on",
     title: "Doodle On",
-    tagline: "Draw · Doodle",
+    tagline: "Draw · 30s",
     description:
-      "A free online doodle game. Keep drawing without lifting your finger — the moment you lift, the game ends. No score, no timer, no signup.",
+      "A free online drawing game. Get a random shape and a random idea, then turn one into the other in 30 seconds. Draw, fill, share. No score, no signup.",
     path: "/doodle-on/",
     thumb: "/assets/doodle-on-thumb.svg",
-    thumbAlt: "Doodle On — one continuous line drawing game preview",
+    thumbAlt: "Doodle On — 30-second shape-and-idea drawing game preview",
     ogImage: "/assets/doodle-on-og.jpg",
     cardClass: "card--doodle",
     category: "Casual",
     darkThemeColor: "#0d0e1a",
-    updated: "2026-08-24",
+    updated: "2026-09-03",
     changefreq: "monthly",
     hasRestart: true,
     hasOverlay: true,
-    // No score by design — "no score, no timer, just see how far you can go".
+    // No score by design — the result is the picture, not a number.
     leaderboard: false,
   },
   {
