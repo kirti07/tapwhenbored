@@ -32,9 +32,9 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-bottom: 0.8vh;
+  margin-bottom: 0.8svh;
   color: var(--ink-soft);
-  font-size: clamp(10px, 1.4vh, 12px);
+  font-size: clamp(10px, 1.4svh, 12px);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-decoration: none;
@@ -42,7 +42,7 @@
 
 .subtitle {
   margin: 0.4em 0 0;
-  font-size: clamp(10px, 1.4vh, 12px);
+  font-size: clamp(10px, 1.4svh, 12px);
   letter-spacing: 0.3em;
   color: var(--ink-soft);
 }
@@ -51,7 +51,7 @@
   flex-shrink: 0;
   align-self: center;
   max-width: 90vw;
-  margin-top: 0.6vh;
+  margin-top: 0.6svh;
   font-size: 9px;
   color: var(--ink-soft);
   text-align: center;

@@ -15,7 +15,6 @@
   --accent: #8b7fe0;
   --accent-dark: #6a5cd0;
 
-  --font-display: "Nunito", ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif;
 
   --wood-hi: #f2e4c4;
   --wood-mid: #d6ac6e;
@@ -44,9 +43,7 @@
 html, body {
   margin: 0;
   height: 100%;
-  height: 100dvh; /* iOS Safari sizes vh against the chrome-hidden viewport, so a plain
-                     100% here can be taller than what's actually visible on load and
-                     push the board into overlapping the challenge banner above it */
+  height: 100svh; /* the *small* viewport, deliberately — see base.css */
   background: var(--bg);
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
@@ -59,7 +56,7 @@ html, body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 2.4vh 4vw 3vh;
+  padding: 2.4svh 4vw 3svh;
 }
 
 /* ---- top bar ---- */
@@ -71,7 +68,7 @@ html, body {
 .title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(15px, 2.4vh, 20px);
+  font-size: clamp(15px, 2.4svh, 20px);
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--ink);
@@ -88,9 +85,9 @@ html, body {
 }
 
 .tagline {
-  margin: 1.6vh 0 0;
+  margin: 1.6svh 0 0;
   text-align: center;
-  font-size: clamp(12px, 1.7vh, 14px);
+  font-size: clamp(12px, 1.7svh, 14px);
   color: var(--ink-soft);
   letter-spacing: 0.03em;
   flex-shrink: 0;
@@ -116,7 +113,7 @@ html, body {
   background: rgba(139, 127, 224, 0.12);
   border: 1.5px solid rgba(139, 127, 224, 0.35);
   color: var(--ink);
-  font-size: clamp(11px, 1.6vh, 13px);
+  font-size: clamp(11px, 1.6svh, 13px);
   letter-spacing: 0.02em;
   text-align: center;
   transition: max-height 0.35s ease, opacity 0.3s ease, margin 0.35s ease, padding 0.35s ease;
@@ -125,10 +122,10 @@ html, body {
 }
 
 .challenge-banner.show {
-  max-height: 8vh;
+  max-height: 8svh;
   opacity: 1;
-  margin: 1.4vh auto 0;
-  padding: 1vh 4vw;
+  margin: 1.4svh auto 0;
+  padding: 1svh 4vw;
 }
 
 /* ---- board area ---- */
@@ -139,13 +136,13 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2.2vh;
+  gap: 2.2svh;
   min-height: 0;
 }
 
 .board-wrap {
   position: relative;
-  width: min(88vw, 66vh, 560px);
+  width: min(88vw, 66svh, 560px);
   aspect-ratio: 1 / 1;
 }
 
@@ -159,10 +156,10 @@ html, body {
     linear-gradient(155deg, var(--wood-edge-lit) 0%, var(--wood-hi) 20%, var(--wood-mid) 58%, var(--wood-lo) 86%, var(--wood-edge-dark) 100%);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.28),
-    inset 0 0.6vh 1.2vh rgba(255, 255, 255, 0.22),
-    inset 0 -0.5vh 1vh rgba(60, 38, 16, 0.3),
-    0 0.6vh 1vh rgba(70, 45, 100, 0.16),
-    0 1.8vh 3.2vh rgba(60, 40, 90, 0.28);
+    inset 0 0.6svh 1.2svh rgba(255, 255, 255, 0.22),
+    inset 0 -0.5svh 1svh rgba(60, 38, 16, 0.3),
+    0 0.6svh 1svh rgba(70, 45, 100, 0.16),
+    0 1.8svh 3.2svh rgba(60, 40, 90, 0.28);
 }
 
 .slots-grid,
@@ -186,7 +183,7 @@ html, body {
 .slot {
   border-radius: 16%;
   background: radial-gradient(circle at 38% 32%, var(--slot-mid) 0%, var(--slot-lo) 70%);
-  box-shadow: inset 0 0.3vh 0.6vh rgba(30, 18, 8, 0.5), inset 0 0 0 1px var(--slot-rim);
+  box-shadow: inset 0 0.3svh 0.6svh rgba(30, 18, 8, 0.5), inset 0 0 0 1px var(--slot-rim);
 }
 
 .cell {
@@ -210,11 +207,11 @@ html, body {
   background: linear-gradient(155deg, var(--tile-hi) 0%, var(--tile-mid) 55%, var(--tile-lo) 100%);
   box-shadow:
     inset 0 0 0 1.5px var(--tile-rim),
-    inset 0 0.4vh 0.5vh rgba(255, 255, 255, 0.5),
-    inset 0 -0.5vh 0.6vh rgba(110, 75, 30, 0.28),
-    0 0.5vh 0.9vh var(--tile-shadow);
+    inset 0 0.4svh 0.5svh rgba(255, 255, 255, 0.5),
+    inset 0 -0.5svh 0.6svh rgba(110, 75, 30, 0.28),
+    0 0.5svh 0.9svh var(--tile-shadow);
   color: var(--tile-ink);
-  font-size: clamp(18px, 4.6vh, 30px);
+  font-size: clamp(18px, 4.6svh, 30px);
   font-weight: 700;
   font-family: inherit;
   display: flex;
@@ -227,11 +224,11 @@ html, body {
 .tile.movable {
   box-shadow:
     inset 0 0 0 1.5px var(--tile-rim),
-    inset 0 0.4vh 0.5vh rgba(255, 255, 255, 0.6),
-    inset 0 -0.5vh 0.6vh rgba(110, 75, 30, 0.28),
-    0 0.5vh 0.9vh var(--tile-shadow),
+    inset 0 0.4svh 0.5svh rgba(255, 255, 255, 0.6),
+    inset 0 -0.5svh 0.6svh rgba(110, 75, 30, 0.28),
+    0 0.5svh 0.9svh var(--tile-shadow),
     0 0 0 1.5px rgba(139, 127, 224, 0.6),
-    0 0 1.6vh rgba(139, 127, 224, 0.45);
+    0 0 1.6svh rgba(139, 127, 224, 0.45);
 }
 
 .tile.movable.bounce {
@@ -253,7 +250,7 @@ html, body {
   position: absolute;
   top: 7%;
   right: 11%;
-  font-size: clamp(9px, 1.5vh, 12px);
+  font-size: clamp(9px, 1.5svh, 12px);
   font-weight: 700;
   color: var(--correct-ink);
   opacity: 0.55;
@@ -282,25 +279,25 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3vh;
+  gap: 0.3svh;
 }
 
 .counter-label {
-  font-size: clamp(9px, 1.3vh, 11px);
+  font-size: clamp(9px, 1.3svh, 11px);
   letter-spacing: 0.18em;
   color: var(--ink-soft);
   text-transform: uppercase;
 }
 
 .counter-value {
-  font-size: clamp(16px, 2.4vh, 20px);
+  font-size: clamp(16px, 2.4svh, 20px);
   font-weight: 600;
   color: var(--ink);
   letter-spacing: 0.05em;
 }
 
 .counter-best {
-  font-size: clamp(9px, 1.2vh, 11px);
+  font-size: clamp(9px, 1.2svh, 11px);
   color: var(--accent-dark);
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -344,7 +341,7 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2.2vh;
+  gap: 2.2svh;
   pointer-events: none;
 }
 
@@ -355,7 +352,7 @@ html, body {
 .overlay-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(18px, 3.4vh, 26px);
+  font-size: clamp(18px, 3.4svh, 26px);
   font-weight: 700;
   letter-spacing: 0.12em;
   color: var(--ink);
@@ -368,8 +365,8 @@ html, body {
   background: linear-gradient(155deg, var(--correct-hi) 0%, var(--correct-mid) 55%, var(--correct-lo) 100%);
   box-shadow:
     inset 0 0 0 1.5px var(--tile-rim),
-    inset 0 0.4vh 0.5vh rgba(255, 255, 255, 0.5),
-    0 0 3vh rgba(139, 127, 224, 0.6);
+    inset 0 0.4svh 0.5svh rgba(255, 255, 255, 0.5),
+    0 0 3svh rgba(139, 127, 224, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -380,13 +377,13 @@ html, body {
 }
 
 @keyframes glow {
-  0%, 100% { box-shadow: inset 0 0 0 1.5px var(--tile-rim), inset 0 0.4vh 0.5vh rgba(255, 255, 255, 0.5), 0 0 1.5vh rgba(139, 127, 224, 0.5); }
-  50% { box-shadow: inset 0 0 0 1.5px var(--tile-rim), inset 0 0.4vh 0.5vh rgba(255, 255, 255, 0.5), 0 0 3.5vh rgba(139, 127, 224, 0.9); }
+  0%, 100% { box-shadow: inset 0 0 0 1.5px var(--tile-rim), inset 0 0.4svh 0.5svh rgba(255, 255, 255, 0.5), 0 0 1.5svh rgba(139, 127, 224, 0.5); }
+  50% { box-shadow: inset 0 0 0 1.5px var(--tile-rim), inset 0 0.4svh 0.5svh rgba(255, 255, 255, 0.5), 0 0 3.5svh rgba(139, 127, 224, 0.9); }
 }
 
 .overlay-sub {
   margin: 0;
-  font-size: clamp(12px, 1.8vh, 14px);
+  font-size: clamp(12px, 1.8svh, 14px);
   color: var(--ink-soft);
   letter-spacing: 0.08em;
 }
@@ -394,16 +391,16 @@ html, body {
 .overlay-actions {
   display: flex;
   gap: 3vw;
-  margin-top: 1vh;
+  margin-top: 1svh;
 }
 
 .again-btn,
 .share-btn {
   font-family: var(--font-display);
   font-weight: 600;
-  padding: 1.2vh 4vw;
+  padding: 1.2svh 4vw;
   border-radius: 999px;
-  font-size: clamp(12px, 1.8vh, 14px);
+  font-size: clamp(12px, 1.8svh, 14px);
   letter-spacing: 0.06em;
   cursor: pointer;
   transition: transform 0.1s ease;
@@ -415,7 +412,7 @@ html, body {
   border: none;
   background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   color: #fff;
-  box-shadow: 0 0.8vh 1.8vh rgba(139, 127, 224, 0.35);
+  box-shadow: 0 0.8svh 1.8svh rgba(139, 127, 224, 0.35);
 }
 
 .share-btn {
@@ -426,7 +423,7 @@ html, body {
 
 .share-note {
   margin: 0;
-  font-size: clamp(11px, 1.5vh, 13px);
+  font-size: clamp(11px, 1.5svh, 13px);
   color: var(--ink-soft);
   letter-spacing: 0.06em;
   opacity: 0;
@@ -480,21 +477,21 @@ html, body {
 [data-theme="dark"] .tray {
   box-shadow:
     inset 0 0 0 1px rgba(255, 210, 150, 0.12),
-    inset 0 0.6vh 1.2vh rgba(255, 210, 150, 0.08),
-    inset 0 -0.5vh 1vh rgba(0, 0, 0, 0.55),
+    inset 0 0.6svh 1.2svh rgba(255, 210, 150, 0.08),
+    inset 0 -0.5svh 1svh rgba(0, 0, 0, 0.55),
     0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, transparent),
-    0 0 3vh color-mix(in srgb, var(--accent) 30%, transparent),
-    0 1.8vh 3.2vh rgba(0, 0, 0, 0.6);
+    0 0 3svh color-mix(in srgb, var(--accent) 30%, transparent),
+    0 1.8svh 3.2svh rgba(0, 0, 0, 0.6);
 }
 
 [data-theme="dark"] .tile.movable {
   box-shadow:
     inset 0 0 0 1.5px var(--tile-rim),
-    inset 0 0.4vh 0.5vh rgba(255, 255, 255, 0.6),
-    inset 0 -0.5vh 0.6vh rgba(110, 75, 30, 0.28),
-    0 0.5vh 0.9vh var(--tile-shadow),
+    inset 0 0.4svh 0.5svh rgba(255, 255, 255, 0.6),
+    inset 0 -0.5svh 0.6svh rgba(110, 75, 30, 0.28),
+    0 0.5svh 0.9svh var(--tile-shadow),
     0 0 0 1.5px color-mix(in srgb, var(--accent) 80%, transparent),
-    0 0 1.8vh color-mix(in srgb, var(--accent) 65%, transparent);
+    0 0 1.8svh color-mix(in srgb, var(--accent) 65%, transparent);
 }
 
 [data-theme="dark"] .icon-btn:active {
@@ -513,17 +510,17 @@ html, body {
 [data-theme="dark"] .overlay-tile {
   box-shadow:
     inset 0 0 0 1.5px var(--tile-rim),
-    inset 0 0.4vh 0.5vh rgba(255, 255, 255, 0.5),
-    0 0 3vh color-mix(in srgb, var(--accent) 70%, transparent);
+    inset 0 0.4svh 0.5svh rgba(255, 255, 255, 0.5),
+    0 0 3svh color-mix(in srgb, var(--accent) 70%, transparent);
 }
 
 [data-theme="dark"] .again-btn {
-  box-shadow: 0 0.8vh 1.8vh color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 0.8svh 1.8svh color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 @keyframes glow-dark {
-  0%, 100% { box-shadow: inset 0 0 0 1.5px var(--tile-rim), inset 0 0.4vh 0.5vh rgba(255, 255, 255, 0.5), 0 0 1.5vh rgba(168, 85, 247, 0.6); }
-  50% { box-shadow: inset 0 0 0 1.5px var(--tile-rim), inset 0 0.4vh 0.5vh rgba(255, 255, 255, 0.5), 0 0 4vh rgba(168, 85, 247, 1); }
+  0%, 100% { box-shadow: inset 0 0 0 1.5px var(--tile-rim), inset 0 0.4svh 0.5svh rgba(255, 255, 255, 0.5), 0 0 1.5svh rgba(168, 85, 247, 0.6); }
+  50% { box-shadow: inset 0 0 0 1.5px var(--tile-rim), inset 0 0.4svh 0.5svh rgba(255, 255, 255, 0.5), 0 0 4svh rgba(168, 85, 247, 1); }
 }
 [data-theme="dark"] .overlay-tile { animation-name: glow-dark; }
 

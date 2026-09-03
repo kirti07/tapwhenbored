@@ -655,9 +655,16 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   });
 
   // ---------- resize ----------
+  // Coalesced to one pass a frame: a resize arrives in bursts, and
+  // measurePlayfield() forces a layout that topUpBubbles() then reads.
+  let resizeFrame = 0;
   window.addEventListener("resize", () => {
-    measurePlayfield();
-    topUpBubbles();
+    if (resizeFrame) return;
+    resizeFrame = requestAnimationFrame(() => {
+      resizeFrame = 0;
+      measurePlayfield();
+      topUpBubbles();
+    });
   });
 
   // ---------- boot ----------

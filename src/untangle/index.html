@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#fdf2ef">
 <!-- theme-bootstrap -->
 <title>Untangle — Free Online Puzzle Game</title>
@@ -43,9 +43,8 @@
   ]
 }
 </script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<link rel="preload" href="/fonts/nunito-latin-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/nunito-latin-800.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -70,7 +69,7 @@
     <p class="tagline tagline-touch">Tap a movable dot, then tap where you want it.</p>
 
     <div class="board-area">
-      <div class="board-wrap" id="boardWrap">
+      <div class="board-wrap">
         <svg class="board" id="board" role="img" aria-label="Untangle puzzle board"></svg>
       </div>
 
@@ -106,7 +105,7 @@
 
   <div class="overlay" id="overlay">
     <div class="overlay-content">
-      <p class="overlay-title" id="overlayTitle">UNTANGLED</p>
+      <p class="overlay-title">UNTANGLED</p>
       <svg class="overlay-icon" viewBox="0 0 56 56" width="56" height="56" aria-hidden="true">
         <line x1="12" y1="14" x2="44" y2="14" />
         <line x1="44" y1="14" x2="28" y2="42" />

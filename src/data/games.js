@@ -25,7 +25,6 @@ export const games = [
     thumbAlt: "Marble Nostalgia — peg solitaire marble board preview",
     ogImage: "/assets/marble-nostalgia-og.jpg",
     cardClass: "card--marble",
-    category: "Puzzle",
     darkThemeColor: "#0d0e1a",
     updated: "2026-08-24",
     changefreq: "monthly",
@@ -50,7 +49,6 @@ export const games = [
     thumbAlt: "Bubble Tap — bubble wrap popping game preview",
     ogImage: "/assets/bubble-tap-og.jpg",
     cardClass: "card--bubble",
-    category: "Casual",
     darkThemeColor: "#0d0e1a",
     updated: "2026-08-24",
     changefreq: "monthly",
@@ -71,7 +69,6 @@ export const games = [
     thumbAlt: "Slide N Order — 15-puzzle sliding tile game preview",
     ogImage: "/assets/slide-n-order-og.jpg",
     cardClass: "card--slide",
-    category: "Puzzle",
     darkThemeColor: "#0d0e1a",
     updated: "2026-08-24",
     changefreq: "monthly",
@@ -90,7 +87,6 @@ export const games = [
     thumbAlt: "Doodle On — 30-second shape-and-idea drawing game preview",
     ogImage: "/assets/doodle-on-og.jpg",
     cardClass: "card--doodle",
-    category: "Casual",
     darkThemeColor: "#0d0e1a",
     updated: "2026-09-03",
     changefreq: "monthly",
@@ -110,7 +106,6 @@ export const games = [
     thumbAlt: "Word Steps — daily word ladder puzzle preview",
     ogImage: "/assets/word-steps-og.jpg",
     cardClass: "card--word",
-    category: "Word",
     darkThemeColor: "#0d0e1a",
     updated: "2026-08-25",
     // The puzzle rotates daily, so this page genuinely changes daily.
@@ -137,7 +132,6 @@ export const games = [
     thumbAlt: "Untangle — dot and line untangling puzzle preview",
     ogImage: "/assets/untangle-og.jpg",
     cardClass: "card--untangle",
-    category: "Puzzle",
     darkThemeColor: "#170f11",
     updated: "2026-08-28",
     changefreq: "monthly",
@@ -160,7 +154,6 @@ export const games = [
     thumbAlt: "Honeycomb — hexagonal hive puzzle preview",
     ogImage: "/assets/honeycomb-og.jpg",
     cardClass: "card--honeycomb",
-    category: "Puzzle",
     darkThemeColor: "#14101f",
     updated: "2026-08-30",
     changefreq: "monthly",
@@ -177,9 +170,17 @@ export const games = [
 
 // The homepage's own sitemap entry. Kept here so the sitemap has a single
 // source, rather than being half-generated and half-hardcoded.
+//
+// `ogImage` is the one field here the sitemap does not use: it exists so the
+// homepage's social image is validated the same way a game's is. It used to
+// borrow bubble-tap's art, which meant sharing the site previewed as a single
+// game, and nothing caught it because the validator only ever walked `games`.
+// Landscape rather than the games' 640² squares, so the homepage is the one
+// page that earns a summary_large_image card.
 export const home = {
   path: "/",
-  updated: "2026-08-24",
+  ogImage: "/assets/tapwhenbored-og.jpg",
+  updated: "2026-09-03",
   changefreq: "monthly",
   priority: "1.0",
 };

@@ -15,7 +15,6 @@
   --accent: #2e93bd;
   --accent-dark: #14588f;
 
-  --font-display: "Nunito", ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif;
 
   --wood-hi: #f5e0ac;
   --wood-mid: #dbb877;
@@ -41,21 +40,21 @@
 html, body {
   margin: 0;
   height: 100%;
-  height: 100dvh; /* iOS Safari sizes vh against the chrome-hidden viewport, so a plain
-                     100% here can be taller than what's actually visible on load and
-                     push the board into overlapping the hint banner above it */
+  height: 100svh; /* the *small* viewport, deliberately — see base.css */
   background: var(--bg);
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  /* kills double-tap-to-zoom; a play surface that needs more sets its own. */
+  touch-action: manipulation;
 }
 
 .stage {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 2.4vh 4vw 3vh;
+  padding: 2.4svh 4vw 3svh;
 }
 
 /* ---- top bar ---- */
@@ -67,7 +66,7 @@ html, body {
 .title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(16px, 2.6vh, 22px);
+  font-size: clamp(16px, 2.6svh, 22px);
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--ink);
@@ -84,9 +83,9 @@ html, body {
 }
 
 .tagline {
-  margin: 1.6vh 0 0;
+  margin: 1.6svh 0 0;
   text-align: center;
-  font-size: clamp(12px, 1.7vh, 14px);
+  font-size: clamp(12px, 1.7svh, 14px);
   color: var(--ink-soft);
   letter-spacing: 0.03em;
   flex-shrink: 0;
@@ -112,7 +111,7 @@ html, body {
   background: rgba(46, 147, 189, 0.12);
   border: 1.5px solid rgba(46, 147, 189, 0.35);
   color: var(--ink);
-  font-size: clamp(11px, 1.6vh, 13px);
+  font-size: clamp(11px, 1.6svh, 13px);
   letter-spacing: 0.02em;
   text-align: center;
   transition: max-height 0.35s ease, opacity 0.3s ease, margin 0.35s ease, padding 0.35s ease;
@@ -120,10 +119,10 @@ html, body {
 }
 
 .hint-banner.show {
-  max-height: 8vh;
+  max-height: 8svh;
   opacity: 1;
-  margin: 1.4vh auto 0;
-  padding: 1vh 4vw;
+  margin: 1.4svh auto 0;
+  padding: 1svh 4vw;
 }
 
 .hint-banner-text {
@@ -149,13 +148,13 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2vh;
+  gap: 2svh;
   min-height: 0;
 }
 
 .board-wrap {
   position: relative;
-  width: min(88vw, 66vh, 620px);
+  width: min(88vw, 66svh, 620px);
   aspect-ratio: 1 / 1;
 }
 
@@ -164,7 +163,7 @@ html, body {
   inset: 0;
   border-radius: 50%;
   background: conic-gradient(from 200deg, var(--wood-edge-lit) 0deg, var(--wood-edge-dark) 180deg, var(--wood-edge-lit) 360deg);
-  box-shadow: 0 1vh 2.2vh rgba(50, 75, 60, 0.16);
+  box-shadow: 0 1svh 2.2svh rgba(50, 75, 60, 0.16);
 }
 
 .board-circle {
@@ -177,8 +176,8 @@ html, body {
     radial-gradient(circle at 34% 26%, var(--wood-hi) 0%, var(--wood-mid) 55%, var(--wood-lo) 100%);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.25),
-    inset 0 0.4vh 1vh rgba(255, 255, 255, 0.3),
-    inset 0 -0.6vh 1.4vh rgba(60, 35, 10, 0.28);
+    inset 0 0.4svh 1svh rgba(255, 255, 255, 0.3),
+    inset 0 -0.6svh 1.4svh rgba(60, 35, 10, 0.28);
 }
 
 .holes-grid,
@@ -210,7 +209,7 @@ html, body {
   height: 74%;
   border-radius: 50%;
   background: radial-gradient(circle at 42% 36%, var(--hole-lo) 0%, var(--hole-lo) 46%, var(--hole-mid) 58%, var(--hole-rim) 66%, transparent 72%);
-  box-shadow: inset 0 0.3vh 0.5vh rgba(35, 25, 15, 0.45);
+  box-shadow: inset 0 0.3svh 0.5svh rgba(35, 25, 15, 0.45);
   transition: box-shadow 0.2s ease;
 }
 
@@ -222,15 +221,15 @@ html, body {
 @keyframes target-pulse {
   0%, 100% {
     box-shadow:
-      inset 0 0.3vh 0.5vh rgba(35, 25, 15, 0.45),
-      0 0 0 0.22vh var(--target-glow),
-      0 0 1.6vh 0.2vh var(--target-glow);
+      inset 0 0.3svh 0.5svh rgba(35, 25, 15, 0.45),
+      0 0 0 0.22svh var(--target-glow),
+      0 0 1.6svh 0.2svh var(--target-glow);
   }
   50% {
     box-shadow:
-      inset 0 0.3vh 0.5vh rgba(35, 25, 15, 0.45),
-      0 0 0 0.32vh var(--target-glow),
-      0 0 2.6vh 0.4vh var(--target-glow);
+      inset 0 0.3svh 0.5svh rgba(35, 25, 15, 0.45),
+      0 0 0 0.32svh var(--target-glow),
+      0 0 2.6svh 0.4svh var(--target-glow);
   }
 }
 
@@ -247,10 +246,10 @@ html, body {
   background: radial-gradient(circle at 40% 34%, rgba(58, 130, 175, 0.92) 0%, rgba(30, 90, 130, 0.9) 55%, rgba(16, 50, 75, 0.85) 100%);
   box-shadow:
     inset 0 0 0 1.5px var(--marble-rim),
-    inset -0.15vh -0.25vh 0.5vh rgba(255, 255, 255, 0.14),
-    inset 0.25vh 0.45vh 0.9vh rgba(10, 22, 32, 0.3),
-    inset 0 -0.5vh 0.5vh rgba(120, 180, 220, 0.25),
-    0 0.35vh 0.5vh var(--marble-shadow);
+    inset -0.15svh -0.25svh 0.5svh rgba(255, 255, 255, 0.14),
+    inset 0.25svh 0.45svh 0.9svh rgba(10, 22, 32, 0.3),
+    inset 0 -0.5svh 0.5svh rgba(120, 180, 220, 0.25),
+    0 0.35svh 0.5svh var(--marble-shadow);
   transition: transform 0.35s cubic-bezier(.4,1.4,.6,1), box-shadow 0.2s ease;
   will-change: transform;
 }
@@ -285,10 +284,10 @@ html, body {
   transform: translateY(-14%) scale(1.08);
   box-shadow:
     inset 0 0 0 1.5px var(--marble-rim),
-    inset -0.15vh -0.25vh 0.5vh rgba(255, 255, 255, 0.22),
-    inset 0.25vh 0.45vh 0.9vh rgba(10, 22, 32, 0.32),
-    inset 0 -0.5vh 0.5vh rgba(120, 180, 220, 0.3),
-    0 1.4vh 1.2vh rgba(20, 35, 50, 0.3);
+    inset -0.15svh -0.25svh 0.5svh rgba(255, 255, 255, 0.22),
+    inset 0.25svh 0.45svh 0.9svh rgba(10, 22, 32, 0.32),
+    inset 0 -0.5svh 0.5svh rgba(120, 180, 220, 0.3),
+    0 1.4svh 1.2svh rgba(20, 35, 50, 0.3);
 }
 
 .marble.captured {
@@ -326,14 +325,14 @@ html, body {
 @keyframes glow {
   0%, 100% { box-shadow:
       inset 0 0 0 1.5px var(--marble-rim),
-      inset -0.15vh -0.25vh 0.5vh rgba(255, 255, 255, 0.14),
-      inset 0.25vh 0.45vh 0.9vh rgba(10, 22, 32, 0.35),
-      0 0 1.5vh rgba(46, 147, 189, 0.5); }
+      inset -0.15svh -0.25svh 0.5svh rgba(255, 255, 255, 0.14),
+      inset 0.25svh 0.45svh 0.9svh rgba(10, 22, 32, 0.35),
+      0 0 1.5svh rgba(46, 147, 189, 0.5); }
   50% { box-shadow:
       inset 0 0 0 1.5px var(--marble-rim),
-      inset -0.15vh -0.25vh 0.5vh rgba(255, 255, 255, 0.22),
-      inset 0.25vh 0.45vh 0.9vh rgba(10, 22, 32, 0.35),
-      0 0 3.5vh rgba(46, 147, 189, 0.9); }
+      inset -0.15svh -0.25svh 0.5svh rgba(255, 255, 255, 0.22),
+      inset 0.25svh 0.45svh 0.9svh rgba(10, 22, 32, 0.35),
+      0 0 3.5svh rgba(46, 147, 189, 0.9); }
 }
 
 /* ---- counter ---- */
@@ -342,18 +341,18 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.4vh;
+  gap: 0.4svh;
 }
 
 .counter-label {
-  font-size: clamp(9px, 1.3vh, 11px);
+  font-size: clamp(9px, 1.3svh, 11px);
   letter-spacing: 0.18em;
   color: var(--ink-soft);
   text-transform: uppercase;
 }
 
 .counter-value {
-  font-size: clamp(16px, 2.4vh, 20px);
+  font-size: clamp(16px, 2.4svh, 20px);
   font-weight: 600;
   color: var(--ink);
   letter-spacing: 0.05em;
@@ -406,7 +405,7 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2.2vh;
+  gap: 2.2svh;
   pointer-events: none;
 }
 
@@ -417,7 +416,7 @@ html, body {
 .overlay-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(18px, 3.4vh, 26px);
+  font-size: clamp(18px, 3.4svh, 26px);
   font-weight: 700;
   letter-spacing: 0.12em;
   color: var(--ink);
@@ -432,10 +431,10 @@ html, body {
   background: radial-gradient(circle at 40% 34%, rgba(58, 130, 175, 0.92) 0%, rgba(30, 90, 130, 0.9) 55%, rgba(16, 50, 75, 0.85) 100%);
   box-shadow:
     inset 0 0 0 1.5px var(--marble-rim),
-    inset -0.15vh -0.25vh 0.5vh rgba(255, 255, 255, 0.14),
-    inset 0.25vh 0.45vh 0.9vh rgba(10, 22, 32, 0.3),
-    inset 0 -0.5vh 0.5vh rgba(120, 180, 220, 0.25),
-    0 0 3vh rgba(46, 147, 189, 0.7);
+    inset -0.15svh -0.25svh 0.5svh rgba(255, 255, 255, 0.14),
+    inset 0.25svh 0.45svh 0.9svh rgba(10, 22, 32, 0.3),
+    inset 0 -0.5svh 0.5svh rgba(120, 180, 220, 0.25),
+    0 0 3svh rgba(46, 147, 189, 0.7);
   animation: glow 1.6s ease-in-out infinite;
 }
 
@@ -465,7 +464,7 @@ html, body {
 
 .overlay-sub {
   margin: 0;
-  font-size: clamp(12px, 1.8vh, 14px);
+  font-size: clamp(12px, 1.8svh, 14px);
   color: var(--ink-soft);
   letter-spacing: 0.08em;
 }
@@ -473,16 +472,16 @@ html, body {
 .overlay-actions {
   display: flex;
   gap: 3vw;
-  margin-top: 1vh;
+  margin-top: 1svh;
 }
 
 .again-btn,
 .share-btn {
   font-family: var(--font-display);
   font-weight: 600;
-  padding: 1.2vh 4vw;
+  padding: 1.2svh 4vw;
   border-radius: 999px;
-  font-size: clamp(12px, 1.8vh, 14px);
+  font-size: clamp(12px, 1.8svh, 14px);
   letter-spacing: 0.06em;
   cursor: pointer;
   transition: transform 0.1s ease;
@@ -494,7 +493,7 @@ html, body {
   border: none;
   background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   color: #fff;
-  box-shadow: 0 0.8vh 1.8vh rgba(46, 147, 189, 0.35);
+  box-shadow: 0 0.8svh 1.8svh rgba(46, 147, 189, 0.35);
 }
 
 .share-btn {
@@ -505,7 +504,7 @@ html, body {
 
 .share-note {
   margin: 0;
-  font-size: clamp(11px, 1.5vh, 13px);
+  font-size: clamp(11px, 1.5svh, 13px);
   color: var(--ink-soft);
   letter-spacing: 0.06em;
   opacity: 0;
@@ -545,15 +544,15 @@ html, body {
 [data-theme="dark"] .board-rim {
   box-shadow:
     0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, transparent),
-    0 0 3vh color-mix(in srgb, var(--accent) 30%, transparent),
-    0 1.8vh 3.2vh rgba(0, 0, 0, 0.6);
+    0 0 3svh color-mix(in srgb, var(--accent) 30%, transparent),
+    0 1.8svh 3.2svh rgba(0, 0, 0, 0.6);
 }
 
 [data-theme="dark"] .board-circle {
   box-shadow:
     inset 0 0 0 1px rgba(255, 200, 140, 0.1),
-    inset 0 0.4vh 1vh rgba(255, 200, 140, 0.08),
-    inset 0 -0.6vh 1.4vh rgba(0, 0, 0, 0.55);
+    inset 0 0.4svh 1svh rgba(255, 200, 140, 0.08),
+    inset 0 -0.6svh 1.4svh rgba(0, 0, 0, 0.55);
 }
 
 [data-theme="dark"] .marble {
@@ -575,19 +574,19 @@ html, body {
 [data-theme="dark"] .overlay-marble {
   box-shadow:
     inset 0 0 0 1.5px var(--marble-rim),
-    inset -0.15vh -0.25vh 0.5vh rgba(255, 255, 255, 0.14),
-    inset 0.25vh 0.45vh 0.9vh rgba(10, 22, 32, 0.3),
-    inset 0 -0.5vh 0.5vh rgba(120, 180, 220, 0.25),
-    0 0 3vh color-mix(in srgb, var(--accent) 75%, transparent);
+    inset -0.15svh -0.25svh 0.5svh rgba(255, 255, 255, 0.14),
+    inset 0.25svh 0.45svh 0.9svh rgba(10, 22, 32, 0.3),
+    inset 0 -0.5svh 0.5svh rgba(120, 180, 220, 0.25),
+    0 0 3svh color-mix(in srgb, var(--accent) 75%, transparent);
 }
 
 [data-theme="dark"] .again-btn {
-  box-shadow: 0 0.8vh 1.8vh color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 0.8svh 1.8svh color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 @keyframes glow-dark {
-  0%, 100% { box-shadow: inset 0 0 0 1.5px var(--marble-rim), inset -0.15vh -0.25vh 0.5vh rgba(255, 255, 255, 0.14), inset 0.25vh 0.45vh 0.9vh rgba(10, 22, 32, 0.35), 0 0 1.5vh rgba(34, 211, 238, 0.6); }
-  50% { box-shadow: inset 0 0 0 1.5px var(--marble-rim), inset -0.15vh -0.25vh 0.5vh rgba(255, 255, 255, 0.22), inset 0.25vh 0.45vh 0.9vh rgba(10, 22, 32, 0.35), 0 0 4vh rgba(34, 211, 238, 1); }
+  0%, 100% { box-shadow: inset 0 0 0 1.5px var(--marble-rim), inset -0.15svh -0.25svh 0.5svh rgba(255, 255, 255, 0.14), inset 0.25svh 0.45svh 0.9svh rgba(10, 22, 32, 0.35), 0 0 1.5svh rgba(34, 211, 238, 0.6); }
+  50% { box-shadow: inset 0 0 0 1.5px var(--marble-rim), inset -0.15svh -0.25svh 0.5svh rgba(255, 255, 255, 0.22), inset 0.25svh 0.45svh 0.9svh rgba(10, 22, 32, 0.35), 0 0 4svh rgba(34, 211, 238, 1); }
 }
 [data-theme="dark"] .marble.win-glow,
 [data-theme="dark"] .overlay-marble { animation-name: glow-dark; }

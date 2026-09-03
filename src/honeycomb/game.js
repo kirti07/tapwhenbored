@@ -1120,7 +1120,22 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   shareBtn.addEventListener("click", shareResult);
   howtoBtn.addEventListener("click", openHowto);
   howtoBackdrop.addEventListener("click", closeHowto);
-  window.addEventListener("resize", function () { renderInstant(); });
+  // Coalesced to one render a frame: a resize arrives in bursts and
+  // renderInstant() rebuilds the whole hive.
+  var resizeFrame = 0;
+  window.addEventListener("resize", function () {
+    if (resizeFrame) return;
+    resizeFrame = requestAnimationFrame(function () {
+      resizeFrame = 0;
+      renderInstant();
+    });
+  });
+
+  // The hive is measured against the space left over after the top bar, and
+  // the top bar's height depends on a webfont that may still be loading. A
+  // font swap does not fire `resize`, so without this the hive keeps whatever
+  // size it was given before the swap.
+  if (document.fonts) document.fonts.ready.then(renderInstant);
 
   updateHud();
   generatePuzzle(false);

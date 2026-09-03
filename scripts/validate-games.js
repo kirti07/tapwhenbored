@@ -38,7 +38,6 @@ const REQUIRED_FIELDS = [
   "thumbAlt",
   "ogImage",
   "cardClass",
-  "category",
   "darkThemeColor",
   "updated",
   "changefreq",
@@ -232,6 +231,52 @@ if (!existsSync(homepage)) {
       'src/index.html: relative "assets/..." reference — public/ files must be ' +
         'absolute ("/assets/...") or the build fails',
     );
+
+  // The same URL and asset checks the games get. Their absence is how the
+  // homepage came to advertise bubble-tap's artwork as the whole site's social
+  // image: every check above this point walked `games` only.
+  const canonical = html.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
+  const expected = `${SITE_URL}${home.path}`;
+  if (!canonical) err("src/index.html: no canonical link");
+  else if (canonical !== expected)
+    err(`src/index.html: canonical "${canonical}" should be "${expected}"`);
+
+  const ogUrl = html.match(/<meta property="og:url" content="([^"]+)"/)?.[1];
+  if (ogUrl && ogUrl !== expected)
+    err(`src/index.html: og:url "${ogUrl}" should be "${expected}"`);
+
+  for (const tag of ["<title>", 'name="description"']) {
+    if (!html.includes(tag)) err(`src/index.html: missing ${tag}`);
+  }
+
+  for (const ref of new Set(
+    [...html.matchAll(/\/assets\/[A-Za-z0-9._-]+/g)].map((m) => m[0]),
+  )) {
+    if (!existsSync(path.join(publicDir, ref.slice(1))))
+      err(`src/index.html: references missing asset ${ref}`);
+  }
+
+  // The homepage's social image is the site's, not a game's. Sharing the root
+  // URL previewing as one game is the bug this pins down.
+  if (!home.ogImage || !home.ogImage.startsWith("/assets/"))
+    err('games.js: home.ogImage must be an absolute "/assets/..." path');
+  else if (home.ogImage.endsWith(".svg"))
+    err("games.js: home.ogImage must be a raster format — social networks render SVG poorly");
+  else if (!existsSync(path.join(publicDir, home.ogImage.slice(1))))
+    err(`games.js: home.ogImage ${home.ogImage} does not exist under public/`);
+  else {
+    for (const tag of ["og:image", "twitter:image"]) {
+      const got = html.match(
+        new RegExp(`<meta (?:property|name)="${tag}" content="([^"]+)"`),
+      )?.[1];
+      const want = `${SITE_URL}${home.ogImage}`;
+      if (got !== want)
+        err(`src/index.html: ${tag} is "${got}" but home.ogImage says "${want}"`);
+    }
+    const gameOg = new Set(games.map((g) => `${SITE_URL}${g.ogImage}`));
+    if (gameOg.has(`${SITE_URL}${home.ogImage}`))
+      err("games.js: home.ogImage borrows a game's artwork — the site needs its own");
+  }
 }
 
 // ---------- registry vs. the database's game_config ----------

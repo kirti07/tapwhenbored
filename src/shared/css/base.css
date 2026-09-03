@@ -3,6 +3,29 @@
 
 * { box-sizing: border-box; }
 
+/* Why every game sizes itself in `svh`, and never in `vh` or `dvh`.
+ *
+ * The three units answer different questions. `lvh` (which is what a bare `vh`
+ * means) is the viewport with the browser chrome hidden. `svh` is the viewport
+ * with it showing. `dvh` is whichever is true right now.
+ *
+ * Sizing html/body in `dvh` while every padding, gap, board dimension and
+ * font-size clamp inside used a bare `vh` was the worst of the three: the
+ * container tracked the visible height, the contents were laid out against a
+ * height up to 20% larger, and the difference became real overflow on a
+ * document that base.css keeps scrollable (see below). That is how a game
+ * opened from another app arrived with its top bar above the top of the screen.
+ *
+ * `svh` fixes it from both ends. It is the smallest the viewport ever gets, so
+ * the layout can never exceed what is on screen; and unlike `dvh` it does not
+ * change when the URL bar collapses, so a game never re-lays-out mid-gesture —
+ * which is a whole class of scroll jank that simply stops existing. The cost is
+ * a strip of background below the game when the chrome hides. For a page that
+ * is not meant to scroll, that is the right trade.
+ *
+ * A game that needs the true current height for something other than layout
+ * should ask JS, not CSS. */
+
 /* Every game sizes its stage to the viewport and is not meant to scroll. That
    used to be spelled `overflow: hidden` on html/body in all seven, which is a
    trap: `hidden` still makes the document a scroll container, so it stops the

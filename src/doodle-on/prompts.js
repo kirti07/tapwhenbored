@@ -23,7 +23,7 @@ var TAU = Math.PI * 2;
  * given to you", but every gap in a dash is an alpha-0 pixel and the paint
  * bucket floods straight through it: the shape has to be a real fill
  * boundary. Pale and solid is the only treatment that is both. */
-export var SHAPES = {
+var SHAPES = {
   circle: {
     label: "circle",
     draw: function (c) {
@@ -90,7 +90,7 @@ export var SHAPES = {
   },
 };
 
-export var DIRECTIONS = [
+var DIRECTIONS = [
   "something that lives in water",
   "something that flies",
   "something hungry",
