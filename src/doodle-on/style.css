@@ -50,8 +50,6 @@ html, body {
 
 /* ---- top bar ---- */
 
-
-
 .back-link:hover { color: var(--ink); }
 
 .title {
@@ -70,8 +68,7 @@ html, body {
   color: transparent;
 }
 
-
-
+.top-actions { align-items: center; }
 
 .icon-btn:active {
   background: rgba(124, 92, 255, 0.12);
@@ -80,12 +77,71 @@ html, body {
   transform: scale(0.94);
 }
 
-.tagline-accent {
-  color: var(--purple);
+/* ---- countdown ----
+   The numeral lives up here where it is glanceable but out of the way; the
+   draining hairline on the canvas is what the player actually reads mid-doodle. */
+
+.timer {
+  margin: 0;
+  min-width: 52px;
+  padding: 0.7vh 2.4vw;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-size: clamp(13px, 1.9vh, 15px);
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  text-align: center;
+  color: var(--ink);
 }
 
-/* ---- canvas ---- */
+.timer.urgent {
+  border-color: var(--pink);
+  color: var(--pink);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+/* ---- the prompt is the identity: shape + a direction that doesn't fit it ---- */
+
+.prompt {
+  flex-shrink: 0;
+  margin: 1vh 0 0;
+  text-align: center;
+  font-size: clamp(13px, 2vh, 16px);
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--ink-soft);
+}
+
+.prompt-shape { color: var(--ink); }
+
+.prompt-dir { color: var(--purple-dark); }
+
+/* The prompt is the whole game, so it must not be skimmed past. A periodic
+   double-nudge rather than continuous motion: mostly still, with a beat every
+   couple of seconds. It only runs while the round is waiting to start, and
+   only ever moves upward, so it can never add scrollable overflow. */
+.prompt.nudge {
+  animation: prompt-nudge 1.5s ease-in-out infinite;
+}
+
+@keyframes prompt-nudge {
+  0%, 45%, 75%, 100% { transform: translateY(0); }
+  22% { transform: translateY(-7px); }
+  62% { transform: translateY(-3px); }
+}
+
+/* ---- canvas ----
+   The paper and its dot grid are CSS on .canvas-wrap; both canvas layers stay
+   transparent so they show through. #paintCanvas holds bucket fills and sits
+   under #canvas, which holds the starting shape and every player stroke. That
+   order is what makes the bucket cheap: fills slide under the antialiased edge
+   of a line and are hidden by it, so there is no halo to feather and the fill
+   boundary is a plain alpha test on the layer above. It also means a fill that
+   leaks out of an unclosed shape washes the background *behind* the line work
+   instead of over it. Bucket fills are opaque, so they cover the dot grid
+   inside a filled region — which is what paint does on dotted paper. */
 
 .canvas-area {
   flex: 1;
@@ -93,12 +149,15 @@ html, body {
   align-items: center;
   justify-content: center;
   min-height: 0;
-  padding: 2vh 0;
+  padding: 1.6vh 0;
 }
 
 .canvas-wrap {
   position: relative;
   width: 100%;
+  /* A drawing surface that stretches to a 1280px letterbox is worse to draw
+     on, not better — hold it to a paper-like proportion on wide screens. */
+  max-width: 660px;
   height: 100%;
   border-radius: 22px;
   background-color: var(--paper);
@@ -110,38 +169,56 @@ html, body {
   overflow: hidden;
 }
 
-canvas#canvas {
+.layers {
+  position: absolute;
+  inset: 0;
+}
+
+.canvas-wrap canvas {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
   touch-action: none;
 }
 
+/* All input lands on the stroke layer, including setPointerCapture — two
+   hit-testable canvases would make pointer routing ambiguous. */
+#paintCanvas { pointer-events: none; }
+
+#canvas.paint-mode { cursor: crosshair; }
+
+.timer-bar {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--purple), var(--pink));
+  transform-origin: left center;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* One class toggle drives the whole 30 seconds — no JS animation frames. */
+.timer-bar.run { animation: timer-drain 30s linear forwards; }
+
+.timer-bar.urgent { background: var(--pink); }
+
+@keyframes timer-drain {
+  to { transform: scaleX(0); }
+}
+
+/* Sits at the foot of the canvas, not over it: the starting shape is centred
+   and has to stay readable underneath. */
 .idle-prompt {
   position: absolute;
   inset: 0;
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  gap: 1.2vh;
-  text-align: center;
-  padding: 0 6vw;
+  padding: 0 6vw 5%;
   pointer-events: none;
   transition: opacity 0.25s ease;
-}
-
-.idle-prompt svg {
-  color: var(--purple);
-  opacity: 0.85;
-}
-
-.idle-heading {
-  margin: 0;
-  font-size: clamp(15px, 2.2vh, 19px);
-  font-weight: 800;
-  line-height: 1.45;
-  color: var(--ink);
 }
 
 .idle-hint {
@@ -166,8 +243,148 @@ canvas#canvas {
   50% { opacity: 1; }
 }
 
-/* ---- how to play ---- */
+/* The finished doodle is presented as an object: one swirl-and-settle, then a
+   slow drift for as long as the result card is up, so the picture you are
+   about to share has a little life in it.
 
+   Only the drawing moves. The animation is on .layers, so the paper, its dot
+   grid and the timer hairline all stay put underneath, and .canvas-wrap's
+   overflow:hidden keeps the moving drawing inside the paper — which also
+   means none of this can push the page around. */
+@keyframes doodle-present {
+  0% { transform: scale(0.94) rotate(-2.5deg); }
+  40% { transform: scale(1.035) rotate(2deg); }
+  70% { transform: scale(0.99) rotate(-0.8deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+@keyframes doodle-drift {
+  0%, 100% { transform: translateY(0) rotate(-0.8deg); }
+  50% { transform: translateY(-9px) rotate(0.8deg); }
+}
+
+.layers.finished {
+  animation: doodle-present 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.layers.presented {
+  animation: doodle-drift 3.6s ease-in-out infinite;
+}
+
+/* ---- toolbar ----
+   Two short rows rather than one long one: on a 360px-wide phone six swatches
+   plus four tools plus Done do not fit on a single line at comfortable touch
+   sizes, and wrapping unpredictably is worse than laying it out on purpose. */
+
+.toolbar {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.1vh;
+  transition: opacity 0.3s ease;
+}
+
+/* The round is over: the tools are inert, so they must not still look live
+   behind the result card. */
+.toolbar.locked {
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+.swatches {
+  display: flex;
+  align-items: center;
+  gap: 1.6vw;
+}
+
+.swatch {
+  width: 34px;
+  height: 34px;
+  padding: 4px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.swatch i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--chip, var(--ink));
+  box-shadow: 0 0 0 1.5px var(--line);
+  transition: box-shadow 0.15s ease;
+}
+
+.swatch-rainbow i { background: var(--rainbow); }
+
+.swatch.is-active { transform: scale(1.1); }
+.swatch.is-active i { box-shadow: 0 0 0 2.5px var(--purple); }
+.swatch:active { transform: scale(0.94); }
+
+.tool-row {
+  display: flex;
+  align-items: center;
+  gap: 1.8vw;
+}
+
+.tool {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1.5px solid var(--line);
+  background: transparent;
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.tool:active { transform: scale(0.94); }
+
+.tool.is-active {
+  border-color: var(--purple);
+  background: rgba(124, 92, 255, 0.1);
+  color: var(--purple-dark);
+}
+
+.tool:disabled {
+  opacity: 0.35;
+  cursor: default;
+  transform: none;
+}
+
+.tool-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--line);
+}
+
+.done-btn {
+  margin-left: 1vw;
+  min-width: 78px;
+  padding: 1vh 4vw;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--purple), var(--purple-dark));
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: clamp(12px, 1.8vh, 14px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 0.6vh 1.4vh rgba(124, 92, 255, 0.35);
+  transition: transform 0.1s ease;
+}
+
+.done-btn:active { transform: scale(0.96); }
+
+/* ---- how to play ---- */
 
 .seo-info summary {
   cursor: pointer;
@@ -184,14 +401,7 @@ canvas#canvas {
   text-align: left;
 }
 
-
-
-
-
-
-
-
-/* ---- game over overlay ----
+/* ---- result overlay ----
    Translucent, not opaque: the whole point of the finished doodle is that it
    stays visible as the player's result, so the overlay only needs to sit on
    top of it, not hide it. */
@@ -312,14 +522,21 @@ canvas#canvas {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .idle-hint { animation: none; }
+  .idle-hint,
+  .prompt.nudge,
+  .timer.urgent { animation: none; }
+  /* The draining hairline stays: it is the only continuous readout of how much
+     time is left, so it is information rather than decoration. */
+  .layers.finished,
+  .layers.presented { animation: none; }
 }
 
 /* ==== Neon Arcade (dark theme) ====
    The drawing surface goes dark too — a rainbow line glowing on black reads
    as "neon light drawing," which fits the theme far better than a cream
-   paper would. The <canvas> itself only ever draws the stroke (clearRect,
-   never filled), so this is a pure CSS change with no drawing-code risk. */
+   paper would. Both canvas layers are transparent, so this stays a pure CSS
+   change: the only JS that knows a theme colour is the starting shape's ink,
+   the ink swatch, and the share image's background. */
 
 :root[data-theme="dark"] {
   --bg: #0d0e1a;
@@ -346,6 +563,14 @@ canvas#canvas {
   background: color-mix(in srgb, var(--purple) 14%, transparent);
 }
 
+[data-theme="dark"] .tool.is-active {
+  background: color-mix(in srgb, var(--purple) 16%, transparent);
+}
+
+[data-theme="dark"] .done-btn {
+  box-shadow: 0 0.6vh 1.4vh color-mix(in srgb, var(--purple) 45%, transparent);
+}
+
 [data-theme="dark"] .overlay {
   background: linear-gradient(to top, rgba(13, 14, 26, 0.94) 0%, rgba(13, 14, 26, 0.6) 40%, rgba(13, 14, 26, 0) 75%);
 }
@@ -358,11 +583,20 @@ canvas#canvas {
    The canvas box is just "whatever's left" after the surrounding rows —
    on a short/rotated viewport those fixed rows eat a disproportionate
    share of it, so trim the least essential ones to give the canvas back
-   its room. Purely cosmetic: nothing here is removed from the DOM, so it
+   its room. The prompt and the toolbar are gameplay and stay; they only get
+   tighter. Purely cosmetic: nothing here is removed from the DOM, so it
    stays in the page source for crawlers, it's just not rendered here. */
 @media (max-height: 480px) {
   .stage { padding-top: 1.4vh; padding-bottom: 1.2vh; }
   .subtitle, .seo-info { display: none; }
   .back-link { margin-bottom: 0.3vh; }
   .howto-link { padding-top: 0.4vh; }
+  .prompt { margin-top: 0.5vh; font-size: 12px; }
+  .canvas-area { padding: 1vh 0; }
+  .toolbar { gap: 0.6vh; }
+  .swatch { width: 28px; height: 28px; padding: 3px; }
+  .tool { width: 32px; height: 32px; border-radius: 10px; }
+  .tool svg { width: 16px; height: 16px; }
+  .done-btn { min-width: 66px; padding: 0.8vh 3vw; }
+  .timer { padding: 0.5vh 2vw; min-width: 46px; }
 }
