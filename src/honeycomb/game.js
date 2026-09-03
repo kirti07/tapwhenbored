@@ -1,4 +1,4 @@
-import { submitScore } from "../shared/ui/leaderboard.js";
+import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 
 (function () {
   "use strict";
@@ -986,21 +986,19 @@ import { submitScore } from "../shared/ui/leaderboard.js";
     updateHud();
     showOverlay(reason);
 
-    if (!wonLastRun) {
-      globalScoreEl.hidden = true;
-      globalScoreEl.classList.remove("new-global");
-      return;
-    }
-    submitScore("honeycomb", finalElapsedMs).then(function (globalBestMs) {
-      if (globalBestMs === null) {
-        globalScoreEl.hidden = false;
-        globalScoreEl.textContent = "GLOBAL BEST UNAVAILABLE";
-        return;
-      }
-      var isNew = finalElapsedMs <= globalBestMs;
-      globalScoreEl.hidden = false;
-      globalScoreEl.textContent = isNew ? "★ NEW GLOBAL BEST TIME ★" : "Global best " + formatTime(globalBestMs);
-      globalScoreEl.classList.toggle("new-global", isNew);
+    // Only a win has a completion time worth racing. A run that ran out of
+    // moves has no valid time to submit, and showOverlay has already hidden
+    // the line, so there is nothing left to do here.
+    if (!wonLastRun) return;
+
+    renderGlobalBest(globalScoreEl, {
+      slug: "honeycomb",
+      score: finalElapsedMs,
+      isRecord: function (score, best) { return score <= best; },
+      label: function (best) { return "Global best " + formatTime(best); },
+      recordLabel: "★ New global best time ★",
+      pending: "Global best …",
+      unavailable: "Global best unavailable",
     });
   }
 

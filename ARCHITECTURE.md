@@ -271,13 +271,13 @@ tap-when-bored/
 │   │   ├── css/
 │   │   │   ├── tokens.css
 │   │   │   ├── base.css
-│   │   │   └── shell.css
+│   │   │   ├── shell.css
+│   │   │   ├── howto.css
+│   │   │   └── leaderboard.css
 │   │   └── ui/
-│   │       ├── theme.js
-│   │       ├── share.js
-│   │       ├── sound.js
-│   │       ├── storage.js
 │   │       └── leaderboard.js
+│   │                         this is the whole of shared/ui/ — §9 lists what
+│   │                         else is allowed to live here, not what does
 │   │
 │   ├── honeycomb/            →  /honeycomb/
 │   │   ├── index.html        mandatory — this file makes it a page
@@ -418,7 +418,11 @@ export const games = [
     pwa: true,
     hasRestart: false,              // restarts via the overlay, not a topbar button
     hasOverlay: true,
-    leaderboard: true               // false ⇒ never contacts Supabase
+    leaderboard: {                  // or false ⇒ never contacts Supabase
+      lowerIsBetter: true,          //   checked against game_config (§27)
+      daily: false,
+      unit: "time"                 //   what the number measures
+    }
   }
 ];
 ```
@@ -975,7 +979,8 @@ Use timeouts and graceful error handling where network requests are required.
 
 The leaderboard is deliberately minimal: **one global best score per game.**
 
-No accounts, no per-player scores, no daily boards, no rankings, no history.
+No accounts, no per-player scores, no rankings, no history. One game keeps a
+daily board (§ Data model), and that is the only scoping that exists.
 
 ## Responsibilities
 
@@ -983,72 +988,112 @@ Each game:
 
 * Calculates its own score.
 * Determines when a valid run has finished.
-* Decides whether higher or lower represents a better result.
+* Decides whether higher or lower represents a better result, and words the
+  result for its own end card.
 * Submits the score when appropriate.
 
 The shared leaderboard service (`src/shared/ui/leaderboard.js`):
 
 * Submits a candidate score for a game.
 * Returns the current global best.
+* Renders the global-best line's five states on a game's end card.
 * Talks to Supabase.
 * Absorbs its own failures without involving the game.
 
 Games must not contain Supabase-specific or database-specific code.
 
-## Score direction belongs to the game, not the service
+## Score direction belongs to the game and the database, not the client service
 
-The service never compares scores. Each game's SQL function only ever moves the
-record in the improving direction, and how a result is phrased is a presentation
-decision the game already owns.
+The client service never compares scores. `submit_game_score()` reads the
+game's direction from `game_config` and only ever moves the record the
+improving way, so a page cannot claim "lower is better" for a game where it is
+not, nor write into a day it is not playing.
 
 So the service takes no `direction` flag. Adding one would be the first step
 toward the generalized scoring framework this section rules out.
 
-Most games should use the simplest model:
+How a result is *phrased* is still the game's own call, which is why
+`renderGlobalBest()` takes an `isRecord` predicate and the game's strings
+rather than a direction:
 
 ```text
-Higher score = better
+Direction that moves the record   →  game_config, server-side
+Direction that picks the wording  →  the game's isRecord()
 ```
 
-A game whose natural metric is completion time is free to treat lower as better
-at its own call site.
+`src/data/games.js` also records `lowerIsBetter` and `daily` per game, so a
+reader can see how a game is scored without opening the SQL. That copy decides
+nothing — `npm run validate` parses the `game_config` seed in
+`README-supabase.sql` and fails if the two disagree.
 
+A game whose natural metric is completion time is free to treat lower as better.
 Do not build a generalized scoring framework until multiple games actually
 require it.
 
+## One line, one renderer
+
+Every game's end card carries a `#globalBest` element, and
+`renderGlobalBest(el, {...})` is the only thing that writes to it. The line has
+five states: hidden when no leaderboard is configured, a pending placeholder
+while the request is out, "unavailable" when it fails, the record's value, or a
+"new record" shout with the `new-global` class.
+
+Those mechanics were once hand-written per game, and the copies drifted — one
+game skipped the availability guard and announced "unavailable" on a normal end
+card, another never showed a pending line, a third hid the line with a class
+instead of the `hidden` attribute. Hence one renderer.
+
+Visibility is the `hidden` attribute in every game. `scripts/validate-games.js`
+fails the build if a leaderboard game has no `#globalBest`, or a game without a
+leaderboard has one.
+
+Styling is shared too, in `src/shared/css/leaderboard.css` (`.overlay-global`,
+plus `.new-global` for the record state), which needs the game to define
+`--accent-dark` and optionally `--record`. bubble-tap keeps its own rules for
+this line, for the same reason it opts out of `tokens.css` and `shell.css`
+(§16) — its end card is all-caps and monospaced and speaks `--ink`. It still
+uses the shared *renderer*.
+
 ## Data model
 
-Each leaderboard-enabled game currently has its own single-row table and its own
-`security definer` RPC, which is what exists in the database today:
+One table holds the global best for every game, and a second says how each game
+is scored. This is what `README-supabase.sql` creates:
 
 ```text
-global_score                    honeycomb_global_best
-──────────────────────          ──────────────────────
-id            PRIMARY KEY       id            PRIMARY KEY
-score                           best_ms       (nullable)
-updated_at                      updated_at
+game_config                        game_scores
+──────────────────────────────     ─────────────────────────────────
+game_slug        PRIMARY KEY       game_slug  ─┐
+lower_is_better                    period     ─┴ PRIMARY KEY
+is_daily                           best_score
+label                              updated_at
 
-submit_score(new_score)         submit_honeycomb_time(new_time_ms)
-  raises the record only          lowers the record only
+        submit_game_score(p_slug, p_score, p_day default null) returns int
+          reads the game's row in game_config
+          moves the record only in the improving direction
+          returns the current best either way
 ```
 
-Row-level security is on, `insert`/`update`/`delete` are revoked from `anon`, and
-the RPC is the only write path.
+`period` is `'all'`, or a `'YYYY-MM-DD'` day for a game whose
+`is_daily` is true. It is always derived server-side.
 
-The intended future model is one row per game:
+Only word-steps is daily, because everyone gets the same puzzle that day, so
+the race is like-for-like. An all-time "fewest steps" would just record the
+easiest puzzle ever published and then never move. The client sends the local
+date that chose the puzzle — the server's day is UTC and would otherwise file a
+late-night score against a different puzzle — and the function clamps it to a
+day either side of its own date, so it corrects the timezone without letting a
+caller write anywhere it likes.
 
-```text
-game_scores
-────────────────────────
-game_slug       PRIMARY KEY
-best_score
-updated_at
-```
+A game with no `game_config` row raises rather than silently creating one, so a
+mis-wired slug is a loud error in dev and a missing line in production.
 
-Migrating to it would discard the existing records, so it is deferred until
-there is a reason to pay that cost. Until then the slug-to-RPC mapping lives in
-the shared service, so **no game knows an RPC name either way** and the
-migration changes no game code.
+Row-level security is on, `insert`/`update`/`delete` are revoked from `anon`,
+and the `security definer` RPC is the only write path.
+
+This replaced a per-game shape (`global_score`, `honeycomb_global_best`, and an
+RPC each). No game ever knew an RPC name, so that migration changed no game
+code — and there is still exactly one `RPC` constant in the service.
+
 
 ## Supabase is a service, not a backend
 

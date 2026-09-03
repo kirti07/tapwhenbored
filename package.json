@@ -7,8 +7,10 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:lan": "vite --host",
     "build": "npm run validate && vite build",
     "preview": "npm run build && vite preview",
+    "preview:lan": "npm run build && vite preview --host",
     "validate": "node scripts/validate-games.js",
     "test": "playwright test",
     "test:dev": "PW_BASE_URL=http://localhost:5173 playwright test",

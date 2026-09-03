@@ -1,4 +1,4 @@
-import { isLeaderboardAvailable, submitScore } from "../shared/ui/leaderboard.js";
+import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 
 (() => {
   "use strict";
@@ -521,21 +521,16 @@ import { isLeaderboardAvailable, submitScore } from "../shared/ui/leaderboard.js
     bestScoreEl.textContent = "BEST " + pad(best, 5);
     gameOverOverlay.classList.remove("hidden");
 
-    if (!isLeaderboardAvailable()) {
-      globalScoreEl.classList.add("hidden");
-      return;
-    }
-    globalScoreEl.classList.remove("hidden");
-    globalScoreEl.classList.remove("new-global");
-    globalScoreEl.textContent = "GLOBAL BEST …";
-    submitScore("bubble-tap", state.score).then((globalBest) => {
-      if (globalBest === null) {
-        globalScoreEl.textContent = "GLOBAL BEST UNAVAILABLE";
-        return;
-      }
-      const isNewGlobal = state.score > 0 && state.score >= globalBest;
-      globalScoreEl.textContent = isNewGlobal ? "★ NEW GLOBAL HIGH SCORE ★" : "GLOBAL BEST " + pad(globalBest, 5);
-      globalScoreEl.classList.toggle("new-global", isNewGlobal);
+    renderGlobalBest(globalScoreEl, {
+      slug: "bubble-tap",
+      score: state.score,
+      // Highest wins here. A zero-tap run is not a record even against an
+      // empty board.
+      isRecord: (score, best) => score > 0 && score >= best,
+      label: (best) => "GLOBAL BEST " + pad(best, 5),
+      recordLabel: "★ NEW GLOBAL HIGH SCORE ★",
+      pending: "GLOBAL BEST …",
+      unavailable: "GLOBAL BEST UNAVAILABLE",
     });
   }
 

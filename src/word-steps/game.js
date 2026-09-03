@@ -1,5 +1,5 @@
 import * as DATA from "./data.js";
-import { isLeaderboardAvailable, localDay, submitScore } from "../shared/ui/leaderboard.js";
+import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
 
 (function () {
   "use strict";
@@ -373,23 +373,15 @@ import { isLeaderboardAvailable, localDay, submitScore } from "../shared/ui/lead
   // date because that is what chose the puzzle; the server picks its own day in
   // UTC and would otherwise file a late-night score against a different puzzle.
   function showGlobalBest(steps) {
-    if (!isLeaderboardAvailable()) {
-      globalBest.hidden = true;
-      return;
-    }
-    globalBest.hidden = false;
-    globalBest.classList.remove("new-global");
-    globalBest.textContent = "Global best \u2026";
-    submitScore("word-steps", steps, localDay()).then(function (best) {
-      if (best === null) {
-        globalBest.textContent = "Global best unavailable";
-        return;
-      }
-      var isRecord = steps <= best;
-      globalBest.textContent = isRecord
-        ? "\u2605 Best today, worldwide \u2605"
-        : "Best today, worldwide: " + stepLabel(best);
-      globalBest.classList.toggle("new-global", isRecord);
+    renderGlobalBest(globalBest, {
+      slug: "word-steps",
+      score: steps,
+      day: localDay(),
+      isRecord: function (score, best) { return score <= best; },
+      label: function (best) { return "Best today, worldwide: " + stepLabel(best); },
+      recordLabel: "\u2605 Best today, worldwide \u2605",
+      pending: "Global best \u2026",
+      unavailable: "Global best unavailable",
     });
   }
 

@@ -97,3 +97,51 @@ export function localDay(date = new Date()) {
   const pad = (n) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
+
+/**
+ * Renders a game's global-best line on its end card.
+ *
+ * Every game ran its own copy of this five-state machine — hidden, pending,
+ * unavailable, record, plain value — and the copies drifted: one game forgot
+ * the availability guard and announced "unavailable" on a normal end card,
+ * another never showed a pending line at all. The mechanics are identical
+ * everywhere, so they live here now.
+ *
+ * What stays with the game is the wording and the direction, because
+ * ARCHITECTURE.md §27 puts presentation and "which way is better" on the game
+ * side. So this takes `isRecord` and the strings rather than a `lowerIsBetter`
+ * flag: still no scoring framework here to grow.
+ *
+ * `el` is the game's `#globalBest` element. Visibility is the `hidden`
+ * attribute in every game, so callers must not also toggle a class for it.
+ *
+ * Returns the submitScore promise, for tests and for callers that want to
+ * sequence something after the line resolves. It never rejects.
+ */
+export function renderGlobalBest(
+  el,
+  { slug, score, day, isRecord, label, recordLabel, pending, unavailable },
+) {
+  // Nothing to put on the line, so do not show one at all. A build with no
+  // credentials must read as a missing line, never as an error (§27).
+  if (!isLeaderboardAvailable()) {
+    el.hidden = true;
+    el.classList.remove("new-global");
+    return Promise.resolve(null);
+  }
+
+  el.hidden = false;
+  el.classList.remove("new-global");
+  el.textContent = pending;
+
+  return submitScore(slug, score, day).then((best) => {
+    if (best === null) {
+      el.textContent = unavailable;
+      return null;
+    }
+    const record = isRecord(score, best);
+    el.textContent = record ? recordLabel : label(best);
+    el.classList.toggle("new-global", record);
+    return best;
+  });
+}

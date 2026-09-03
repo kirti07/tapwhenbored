@@ -62,10 +62,10 @@ for (const g of games) {
     if (typeof g[f] !== "boolean") err(`${where}: "${f}" must be a boolean`);
   }
 
-  // leaderboard is either false, or a descriptor the end card uses to label the
-  // number. The direction also lives in Supabase (game_config), which is what
-  // the SQL function actually enforces — this copy is only for presentation, so
-  // the two must agree.
+  // leaderboard is either false, or a descriptor recording how the game is
+  // scored. The values the database actually enforces live in game_config; the
+  // cross-check further down is what stops this copy from drifting away from
+  // them.
   const lb = g.leaderboard;
   if (lb !== false) {
     if (typeof lb !== "object" || lb === null) {
@@ -232,6 +232,89 @@ if (!existsSync(homepage)) {
       'src/index.html: relative "assets/..." reference — public/ files must be ' +
         'absolute ("/assets/...") or the build fails',
     );
+}
+
+// ---------- registry vs. the database's game_config ----------
+//
+// Direction and daily-ness are enforced by submit_game_score() from
+// game_config, not by the client (ARCHITECTURE.md §27). The registry keeps its
+// own copy so a reader can see how a game is scored without opening the SQL —
+// which is only worth having if the two cannot disagree. So parse the seed
+// INSERT and compare.
+//
+// This reads the checked-in SQL, not the live database. It catches the mistake
+// that is actually likely — editing one file and forgetting the other — and
+// cannot tell you whether the migration has been applied.
+{
+  const sqlPath = path.join(rootDir, "README-supabase.sql");
+  const sql = readFileSync(sqlPath, "utf8");
+  const block = sql.match(
+    /insert into game_config[^;]*?values([\s\S]*?)on conflict/i,
+  );
+
+  if (!block) {
+    err(
+      "README-supabase.sql: no `insert into game_config ... values ... on " +
+        "conflict` block, so the registry cannot be checked against it",
+    );
+  } else {
+    const config = new Map();
+    const row =
+      /\(\s*'([^']+)'\s*,\s*(true|false)\s*,\s*(true|false)\s*,\s*'([^']*)'\s*\)/gi;
+    let m;
+    while ((m = row.exec(block[1])) !== null) {
+      config.set(m[1], {
+        lowerIsBetter: m[2].toLowerCase() === "true",
+        daily: m[3].toLowerCase() === "true",
+        label: m[4],
+      });
+    }
+
+    if (!config.size)
+      err("README-supabase.sql: the game_config INSERT has no readable rows");
+
+    for (const g of games) {
+      const where = `src/data/games.js (${g.slug})`;
+      const cfg = config.get(g.slug);
+
+      if (g.leaderboard && !cfg) {
+        err(
+          `${where}: leaderboard is enabled but ${g.slug} has no game_config ` +
+            "row in README-supabase.sql, so submit_game_score() would raise",
+        );
+        continue;
+      }
+      if (!g.leaderboard && cfg) {
+        err(
+          `${where}: leaderboard is false but README-supabase.sql seeds a ` +
+            `game_config row for ${g.slug}`,
+        );
+        continue;
+      }
+      if (!g.leaderboard || typeof g.leaderboard !== "object") continue;
+
+      if (g.leaderboard.lowerIsBetter !== cfg.lowerIsBetter)
+        err(
+          `${where}: leaderboard.lowerIsBetter is ${g.leaderboard.lowerIsBetter} ` +
+            `but game_config.lower_is_better is ${cfg.lowerIsBetter}`,
+        );
+      if (g.leaderboard.daily !== cfg.daily)
+        err(
+          `${where}: leaderboard.daily is ${g.leaderboard.daily} but ` +
+            `game_config.is_daily is ${cfg.daily}`,
+        );
+    }
+
+    // A row for a game that is not in the registry at all.
+    const slugs = new Set(games.map((g) => g.slug));
+    for (const slug of config.keys()) {
+      if (!slugs.has(slug))
+        err(
+          `README-supabase.sql: game_config seeds "${slug}", which is not a ` +
+            "game in src/data/games.js",
+        );
+    }
+  }
 }
 
 // ---------- report ----------
