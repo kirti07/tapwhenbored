@@ -132,6 +132,58 @@ for (const g of games) {
       expect(overflow, `${g.slug} overflows horizontally`).toBe(false);
     });
 
+    // A game's stage is sized to the viewport, so an honest browser has
+    // nothing to scroll. Checked across heights because the stage is built
+    // from vh units and a rounding error would show up as a stray scrollbar.
+    test("the stage fits the viewport, at every height", async ({ page }) => {
+      for (const [w, h] of [
+        [390, 844],
+        [390, 660],
+        [360, 480],
+        [768, 1024],
+        [1280, 800],
+      ]) {
+        await page.setViewportSize({ width: w, height: h });
+        await page.goto(g.path);
+        const over = await page.evaluate(
+          () => document.documentElement.scrollHeight - window.innerHeight,
+        );
+        expect(over, `${g.slug} scrolls vertically at ${w}x${h}`).toBeLessThanOrEqual(1);
+      }
+    });
+
+    // The regression this guards: `overflow: hidden` on html/body still makes
+    // the document a scroll container, so a browser that reports a taller
+    // viewport than it shows (an in-app browser handing off from another app,
+    // a URL bar mid-collapse) could strand the page at a scroll offset with no
+    // gesture able to undo it — the top bar and the first row of the game
+    // permanently above the top of the screen. See shared/css/base.css.
+    test("a stray scroll offset can always be scrolled back", async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 660 });
+      await page.goto(g.path);
+      // Stand in for that browser: make the page taller than the viewport.
+      await page.addStyleTag({
+        content: "html,body{height:750px !important;}",
+      });
+      // Strand the page the way that browser does.
+      await page.evaluate(() => window.scrollTo(0, 9999));
+      const stranded = await page.evaluate(() => Math.round(window.scrollY));
+      expect(stranded, `${g.slug} did not overflow, so this proves nothing`).toBeGreaterThan(0);
+
+      // Recover with a real gesture, over the top strip rather than inside the
+      // game's own scrollable areas. It has to be a gesture: scrollTo() works
+      // even on an `overflow: hidden` scroll container, so it cannot tell the
+      // broken arrangement from the fixed one.
+      await page.mouse.move(195, 8);
+      await page.mouse.wheel(0, -600);
+      await expect
+        .poll(() => page.evaluate(() => Math.round(window.scrollY)), {
+          message: `${g.slug} cannot be scrolled back to the top`,
+          timeout: 2000,
+        })
+        .toBe(0);
+    });
+
     test("how to play opens, lists steps, and closes", async ({ page }) => {
       // Every game explains itself the same way. Two games shipped without any
       // instructions at all, so this is asserted for all of them rather than

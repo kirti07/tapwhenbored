@@ -35,7 +35,6 @@ html, body {
   height: 100%;
   height: 100dvh; /* iOS Safari sizes vh against the chrome-hidden viewport, so a plain
                      100% here can be taller than what's actually visible on load */
-  overflow: hidden;
   background: var(--paper);
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -462,8 +461,15 @@ html, body {
   margin: 2px 0 4px;
 }
 .go-sub { font-size: 11px; letter-spacing: 0.1em; color: var(--ink-soft); margin: 0 0 4px; }
-.go-sub:last-of-type { margin-bottom: 18px; }
-.go-global.hidden { display: none; }
+/* The gap above PLAY AGAIN belongs to the button, not to the last .go-sub:
+   :last-of-type is structural, so it kept matching #globalBest even when that
+   line was hidden and the card lost its gap in an unconfigured build. */
+#gameOverOverlay .btn:first-of-type { margin-top: 14px; }
+/* This game keeps its own global-best styling rather than importing
+   shared/css/leaderboard.css. Its end card is all-caps and mono-spaced and
+   speaks --ink/--ink-soft, not --accent-dark — the same reason it opts out of
+   tokens.css and shell.css (see shared/css/shell.css). The shared *behaviour*
+   still comes from renderGlobalBest(). */
 .go-global.new-global { color: var(--ink); font-weight: 800; letter-spacing: 0.14em; }
 
 .btn {

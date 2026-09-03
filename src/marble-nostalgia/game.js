@@ -1,4 +1,4 @@
-import { isLeaderboardAvailable, submitScore } from "../shared/ui/leaderboard.js";
+import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 
 (function () {
   "use strict";
@@ -377,23 +377,16 @@ import { isLeaderboardAvailable, submitScore } from "../shared/ui/leaderboard.js
   // Fewest marbles left wins, so a perfect game scores 1 and the record
   // saturates there quickly. That is the game, not a flaw in the leaderboard.
   function showGlobalBest(marblesLeft) {
-    if (!isLeaderboardAvailable()) {
-      globalBest.hidden = true;
-      return;
-    }
-    globalBest.hidden = false;
-    globalBest.classList.remove("new-global");
-    globalBest.textContent = "Global best \u2026";
-    submitScore("marble-nostalgia", marblesLeft).then(function (best) {
-      if (best === null) {
-        globalBest.textContent = "Global best unavailable";
-        return;
-      }
-      var isRecord = marblesLeft <= best;
-      globalBest.textContent = isRecord
-        ? "\u2605 New global best \u2605"
-        : "Global best " + best + (best === 1 ? " marble" : " marbles");
-      globalBest.classList.toggle("new-global", isRecord);
+    renderGlobalBest(globalBest, {
+      slug: "marble-nostalgia",
+      score: marblesLeft,
+      isRecord: function (score, best) { return score <= best; },
+      label: function (best) {
+        return "Global best " + best + (best === 1 ? " marble" : " marbles");
+      },
+      recordLabel: "\u2605 New global best \u2605",
+      pending: "Global best \u2026",
+      unavailable: "Global best unavailable",
     });
   }
 

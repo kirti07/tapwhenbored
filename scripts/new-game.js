@@ -150,6 +150,14 @@ const html = `<!doctype html>
     <div class="overlay-content">
       <p class="overlay-title" id="overlayTitle">SOLVED</p>
       <p class="overlay-sub" id="overlaySub"></p>
+      <!-- Giving this game a leaderboard? Add a paragraph here with the
+           class overlay-global, the id globalBest and the hidden attribute,
+           then @import shared/css/leaderboard.css, call renderGlobalBest()
+           from the end-of-run handler, and add the game to the game_config
+           seed in README-supabase.sql. See ARCHITECTURE.md §27. Validation
+           requires that line and the registry entry to agree, so add both or
+           neither. (Spelled out rather than shown, because validation greps
+           this file for the literal id.) -->
       <div class="overlay-actions">
         <button class="again-btn" id="againBtn">Again</button>
         <button class="share-btn" id="shareBtn">Share</button>
@@ -327,6 +335,8 @@ const entry = `  {
     changefreq: "monthly",
     hasRestart: true,
     hasOverlay: true,
+    // A descriptor ({ lowerIsBetter, daily, unit }) opts this game into the
+    // global-best line; see ARCHITECTURE.md §27 for what else that needs.
     leaderboard: false,
   },
 `;

@@ -3,4 +3,29 @@
 
 * { box-sizing: border-box; }
 
+/* Every game sizes its stage to the viewport and is not meant to scroll. That
+   used to be spelled `overflow: hidden` on html/body in all seven, which is a
+   trap: `hidden` still makes the document a scroll container, so it stops the
+   *player* scrolling without stopping a scroll *offset* from existing. A
+   browser whose visible viewport is shorter than the one it reports — an
+   in-app browser handing off from another app, a URL bar mid-collapse, any
+   engine without `dvh` falling back to the chrome-hidden height — can hand the
+   page a scroll offset on load, and `hidden` then makes it permanent: the top
+   bar and the first row of the game sit above the top of the screen with no
+   gesture that can bring them back.
+
+   Allowing the vertical scroll back means that state is always recoverable.
+   When the viewport height is right there is no overflow, so there is nothing
+   to scroll and nothing about the game changes, and each game already claims
+   its own gestures with touch-action on its play surface.
+
+   Deliberately no `overscroll-behavior: none` here. It reads like the right
+   companion, but on the viewport it stops the recovery scroll too: stranded at
+   an offset, a wheel or drag then moves nothing, which is the exact bug this
+   rule exists to fix. Tested, not assumed — see the smoke suite. */
+html, body {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 .back-link svg { width: 13px; height: 13px; }

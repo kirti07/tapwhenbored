@@ -28,5 +28,18 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    // The end-card specs mock the RPC, but a build with no credentials hides
+    // the global-best line before any request is made, so the mock would never
+    // fire and those specs could only pass on a machine that happened to have
+    // a .env.local. Placeholders make isLeaderboardAvailable() true and leave
+    // the mock in charge of the outcome.
+    //
+    // .invalid can never resolve (RFC 2606), so a spec that forgets to mock
+    // fails fast instead of reaching a real leaderboard. Vite prefers real
+    // process env over .env files, so these win locally too.
+    env: {
+      VITE_SUPABASE_URL: "https://leaderboard.test.invalid",
+      VITE_SUPABASE_ANON_KEY: "playwright-anon-key",
+    },
   },
 });
