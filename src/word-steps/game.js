@@ -197,9 +197,13 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
     undoBtn.classList.toggle("disabled", locked || history.length <= 1);
     restartBtn.classList.toggle("disabled", locked || history.length <= 1);
 
-    // One read of scrollHeight, used for both the pin-to-newest-step and the
-    // edge fade, so the fade is only paid for on a ladder long enough to need
-    // it (see .ladder-wrap.is-scrollable).
+    pinLadder();
+  }
+
+  // One read of scrollHeight, used for both the pin-to-newest-step and the
+  // edge fade, so the fade is only paid for on a ladder long enough to need
+  // it (see .ladder-wrap.is-scrollable).
+  function pinLadder() {
     var overflows = ladderWrap.scrollHeight > ladderWrap.clientHeight + 1;
     ladderWrap.classList.toggle("is-scrollable", overflows);
     if (overflows) ladderWrap.scrollTop = ladderWrap.scrollHeight;
@@ -246,17 +250,27 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
   // ---------- letter picker sheet ----------
   var pickerTile = null;
 
+  // Laid out as a phone keyboard rather than A-Z: players already know where
+  // each letter sits on QWERTY, so the one they want is findable without
+  // reading every key.
+  var KEY_ROWS = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
+
   (function buildLetterGrid() {
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach(function (letter) {
-      var btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "letter-btn";
-      btn.textContent = letter;
-      btn.addEventListener("click", function () {
-        if (btn.classList.contains("current")) { closeLetterPicker(); return; }
-        pickLetter(letter);
+    KEY_ROWS.forEach(function (row) {
+      var rowEl = document.createElement("div");
+      rowEl.className = "letter-row";
+      row.split("").forEach(function (letter) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "letter-btn";
+        btn.textContent = letter;
+        btn.addEventListener("click", function () {
+          if (btn.classList.contains("current")) { closeLetterPicker(); return; }
+          pickLetter(letter);
+        });
+        rowEl.appendChild(btn);
       });
-      letterGrid.appendChild(btn);
+      letterGrid.appendChild(rowEl);
     });
   })();
 
@@ -271,6 +285,29 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
     }
     letterSheet.classList.add("show");
     letterBackdrop.classList.add("show");
+    liftAboveSheet(tile);
+  }
+
+  // The sheet is fixed to the bottom of the viewport and covers the foot of the
+  // ladder, so on a long ladder the row being edited ends up behind it — the
+  // player picks a letter for a word they cannot see. Reserve the covered strip
+  // inside the scroller and scroll by exactly the overlap, which leaves the row
+  // SHEET_GAP above the sheet. A ladder that already clears the sheet is left
+  // alone, so the common early-game tap costs one rect read and nothing else.
+  var SHEET_GAP = 12;
+
+  function liftAboveSheet(tile) {
+    var sheetTop = window.innerHeight - letterSheet.offsetHeight;
+    // The tile shares the active row's bottom edge.
+    var overlap = tile.getBoundingClientRect().bottom - sheetTop + SHEET_GAP;
+    if (overlap <= 0) return;
+    var strip = ladderWrap.getBoundingClientRect().bottom - sheetTop + SHEET_GAP;
+    // Padding at the foot extends the scroll range without moving the content,
+    // and the strip is always at least the overlap, so the scroll below cannot
+    // be clamped short of clearing the sheet.
+    ladder.style.setProperty("--sheet-inset", Math.ceil(strip) + "px");
+    ladderWrap.classList.add("is-scrollable");
+    ladderWrap.scrollTop += Math.ceil(overlap);
   }
 
   function closeLetterPicker() {
@@ -278,6 +315,12 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
     letterBackdrop.classList.remove("show");
     if (pickerTile) pickerTile.classList.remove("picking");
     pickerTile = null;
+    if (ladder.style.getPropertyValue("--sheet-inset")) {
+      // Dropping the reserved strip lets the browser clamp scrollTop back;
+      // pinLadder() restores the pinned-to-newest state and the fade class.
+      ladder.style.removeProperty("--sheet-inset");
+      pinLadder();
+    }
   }
 
   function pickLetter(letter) {
