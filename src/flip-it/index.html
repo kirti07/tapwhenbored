@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fdf6e9">
+<!-- theme-bootstrap -->
+<title>Flip It — Free Online Lights Out Puzzle Game</title>
+<meta name="description" content="A free online Lights Out puzzle. Tap a tile to flip it and its four neighbours, and turn the whole grid off in as few moves as possible. New board every time, no signup.">
+<link rel="canonical" href="https://www.tapwhenbored.com/flip-it/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Flip It — Free Online Lights Out Puzzle Game">
+<meta property="og:description" content="Tap a tile and it flips itself and its four neighbours. Turn the whole grid off in as few moves as you can.">
+<meta property="og:url" content="https://www.tapwhenbored.com/flip-it/">
+<meta property="og:image" content="https://www.tapwhenbored.com/assets/flip-it-og.jpg">
+<meta property="og:image:width" content="640">
+<meta property="og:image:height" content="640">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Flip It — Free Online Lights Out Puzzle Game">
+<meta name="twitter:description" content="Tap a tile and it flips itself and its four neighbours. Turn the whole grid off in as few moves as you can.">
+<meta name="twitter:image" content="https://www.tapwhenbored.com/assets/flip-it-og.jpg">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Game",
+  "name": "Flip It",
+  "url": "https://www.tapwhenbored.com/flip-it/",
+  "description": "A free online Lights Out puzzle. Tapping a tile flips it and its four orthogonal neighbours; clear the grid by turning every tile off.",
+  "image": "https://www.tapwhenbored.com/assets/flip-it-og.jpg",
+  "genre": "Puzzle",
+  "playMode": "SinglePlayer",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Tap When Bored", "item": "https://www.tapwhenbored.com/" },
+    { "@type": "ListItem", "position": 2, "name": "Flip It", "item": "https://www.tapwhenbored.com/flip-it/" }
+  ]
+}
+</script>
+<link rel="preload" href="/fonts/nunito-latin-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="stage">
+    <header class="topbar">
+      <div class="brand">
+        <a class="back-link" href="/">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <span>Games</span>
+        </a>
+        <h1 class="title">FLIP IT</h1>
+        <p class="subtitle">PUZZLE</p>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" id="soundBtn" title="Sound" aria-label="Sound on" aria-pressed="true">
+          <svg class="ico-sound-on" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.2L12 18.5v-13L7.2 9.5H4z"/><path d="M16 9.2a4 4 0 0 1 0 5.6"/><path d="M18.6 6.6a7.6 7.6 0 0 1 0 10.8"/></svg>
+          <svg class="ico-sound-off" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.2L12 18.5v-13L7.2 9.5H4z"/><path d="M16.5 10l5 4"/><path d="M21.5 10l-5 4"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <p class="tagline">Tap a tile. It flips its neighbours too.</p>
+
+    <button class="challenge-banner" id="challengeBanner" type="button" role="status"></button>
+
+    <div class="board-area">
+      <div class="board-wrap">
+        <div class="board-frame"></div>
+        <div class="grid" id="board" role="group" aria-label="Flip It board"></div>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-label">Moves</span>
+          <span class="stat-value" id="movesVal">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Time</span>
+          <span class="stat-value" id="timeVal">00:00</span>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="sizes" id="sizes" role="group" aria-label="Board size">
+          <button class="size-btn is-active" data-size="5" type="button" aria-pressed="true">5</button>
+          <button class="size-btn" data-size="6" type="button" aria-pressed="false">6</button>
+          <button class="size-btn" data-size="7" type="button" aria-pressed="false">7</button>
+        </div>
+        <button class="pill-btn pill-btn--quiet" id="resetBtn" type="button">Reset</button>
+        <button class="pill-btn" id="newBtn" type="button">New Puzzle</button>
+      </div>
+    </div>
+
+    <button class="howto-link" id="howtoBtn">How to play</button>
+
+    <details class="seo-info">
+      <summary>What is this?</summary>
+      <p>
+        Flip It is a free online Lights Out puzzle. Tapping a tile flips it and the four tiles
+        directly above, below, left and right of it — never the diagonals — so every move
+        undoes part of the last one. Clear the grid by turning every tile off, in as few moves
+        as you can. Every board is generated solvable, and the game works out the shortest
+        possible solution so you can see how close you got. No levels, no signup.
+      </p>
+    </details>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="overlay-content">
+      <p class="overlay-title" id="overlayTitle">CLEARED!</p>
+      <p class="overlay-badge" id="overlayBadge" hidden>PERFECT</p>
+      <p class="overlay-sub" id="overlaySub"></p>
+      <p class="overlay-time" id="overlayTime"></p>
+      <p class="overlay-global" id="globalBest" hidden></p>
+      <p class="overlay-hint" id="lbHint" hidden>Match the optimal on 5×5 to enter the global board.</p>
+      <div class="overlay-actions">
+        <button class="again-btn" id="againBtn">Play Again</button>
+        <button class="share-btn" id="shareBtn">Share</button>
+      </div>
+      <p class="share-note" id="shareNote">Link copied</p>
+    </div>
+  </div>
+
+  <div class="howto-backdrop" id="howtoBackdrop"></div>
+  <div class="howto-sheet" id="howtoSheet">
+    <div class="howto-handle"></div>
+    <p class="howto-title">How to play</p>
+    <ul class="howto-list">
+      <li>Tap any tile on the board.</li>
+      <li>It flips itself and the four tiles <strong>above, below, left and right</strong> — never the diagonals.</li>
+      <li>Turn <strong>every tile off</strong> to clear the board. Fewer moves is better.</li>
+    </ul>
+  </div>
+
+  <script type="module" src="./game.js"></script>
+</body>
+</html>

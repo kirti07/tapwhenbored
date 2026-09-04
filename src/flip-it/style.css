@@ -1,0 +1,576 @@
+/* Shared first: game rules below must be able to override them, and
+   @import inlines in source order in both dev and build. */
+@import "../shared/css/tokens.css";
+@import "../shared/css/base.css";
+@import "../shared/css/shell.css";
+@import "../shared/css/howto.css";
+@import "../shared/css/leaderboard.css";
+
+/* Soft Pop. Cream ground, warm yellow lit tiles, pale blue-grey dark ones,
+   sky blue for interaction, peach and mint for the two secondary actions.
+   Deliberately no purple anywhere in either theme. */
+:root {
+  --bg: #fdf6e9;
+  --ink: #17233f;
+  --ink-soft: #6f7a92;
+  --line: #ece2d2;
+
+  --accent: #4db2e8;
+  --accent-dark: #2b8fc7;
+  --record: #f0891f;
+
+  --panel: #fbf1df;
+  --panel-line: #f0e4cf;
+
+  --on-hi: #ffe27a;
+  --on-lo: #ffce33;
+  --on-edge: #eda01c;
+  --on-glow: transparent;
+
+  --off-hi: #d3dbe5;
+  --off-lo: #c0cad8;
+  --off-edge: #a3aebe;
+
+  --ripple-hi: #a8e6cf;
+  --ripple-lo: #6fd6b1;
+
+  --tile-drop: rgba(60, 55, 40, 0.16);
+  --pulse: rgba(255, 206, 51, 0.55);
+
+  --peach: #ffb4a2;
+  --peach-ink: #a8452c;
+  --scrim: rgba(40, 32, 20, 0.35);
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  height: 100svh; /* the *small* viewport, deliberately — see base.css */
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  touch-action: manipulation; /* kills double-tap-to-zoom across the page */
+}
+
+.stage {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 2.4svh 4vw 2.4svh;
+}
+
+/* ---- top bar ---- */
+
+.back-link:hover { color: var(--ink); }
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(15px, 2.4svh, 20px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+.icon-btn:active {
+  background: rgba(77, 178, 232, 0.14);
+  border-color: var(--accent);
+  color: var(--accent-dark);
+  transform: scale(0.94);
+}
+
+/* One button, two glyphs: the muted state swaps which one is drawn. */
+.icon-btn .ico-sound-off { display: none; }
+.icon-btn.is-off .ico-sound-on { display: none; }
+.icon-btn.is-off .ico-sound-off { display: block; }
+.icon-btn.is-off { color: var(--ink-soft); }
+
+.tagline {
+  margin: 1.4svh 0 0;
+  text-align: center;
+  font-size: clamp(12px, 1.7svh, 14px);
+  color: var(--ink-soft);
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+/* ---- challenge banner ---- */
+
+.challenge-banner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  margin: 0 auto;
+  padding: 0 4vw;
+  border-radius: 999px;
+  background: rgba(77, 178, 232, 0.12);
+  border: 1.5px solid rgba(77, 178, 232, 0.35);
+  color: var(--ink);
+  font-size: clamp(11px, 1.6svh, 13px);
+  letter-spacing: 0.02em;
+  text-align: center;
+  transition: max-height 0.35s ease, opacity 0.3s ease, margin 0.35s ease, padding 0.35s ease;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.challenge-banner.show {
+  max-height: 8svh;
+  opacity: 1;
+  margin: 1.2svh auto 0;
+  padding: 0.9svh 4vw;
+}
+
+/* ---- board ---- */
+
+.board-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.8svh;
+  min-height: 0;
+}
+
+.board-wrap {
+  position: relative;
+  width: min(88vw, 52svh, 480px);
+  aspect-ratio: 1 / 1;
+  flex-shrink: 0;
+}
+
+.board-frame {
+  position: absolute;
+  inset: 0;
+  border-radius: 7%;
+  background: var(--panel);
+  box-shadow:
+    inset 0 0 0 1.5px var(--panel-line),
+    0 1.2svh 2.6svh rgba(80, 70, 50, 0.14);
+}
+
+/* One grid rule for all three board sizes: --n comes from the game, the gap and
+   the corner radius are percentages, so 5x5 and 7x7 are the same drawing at
+   different scales. --lip is the tile's bottom edge; it shrinks with the board
+   so a 7x7 tile does not look like a slab. */
+.grid {
+  --lip: calc(0.8svh * 5 / var(--n, 5));
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 89%;
+  height: 89%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  grid-template-columns: repeat(var(--n, 5), 1fr);
+  grid-template-rows: repeat(var(--n, 5), 1fr);
+  gap: 4%;
+}
+
+.grid.is-locked { pointer-events: none; }
+
+.tile {
+  position: relative;
+  padding: 0;
+  border: none;
+  border-radius: 24%;
+  cursor: pointer;
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+  background: linear-gradient(180deg, var(--off-hi) 0%, var(--off-lo) 100%);
+  box-shadow:
+    inset 0 calc(-1 * var(--lip)) 0 0 var(--off-edge),
+    0 calc(0.5 * var(--lip)) calc(1.1 * var(--lip)) var(--tile-drop);
+  transition: background 0.14s ease, box-shadow 0.14s ease;
+}
+
+.tile--on {
+  background: linear-gradient(180deg, var(--on-hi) 0%, var(--on-lo) 100%);
+  box-shadow:
+    inset 0 calc(-1 * var(--lip)) 0 0 var(--on-edge),
+    0 calc(0.5 * var(--lip)) calc(1.1 * var(--lip)) var(--tile-drop),
+    0 0 calc(2.4 * var(--lip)) var(--on-glow);
+}
+
+.tile:active { transform: scale(0.93); }
+
+/* The state class is applied the moment the model changes; this is decoration
+   on top of it, never a gate. 180ms — inside the 150-250ms the game wants. */
+@keyframes tile-flip {
+  0% { transform: scale(1); }
+  45% { transform: scale(0.84); }
+  100% { transform: scale(1); }
+}
+
+.tile--flip { animation: tile-flip 180ms cubic-bezier(0.34, 1.35, 0.5, 1); }
+
+.tile--flip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  animation: tile-pulse 180ms ease-out;
+  pointer-events: none;
+}
+
+@keyframes tile-pulse {
+  from { box-shadow: 0 0 0 0 var(--pulse); }
+  to { box-shadow: 0 0 0 calc(1.8 * var(--lip)) transparent; }
+}
+
+/* The clear. A wave outward from whichever tile finished the board — --d is the
+   Manhattan distance from it, set once by the game. */
+.grid.is-cleared .tile {
+  animation: tile-ripple 460ms ease-out both;
+  animation-delay: calc(var(--d, 0) * 45ms);
+}
+
+@keyframes tile-ripple {
+  0% { transform: scale(1); background: linear-gradient(180deg, var(--off-hi) 0%, var(--off-lo) 100%); }
+  40% { transform: scale(1.12); background: linear-gradient(180deg, var(--ripple-hi) 0%, var(--ripple-lo) 100%); }
+  100% { transform: scale(1); background: linear-gradient(180deg, var(--off-hi) 0%, var(--off-lo) 100%); }
+}
+
+/* ---- stats ---- */
+
+.stats {
+  display: flex;
+  align-items: stretch;
+  border-radius: 999px;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1.5px var(--panel-line);
+  padding: 0.7svh 1.4svh;
+  flex-shrink: 0;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1svh;
+  padding: 0 5vw;
+  min-width: 0;
+}
+
+.stat + .stat { border-left: 1.5px solid var(--panel-line); }
+
+.stat-label {
+  font-size: clamp(9px, 1.2svh, 11px);
+  letter-spacing: 0.16em;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+}
+
+.stat-value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(15px, 2.3svh, 19px);
+  color: var(--ink);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- controls ---- */
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5vw;
+  flex-shrink: 0;
+}
+
+.sizes {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1.5px var(--panel-line);
+}
+
+.size-btn {
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(11px, 1.6svh, 13px);
+  width: clamp(26px, 3.6svh, 32px);
+  height: clamp(26px, 3.6svh, 32px);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.size-btn.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.pill-btn {
+  border: none;
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(12px, 1.7svh, 14px);
+  letter-spacing: 0.04em;
+  padding: 1.1svh 4vw;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-dark) 100%);
+  box-shadow: 0 0.5svh 1.2svh rgba(77, 178, 232, 0.32);
+  transition: transform 0.1s ease;
+}
+
+.pill-btn--quiet {
+  color: var(--peach-ink);
+  background: var(--peach);
+  box-shadow: 0 0.5svh 1.2svh rgba(255, 180, 162, 0.35);
+}
+
+.pill-btn:active { transform: scale(0.96); }
+
+/* ---- SEO disclosure ---- */
+
+.seo-info summary {
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  list-style: none;
+}
+.seo-info summary::-webkit-details-marker { display: none; }
+.seo-info summary::after { content: " ▾"; }
+.seo-info[open] summary::after { content: " ▴"; }
+.seo-info p {
+  margin: 4px 0 0;
+  line-height: 1.5;
+  text-align: left;
+}
+
+/* ---- end card ---- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(253, 246, 233, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.overlay.show { opacity: 1; }
+
+.overlay-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.4svh;
+  padding: 0 6vw;
+  text-align: center;
+  pointer-events: none;
+}
+
+.overlay.show .overlay-content { pointer-events: auto; }
+
+.overlay-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(22px, 4svh, 32px);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+}
+
+/* Matching the optimal solution is the one thing worth a badge. */
+.overlay-badge {
+  margin: 0;
+  padding: 0.5svh 3.2vw;
+  border-radius: 999px;
+  background: var(--ripple-lo);
+  color: #0b3a2c;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(11px, 1.6svh, 13px);
+  letter-spacing: 0.22em;
+}
+
+.overlay-sub {
+  margin: 0;
+  font-size: clamp(13px, 1.9svh, 15px);
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 0.08em;
+}
+
+.overlay-time {
+  margin: 0;
+  font-size: clamp(11px, 1.6svh, 13px);
+  color: var(--ink-soft);
+  letter-spacing: 0.06em;
+}
+
+/* Shown when the run did not qualify for the global board, so the goal is
+   visible without pretending every solve is comparable. */
+.overlay-hint {
+  margin: 0;
+  max-width: 32ch;
+  font-size: clamp(10px, 1.4svh, 12px);
+  color: var(--ink-soft);
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+}
+
+.overlay-actions {
+  display: flex;
+  gap: 3vw;
+  margin-top: 0.6svh;
+}
+
+.again-btn,
+.share-btn {
+  font-family: var(--font-display);
+  font-weight: 600;
+  padding: 1.2svh 4.5vw;
+  border-radius: 999px;
+  font-size: clamp(12px, 1.8svh, 14px);
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.again-btn:active,
+.share-btn:active { transform: scale(0.96); }
+
+.again-btn {
+  border: none;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: #fff;
+  box-shadow: 0 0.8svh 1.8svh rgba(77, 178, 232, 0.35);
+}
+
+.share-btn {
+  border: 1.5px solid var(--accent);
+  background: transparent;
+  color: var(--accent-dark);
+}
+
+.share-note {
+  margin: 0;
+  font-size: clamp(11px, 1.5svh, 13px);
+  color: var(--ink-soft);
+  letter-spacing: 0.06em;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.share-note.show { opacity: 1; }
+
+/* Short viewports: the game keeps its size, the reading matter goes. Nothing is
+   removed from the DOM, so it is still in the page source for crawlers. */
+@media (max-height: 480px) {
+  .stage { padding-top: 1.4svh; padding-bottom: 1.2svh; }
+  .subtitle, .seo-info { display: none; }
+  .back-link { margin-bottom: 0.3svh; }
+  .tagline { margin-top: 0.6svh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile { transition: background 0.14s ease; }
+  .tile--flip { animation: none; }
+  .tile--flip::after { animation: none; }
+  .grid.is-cleared .tile { animation: none; }
+  .challenge-banner { transition: none; }
+}
+
+/* ==== Neon Arcade (dark theme) ==== */
+
+:root[data-theme="dark"] {
+  --bg: #070b16;
+  --ink: #eaf6ff;
+  --ink-soft: #7f93b3;
+  --line: #1b2942;
+
+  --accent: #22d3ee;
+  --accent-dark: #0fb6d4;
+  --record: #ff8a3d;
+
+  --panel: #0c1526;
+  --panel-line: #1b2942;
+
+  --on-hi: #ffe45c;
+  --on-lo: #ffd60a;
+  --on-edge: #c99a00;
+  --on-glow: rgba(255, 214, 10, 0.45);
+
+  --off-hi: #1a2942;
+  --off-lo: #142033;
+  --off-edge: #0b1220;
+
+  --ripple-hi: #67e8f9;
+  --ripple-lo: #22d3ee;
+
+  --tile-drop: rgba(0, 0, 0, 0.5);
+  --pulse: rgba(34, 211, 238, 0.6);
+
+  --peach: rgba(255, 77, 157, 0.16);
+  --peach-ink: #ff4d9d;
+  --scrim: rgba(0, 0, 0, 0.6);
+}
+
+/* Glow earns its place on the things you interact with — the board edge, a lit
+   tile, the primary action — and nowhere else. */
+[data-theme="dark"] .board-frame {
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 0 2.4svh color-mix(in srgb, var(--accent) 22%, transparent),
+    0 1.2svh 2.6svh rgba(0, 0, 0, 0.55);
+}
+
+[data-theme="dark"] .icon-btn:active {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+[data-theme="dark"] .challenge-banner {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+[data-theme="dark"] .size-btn.is-active {
+  color: #04212a;
+  box-shadow: 0 0 1.4svh color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+[data-theme="dark"] .pill-btn {
+  color: #04212a;
+  box-shadow: 0 0 1.6svh color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+[data-theme="dark"] .pill-btn--quiet {
+  color: var(--peach-ink);
+  background: var(--peach);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--peach-ink) 55%, transparent);
+}
+
+[data-theme="dark"] .overlay { background: rgba(7, 11, 22, 0.94); }
+
+[data-theme="dark"] .overlay-badge {
+  color: #04212a;
+  box-shadow: 0 0 1.8svh color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+[data-theme="dark"] .again-btn {
+  color: #04212a;
+  box-shadow: 0 0.8svh 1.8svh color-mix(in srgb, var(--accent) 40%, transparent);
+}

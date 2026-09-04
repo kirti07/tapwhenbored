@@ -77,23 +77,33 @@ export const games = [
     leaderboard: { lowerIsBetter: true, daily: false, unit: "moves" },
   },
   {
-    slug: "doodle-on",
-    title: "Doodle On",
-    tagline: "Draw · 30s",
+    slug: "flip-it",
+    title: "Flip It",
+    tagline: "Tap · Clear",
     description:
-      "A free online drawing game. Get a random shape and a random idea, then turn one into the other in 30 seconds. Draw, fill, share. No score, no signup.",
-    path: "/doodle-on/",
-    thumb: "/assets/doodle-on-thumb.svg",
-    thumbAlt: "Doodle On — 30-second shape-and-idea drawing game preview",
-    ogImage: "/assets/doodle-on-og.jpg",
-    cardClass: "card--doodle",
-    darkThemeColor: "#0d0e1a",
-    updated: "2026-09-03",
+      "A free online Lights Out puzzle. Tap a tile to flip it and its four neighbours, and turn the whole grid off in as few moves as possible. New board every time, no signup.",
+    path: "/flip-it/",
+    thumb: "/assets/flip-it-thumb.svg",
+    thumbAlt: "Flip It — Lights Out grid puzzle preview",
+    ogImage: "/assets/flip-it-og.jpg",
+    cardClass: "card--flip-it",
+    darkThemeColor: "#070b16",
+    updated: "2026-09-04",
     changefreq: "monthly",
-    hasRestart: true,
+    // Reset and New Puzzle sit under the board where the player is looking, so
+    // there is no topbar restart. Untangle made the same call.
+    hasRestart: false,
     hasOverlay: true,
-    // No score by design — the result is the picture, not a number.
-    leaderboard: false,
+    leaderboard: {
+      // Boards are random, so "fewest moves" would only ever record whoever
+      // drew the easiest one. A run counts only when it matches the board's
+      // computed optimal, and then the clock is the score — an easy board
+      // cannot be farmed, and the record keeps moving. 5x5 only: three board
+      // sizes in one record would put the same problem straight back.
+      lowerIsBetter: true,
+      daily: false,
+      unit: "perfect time",
+    },
   },
   {
     slug: "word-steps",
@@ -165,6 +175,25 @@ export const games = [
       daily: false,
       unit: "time",
     },
+  },
+  {
+    slug: "doodle-on",
+    title: "Doodle On",
+    tagline: "Draw · 30s",
+    description:
+      "A free online drawing game. Get a random shape and a random idea, then turn one into the other in 30 seconds. Draw, fill, share. No score, no signup.",
+    path: "/doodle-on/",
+    thumb: "/assets/doodle-on-thumb.svg",
+    thumbAlt: "Doodle On — 30-second shape-and-idea drawing game preview",
+    ogImage: "/assets/doodle-on-og.jpg",
+    cardClass: "card--doodle",
+    darkThemeColor: "#0d0e1a",
+    updated: "2026-09-03",
+    changefreq: "monthly",
+    hasRestart: true,
+    hasOverlay: true,
+    // No score by design — the result is the picture, not a number.
+    leaderboard: false,
   },
 ];
 

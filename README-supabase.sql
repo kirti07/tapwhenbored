@@ -34,7 +34,8 @@ insert into game_config (game_slug, lower_is_better, is_daily, label) values
   ('honeycomb',        true,  false, 'completion time'),
   ('slide-n-order',    true,  false, 'moves'),
   ('marble-nostalgia', true,  false, 'marbles left'),
-  ('word-steps',       true,  true,  'steps')
+  ('word-steps',       true,  true,  'steps'),
+  ('flip-it',          true,  false, 'perfect time')
 on conflict (game_slug) do update
   set lower_is_better = excluded.lower_is_better,
       is_daily        = excluded.is_daily,

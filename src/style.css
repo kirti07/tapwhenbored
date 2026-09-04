@@ -213,6 +213,7 @@ html, body {
 .card--word   { --accent: #1f9974; }
 .card--untangle { --accent: #ef6a55; }
 .card--honeycomb { --accent: #8b6fd9; }
+.card--flip-it { --accent: #f0a825; }
 
 .thumb {
   display: block;
@@ -318,6 +319,7 @@ html, body {
 [data-theme="dark"] .card--word   { --accent: #34e19a; }
 [data-theme="dark"] .card--untangle { --accent: #ff6b57; }
 [data-theme="dark"] .card--honeycomb { --accent: #b48cff; }
+[data-theme="dark"] .card--flip-it { --accent: #ffd60a; }
 
 [data-theme="dark"] .card {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent), 0 0 22px color-mix(in srgb, var(--accent) 14%, transparent);
