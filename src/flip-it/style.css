@@ -288,7 +288,7 @@ html, body {
   flex-shrink: 0;
 }
 
-.sizes {
+.levels {
   display: flex;
   gap: 2px;
   padding: 3px;
@@ -297,47 +297,27 @@ html, body {
   box-shadow: inset 0 0 0 1.5px var(--panel-line);
 }
 
-.size-btn {
+/* Word labels, so these are pills sized by their text rather than the circles
+   that held a single digit. */
+.level-btn {
   border: none;
   background: transparent;
   color: var(--ink-soft);
   font-family: var(--font-display);
   font-weight: 700;
   font-size: clamp(11px, 1.6svh, 13px);
-  width: clamp(26px, 3.6svh, 32px);
-  height: clamp(26px, 3.6svh, 32px);
-  border-radius: 50%;
+  letter-spacing: 0.06em;
+  min-height: clamp(26px, 3.6svh, 32px);
+  padding: 0 clamp(10px, 3vw, 16px);
+  border-radius: 999px;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-.size-btn.is-active {
+.level-btn.is-active {
   background: var(--accent);
   color: #fff;
 }
-
-.pill-btn {
-  border: none;
-  border-radius: 999px;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: clamp(12px, 1.7svh, 14px);
-  letter-spacing: 0.04em;
-  padding: 1.1svh 4vw;
-  cursor: pointer;
-  color: #fff;
-  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-dark) 100%);
-  box-shadow: 0 0.5svh 1.2svh rgba(77, 178, 232, 0.32);
-  transition: transform 0.1s ease;
-}
-
-.pill-btn--quiet {
-  color: var(--peach-ink);
-  background: var(--peach);
-  box-shadow: 0 0.5svh 1.2svh rgba(255, 180, 162, 0.35);
-}
-
-.pill-btn:active { transform: scale(0.96); }
 
 /* ---- SEO disclosure ---- */
 
@@ -547,20 +527,9 @@ html, body {
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
-[data-theme="dark"] .size-btn.is-active {
+[data-theme="dark"] .level-btn.is-active {
   color: #04212a;
   box-shadow: 0 0 1.4svh color-mix(in srgb, var(--accent) 55%, transparent);
-}
-
-[data-theme="dark"] .pill-btn {
-  color: #04212a;
-  box-shadow: 0 0 1.6svh color-mix(in srgb, var(--accent) 45%, transparent);
-}
-
-[data-theme="dark"] .pill-btn--quiet {
-  color: var(--peach-ink);
-  background: var(--peach);
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--peach-ink) 55%, transparent);
 }
 
 [data-theme="dark"] .overlay { background: rgba(7, 11, 22, 0.94); }

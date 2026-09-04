@@ -81,7 +81,7 @@ export const games = [
     title: "Flip It",
     tagline: "Tap · Clear",
     description:
-      "A free online Lights Out puzzle. Tap a tile to flip it and its four neighbours, and turn the whole grid off in as few moves as possible. New board every time, no signup.",
+      "A free online Lights Out puzzle. Tap a tile to flip it and its four neighbours, and turn the whole grid off in as few moves as possible. Easy, medium and hard levels, new board every time, no signup.",
     path: "/flip-it/",
     thumb: "/assets/flip-it-thumb.svg",
     thumbAlt: "Flip It — Lights Out grid puzzle preview",
@@ -91,16 +91,16 @@ export const games = [
     updated: "2026-09-04",
     changefreq: "monthly",
     // The topbar refresh deals a new board. Reset — restore *this* board's
-    // starting pattern — is a second, different control, so it stays under the
-    // board where the player is looking.
+    // starting pattern — is a second, different control, and sits beside it in
+    // the topbar rather than competing with the level picker under the board.
     hasRestart: true,
     hasOverlay: true,
     leaderboard: {
       // Boards are random, so "fewest moves" would only ever record whoever
       // drew the easiest one. A run counts only when it matches the board's
       // computed optimal, and then the clock is the score — an easy board
-      // cannot be farmed, and the record keeps moving. 5x5 only: three board
-      // sizes in one record would put the same problem straight back.
+      // cannot be farmed, and the record keeps moving. Medium only: three
+      // levels in one record would put the same problem straight back.
       lowerIsBetter: true,
       daily: false,
       unit: "perfect time",

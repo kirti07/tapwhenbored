@@ -105,6 +105,23 @@ async function readBoard(page) {
 
 const sizeOf = (cells) => Math.round(Math.sqrt(cells));
 
+// The levels the game offers, restated here on purpose: asking the game which
+// sizes and move counts a level uses would only prove it agrees with itself.
+// Each level spans two sizes, picked at random per deal, so a test may not
+// assume which one it got — it reads the size off the board it was dealt.
+const LEVELS = {
+  easy: { sizes: [4, 5], moves: { 4: [3, 4], 5: [4, 5] } },
+  medium: { sizes: [5, 6], moves: { 5: [7, 9], 6: [8, 11] } },
+  hard: { sizes: [6, 7], moves: { 6: [14, 17], 7: [16, 20] } },
+};
+const DEFAULT_LEVEL = "easy";
+
+/** The board as dealt, plus the size the game chose for it. */
+async function readSizedBoard(page) {
+  const cells = await readBoard(page);
+  return { cells, n: sizeOf(cells.length) };
+}
+
 /** The tiles a tap at `i` should flip: itself and its in-bounds N/S/E/W. */
 function plus(n, i) {
   const r = Math.floor(i / n);
@@ -129,8 +146,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("a fresh board is dealt, lit, and waiting", async ({ page }) => {
-  const board = await readBoard(page);
-  expect(board.length).toBe(25); // 5x5 is the default size
+  const { cells: board, n } = await readSizedBoard(page);
+  // Easy is the default level and spans two sizes, so either is correct.
+  expect(LEVELS[DEFAULT_LEVEL].sizes).toContain(n);
 
   // An all-off board is already solved, so it is never a puzzle.
   expect(board.some((v) => v === 1)).toBe(true);
@@ -141,13 +159,15 @@ test("a fresh board is dealt, lit, and waiting", async ({ page }) => {
 });
 
 test("a tap flips the tile and its four neighbours, and nothing else", async ({ page }) => {
-  // Checked at a corner, an edge and the middle, because the interesting part
-  // of the rule is what happens where neighbours fall off the board.
-  for (const i of [0, 2, 12, 20, 24]) {
+  // Checked at both corners, an edge and the middle, because the interesting
+  // part of the rule is what happens where neighbours fall off the board.
+  const n = (await readSizedBoard(page)).n;
+  const spots = [0, 2, Math.floor((n * n) / 2), n * (n - 1), n * n - 1];
+  for (const i of spots) {
     const before = await readBoard(page);
     await tiles(page).nth(i).click();
     const after = await readBoard(page);
-    expect(changedIndices(before, after), `tap at ${i}`).toEqual(plus(5, i));
+    expect(changedIndices(before, after), `${n}x${n} tap at ${i}`).toEqual(plus(n, i));
   }
 });
 
@@ -175,7 +195,7 @@ test("rapid tapping does not desynchronise the board", async ({ page }) => {
   // Faster than the 180ms flip animation. Nothing is animation-gated, so the
   // model and the tiles must still agree afterwards.
   const expected = await readBoard(page);
-  const taps = [6, 6, 11, 11, 18, 18, 3, 3];
+  const taps = [6, 6, 11, 11, 15, 15, 3, 3]; // in range on the smallest board
   for (const i of taps) await tiles(page).nth(i).click({ force: true });
   await page.waitForTimeout(400);
 
@@ -199,7 +219,7 @@ test("Reset restores the starting board; the topbar refresh deals another", asyn
   await page.locator("#restartBtn").click();
   await expect(page.locator("#movesVal")).toHaveText("0");
   await expect(page.locator("#timeVal")).toHaveText("00:00");
-  expect((await readBoard(page)).length).toBe(25);
+  expect(LEVELS[DEFAULT_LEVEL].sizes).toContain((await readSizedBoard(page)).n);
 });
 
 test("every board the game deals can be cleared, and clearing it wins", async ({ page }) => {
@@ -211,16 +231,20 @@ test("every board the game deals can be cleared, and clearing it wins", async ({
       await expect(page.locator("#overlay")).not.toHaveClass(/show/);
     }
 
-    const board = await readBoard(page);
-    const answer = solve(5, board);
+    const { cells: board, n } = await readSizedBoard(page);
+    const answer = solve(n, board);
     expect(answer, "the dealt board must be solvable").not.toBeNull();
 
-    // The floor generation enforces: a board worth playing.
-    expect(answer.weight).toBeGreaterThanOrEqual(8);
+    // The band the default level generates within: a board worth playing that
+    // is still short enough to be called easy.
+    const [lo, hi] = LEVELS[DEFAULT_LEVEL].moves[n];
+    expect(answer.weight, `${n}x${n} optimal within the easy band`)
+      .toBeGreaterThanOrEqual(lo);
+    expect(answer.weight).toBeLessThanOrEqual(hi);
 
     for (const i of answer.picks) await tiles(page).nth(i).click();
 
-    expect(await readBoard(page), "every tile is off").toEqual(new Array(25).fill(0));
+    expect(await readBoard(page), "every tile is off").toEqual(new Array(n * n).fill(0));
 
     const overlay = page.locator("#overlay");
     await expect(overlay).toHaveClass(/show/, { timeout: 4000 });
@@ -237,8 +261,8 @@ test("every board the game deals can be cleared, and clearing it wins", async ({
 });
 
 test("a solve above the optimum is scored as such, with no PERFECT", async ({ page }) => {
-  const board = await readBoard(page);
-  const answer = solve(5, board);
+  const { cells: board, n } = await readSizedBoard(page);
+  const answer = solve(n, board);
 
   // Two taps on the same tile: a real detour that leaves the board untouched,
   // so the same solution still applies and the only difference is the count.
@@ -254,23 +278,24 @@ test("a solve above the optimum is scored as such, with no PERFECT", async ({ pa
 });
 
 test("the board is locked once it is cleared", async ({ page }) => {
-  const answer = solve(5, await readBoard(page));
+  const { cells, n } = await readSizedBoard(page);
+  const answer = solve(n, cells);
   for (const i of answer.picks) await tiles(page).nth(i).click();
   await expect(page.locator("#overlay")).toHaveClass(/show/, { timeout: 4000 });
 
-  await tiles(page).nth(12).click({ force: true });
-  expect(await readBoard(page)).toEqual(new Array(25).fill(0));
+  await tiles(page).nth(n * n - 1).click({ force: true });
+  expect(await readBoard(page)).toEqual(new Array(n * n).fill(0));
   await expect(page.locator("#movesVal")).toHaveText(String(answer.weight));
 });
 
-test("the size picker deals 6x6 and 7x7, and the rule still holds", async ({ page }) => {
-  for (const n of [6, 7]) {
-    await page.locator(`.size-btn[data-size="${n}"]`).click();
-    await expect(tiles(page)).toHaveCount(n * n);
+test("the level picker deals that level's sizes, and the rule still holds", async ({ page }) => {
+  for (const level of ["medium", "hard"]) {
+    await page.locator(`.level-btn[data-level="${level}"]`).click();
     await expect(page.locator("#movesVal")).toHaveText("0");
 
-    const cells = (await readBoard(page)).length;
-    expect(sizeOf(cells)).toBe(n);
+    const n = (await readSizedBoard(page)).n;
+    expect(LEVELS[level].sizes, `${level} deals one of its two sizes`).toContain(n);
+    await expect(tiles(page)).toHaveCount(n * n);
 
     // A corner has two neighbours and the middle has four, at every size.
     for (const i of [0, n * n - 1, Math.floor((n * n) / 2)]) {
@@ -278,6 +303,30 @@ test("the size picker deals 6x6 and 7x7, and the rule still holds", async ({ pag
       await tiles(page).nth(i).click();
       const after = await readBoard(page);
       expect(changedIndices(before, after), `${n}x${n} tap at ${i}`).toEqual(plus(n, i));
+    }
+  }
+});
+
+test("each level deals boards inside its own difficulty band", async ({ page }) => {
+  // The point of the levels: Easy really is a handful of moves and Hard really
+  // is not. Checked against the independent solver, over several deals, since
+  // the size within a level is random.
+  for (const level of ["easy", "medium", "hard"]) {
+    await page.locator(`.level-btn[data-level="${level}"]`).click();
+
+    for (let round = 0; round < 3; round++) {
+      if (round > 0) await page.locator("#restartBtn").click();
+      await expect(page.locator("#movesVal")).toHaveText("0");
+
+      const { cells, n } = await readSizedBoard(page);
+      expect(LEVELS[level].sizes).toContain(n);
+
+      const answer = solve(n, cells);
+      expect(answer, `${level} ${n}x${n} must be solvable`).not.toBeNull();
+
+      const [lo, hi] = LEVELS[level].moves[n];
+      expect(answer.weight, `${level} ${n}x${n} optimal`).toBeGreaterThanOrEqual(lo);
+      expect(answer.weight, `${level} ${n}x${n} optimal`).toBeLessThanOrEqual(hi);
     }
   }
 });
