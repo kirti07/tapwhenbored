@@ -35,7 +35,7 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   var timeVal = document.getElementById("timeVal");
   var sizes = document.getElementById("sizes");
   var resetBtn = document.getElementById("resetBtn");
-  var newBtn = document.getElementById("newBtn");
+  var restartBtn = document.getElementById("restartBtn");
   var soundBtn = document.getElementById("soundBtn");
   var overlay = document.getElementById("overlay");
   var overlayBadge = document.getElementById("overlayBadge");
@@ -508,7 +508,7 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     updateHud();
   }
 
-  /** New Puzzle: a fresh board at the current size. */
+  /** The topbar refresh: a fresh board at the current size. */
   function deal() {
     clearRun();
     var puzzle = generate(size);
@@ -632,7 +632,7 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   });
 
   resetBtn.addEventListener("click", function () { sndUi(); resetBoard(); });
-  newBtn.addEventListener("click", function () { sndUi(); deal(); });
+  restartBtn.addEventListener("click", function () { sndUi(); deal(); });
   againBtn.addEventListener("click", function () { sndUi(); deal(); });
   shareBtn.addEventListener("click", shareResult);
 

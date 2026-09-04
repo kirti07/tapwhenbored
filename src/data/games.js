@@ -90,9 +90,10 @@ export const games = [
     darkThemeColor: "#070b16",
     updated: "2026-09-04",
     changefreq: "monthly",
-    // Reset and New Puzzle sit under the board where the player is looking, so
-    // there is no topbar restart. Untangle made the same call.
-    hasRestart: false,
+    // The topbar refresh deals a new board. Reset — restore *this* board's
+    // starting pattern — is a second, different control, so it stays under the
+    // board where the player is looking.
+    hasRestart: true,
     hasOverlay: true,
     leaderboard: {
       // Boards are random, so "fewest moves" would only ever record whoever
