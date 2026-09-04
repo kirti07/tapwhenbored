@@ -1,6 +1,6 @@
 // Flip It: the Lights Out puzzle.
 //
-// A new board is generated on every load and every "New Puzzle", so these tests
+// A new board is generated on every load and every re-deal, so these tests
 // assert the rules rather than a particular layout (GAME-TESTING.md §7). "The
 // board clears in 13 taps" is true of one board; "tapping a tile flips exactly
 // itself and its orthogonal neighbours, and every board the game deals can be
@@ -183,7 +183,7 @@ test("rapid tapping does not desynchronise the board", async ({ page }) => {
   await expect(page.locator("#movesVal")).toHaveText(String(taps.length));
 });
 
-test("Reset restores the starting board; New Puzzle deals another", async ({ page }) => {
+test("Reset restores the starting board; the topbar refresh deals another", async ({ page }) => {
   const start = await readBoard(page);
 
   await tiles(page).nth(4).click();
@@ -196,7 +196,7 @@ test("Reset restores the starting board; New Puzzle deals another", async ({ pag
   await expect(page.locator("#movesVal")).toHaveText("0");
   await expect(page.locator("#timeVal")).toHaveText("00:00");
 
-  await page.locator("#newBtn").click();
+  await page.locator("#restartBtn").click();
   await expect(page.locator("#movesVal")).toHaveText("0");
   await expect(page.locator("#timeVal")).toHaveText("00:00");
   expect((await readBoard(page)).length).toBe(25);
