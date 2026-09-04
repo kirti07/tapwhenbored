@@ -809,12 +809,29 @@ A document is the only thing served here whose filename is not content-hashed,
 so it is the only thing a stale cache entry can serve against a new build. Two
 properties keep that harmless:
 
-* **It is bounded to one launch.** `install` precaches `/` with
-  `cache: "reload"` and `activate` deletes every older *shell*, so the launch
-  after a deploy is on the current build.
-* **That one launch is internally consistent.** The previous build's document
-  and the `/static/` hashes it names came from the same cache, so the page is a
-  coherent older version rather than a broken newer one.
+* **It lasts a moment, not a launch.** `install` precaches `/` with
+  `cache: "reload"`, `activate` deletes every older *shell* and then announces
+  itself to the pages that are open, and the shelf swaps to the new build out of
+  the cache `install` has just filled (§21). The old shelf is what paints first,
+  which is the point — but a new game is visible in the same launch, not the
+  next one.
+* **What it shows in the meantime is internally consistent.** The previous
+  build's document and the `/static/` hashes it names came from the same cache,
+  so the page is a coherent older version rather than a broken newer one.
+
+**A document is keyed by its path, with the query stripped** — `cacheKey()` in
+the worker. Every page's HTML is static per route, and the four games that build
+share links with parameters (`/flip-it/?moves=12&size=5`, and the same shape in
+bubble-tap and slide-n-order) read them from `location.search` at runtime, never
+from the document. Keying on the full URL bought nothing and cost three things:
+every shared link was a guaranteed cache miss that paid a cold round trip, every
+distinct link left another copy of the same document in the runtime cache that
+is never purged, and a shared link opened offline hit the "not available
+offline" page for a game the player already had. It also dropped
+`/?utm_source=…` into the runtime cache, where the homepage never again got the
+shell's freshness guarantee.
+
+Subresources keep their full URL.
 
 Documents were network-first for one commit, and the cost showed up on a phone.
 An installed PWA's cold start has to wake the radio and redo DNS and TLS before
@@ -832,9 +849,31 @@ Cache-first. Everything under `/static/` is content-hashed, so a cache hit is
 by definition the right answer. `/assets/` is not hashed but is stable, and gets
 a background refresh after being served.
 
-A refreshed file is written back to the cache it came from, because
-`caches.match()` searches the shell before the runtime cache and a copy written
-to the wrong one is never read. The single exception is the homepage document:
+A refreshed file is written back to the cache it came from, because the lookup
+reads the shell before the runtime cache and a copy written to the wrong one is
+never read.
+
+That order is a decision, not an accident, and the worker opens both caches **by
+name** to make it one. `caches.match()` without a `cacheName` searches every
+cache in *creation* order, and that order inverts on the first redeploy:
+`twb-runtime` is created the first time a game is opened, so every shell cache
+minted after it is searched last.
+
+```text
+deploy 1   install → twb-shell-A        [twb-shell-A]
+           first game visit             [twb-shell-A, twb-runtime]
+deploy 2   install → twb-shell-B        [twb-shell-A, twb-runtime, twb-shell-B]
+           activate deletes shell-A     [twb-runtime, twb-shell-B]   ← runtime first
+```
+
+While the worker relied on that ordering, a URL held by both caches was answered
+from the runtime copy indefinitely while `refresh()` wrote the fresh one into the
+shell, where nothing read it. `activate` also deletes every `PRECACHE` URL from
+the runtime cache, which is the repair for devices already in that state — a
+shell entry can get there by 404ing during an earlier install, or by only later
+becoming shell, as a thumbnail does when its card moves above the fold.
+
+The single exception to refreshing in place is the homepage document:
 it is the guaranteed offline entry point and `install` republishes it atomically
 with the `/static/` hashes it names, so refreshing it alone could pair a new
 document with hashes nothing has cached. Everything else in the shell is a leaf
@@ -925,21 +964,53 @@ Game unavailable
 
 Service-worker changes require deliberate versioning and testing.
 
-When a new deployment is available:
+Detecting an update is not the same as applying one, and only the second makes a
+new game visible. The worker already called `skipWaiting()` and `clients.claim()`
+— a new build took over silently — but nothing told the page that was already
+showing the old shelf, so a player launched the app, saw no new game, and closed
+it. The shelf is the only place a game is discoverable and `start_url` is `/`, so
+that is the whole front door.
 
 ```text
 New build
    ↓
-New service worker
+New service worker byte-differs from the installed one
    ↓
-Browser detects update
+install: precache the new shell, cache: "reload"        ← the new "/" is now local
    ↓
-New assets become available
+activate: drop older shells, evict leaked shell URLs
    ↓
-Old cache is eventually removed
+clients.claim()
+   ↓
+postMessage "twb:activated" to every open window        ← the missing step
+   ↓
+the shelf reloads itself out of the shell install just filled
 ```
 
-Cache invalidation must not leave the user with incompatible combinations of old and new assets.
+The reload costs no round trip and works offline: `install` completed before
+`activate` ran, so the new homepage and the `/static/` hashes it names are
+already in the new shell. Claim happens *before* the message so the reload is
+served by the new worker.
+
+**What acts on the message is the client's business, not the worker's.** The
+worker reloads nobody. `scripts/sw-register.js` reloads only the shelf, and only
+under three guards:
+
+* **The shelf only.** A game is mid-play and is never reloaded (§20). It picks up
+  the new build the next time it is opened.
+* **Not the first-ever install**, which claims an uncontrolled page with nothing
+  newer to show. The snippet records `navigator.serviceWorker.controller` before
+  registering to tell the two apart.
+* **Not once the player has touched the page.** Swapping the shelf under a finger
+  already reaching for a card is worse than one stale launch, and the next launch
+  is current regardless.
+
+An installed PWA that is *resumed* rather than cold-launched never navigates, so
+nothing would otherwise check for a new build at all. The same snippet calls
+`registration.update()` on `visibilitychange`, throttled to a quarter of an hour.
+
+Cache invalidation must not leave the user with incompatible combinations of old
+and new assets.
 
 Vite-generated hashed assets should be preferred for cache safety.
 
