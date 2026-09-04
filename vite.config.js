@@ -285,6 +285,7 @@ function sitemap() {
  */
 function pwa() {
   let swSource = "";
+  let swRegister = "";
   // Collected from the homepage's final HTML, which is the only place the
   // content-hashed shell filenames appear.
   let shellAssets = [];
@@ -296,8 +297,17 @@ function pwa() {
 
     buildStart() {
       swSource = readFileSync(path.join(rootDir, "scripts/sw-template.js"), "utf8");
-      // Rebuild when the template changes during dev.
+      // Same read-as-a-string treatment as the theme bootstrap: the header
+      // documents the build contract rather than the runtime behaviour, so it
+      // does not belong in every page, and the body is collapsed to one line.
+      // That collapse is why the file's code carries no `//` comments.
+      swRegister = readFileSync(path.join(rootDir, "scripts/sw-register.js"), "utf8")
+        .replace(/^(?:\/\/.*\n)+/, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      // Rebuild when either changes during dev.
       this.addWatchFile?.(path.join(rootDir, "scripts/sw-template.js"));
+      this.addWatchFile?.(path.join(rootDir, "scripts/sw-register.js"));
     },
 
     transformIndexHtml: {
@@ -316,21 +326,15 @@ function pwa() {
           injectTo: "head",
         },
         {
-          // Registered when the browser is idle, so it never competes with the
-          // page's own startup. Not on "load": that waits for every image and
-          // for the analytics tag, which is the slowest thing on the page and
-          // is deliberately outside the worker's scope — so a slow first visit
-          // installed the worker late, and the *next* launch still had no shell
-          // cached. Idle gets the same non-competition without chaining to it.
+          // The client half of the worker contract: registration, and applying
+          // a new build to a page that is already open. See
+          // scripts/sw-register.js for why each guard is there.
           //
-          // Failure is swallowed: the PWA is an enhancement and must never
-          // affect whether a game runs.
+          // Inlined rather than shipped as a chunk. The homepage otherwise
+          // emits no JavaScript at all, so an external file would add a request
+          // and a precache entry to every page for ~1 kB of source.
           tag: "script",
-          children:
-            'if("serviceWorker"in navigator){' +
-            'var r=function(){navigator.serviceWorker.register("/sw.js").catch(function(){})};' +
-            '"requestIdleCallback"in window?requestIdleCallback(r,{timeout:3000})' +
-            ':addEventListener("load",r)}',
+          children: swRegister,
           injectTo: "body",
         },
       ];

@@ -41,6 +41,47 @@ function cachedUrls(page) {
   });
 }
 
+/** Every key in a named cache, path and query, so key shape can be asserted. */
+function keysIn(page, cacheName) {
+  return page.evaluate(async (name) => {
+    if (!(await caches.keys()).includes(name)) return [];
+    const c = await caches.open(name);
+    return (await c.keys()).map((r) => new URL(r.url).pathname + new URL(r.url).search);
+  }, cacheName);
+}
+
+/**
+ * Delivers the worker's activation message to the page's own listener.
+ *
+ * The real message comes from `activate`, which only runs when /sw.js itself
+ * byte-differs — something a test against one build cannot cause. Dispatching
+ * it exercises the half that decides what to do about it, which is where all
+ * the behaviour lives.
+ */
+function announceNewBuild(page) {
+  return page.evaluate(() =>
+    navigator.serviceWorker.dispatchEvent(
+      new MessageEvent("message", { data: { type: "twb:activated", version: "test" } }),
+    ),
+  );
+}
+
+/** Resolves once the page has navigated away from the copy holding the marker. */
+async function markAndWatch(page) {
+  await page.evaluate(() => {
+    window.__stillHere = true;
+  });
+  return {
+    reloaded: () =>
+      page
+        .waitForFunction(() => window.__stillHere === undefined, null, { timeout: 5000 })
+        .then(
+          () => true,
+          () => false,
+        ),
+  };
+}
+
 test.describe("manifest and icons", () => {
   test("the manifest is served and complete", async ({ request }) => {
     const res = await request.get("/manifest.webmanifest");
@@ -137,6 +178,27 @@ test.describe("service worker", () => {
     const urls = await cachedUrls(page);
     for (const thumb of eager) expect(urls, `${thumb} is at the fold`).toContain(thumb);
     for (const thumb of lazy) expect(urls, `${thumb} is below the fold`).not.toContain(thumb);
+  });
+
+  // Every entry above the fold is paid for twice: once in the install, and
+  // again on the launch path, where the first is the LCP element. Six of the
+  // eight thumbnails are SVGs of 1–6 kB; the ceiling is here so a raster one
+  // cannot quietly go back to costing more than the rest of the shell put
+  // together.
+  test("no thumbnail at the fold is oversized", async ({ page, request, baseURL }) => {
+    test.skip(isDev(baseURL), "dev ships a self-unregistering worker");
+    await activateWorker(page);
+
+    const eager = await page.evaluate(() =>
+      [...document.querySelectorAll("main.shelf img.thumb")]
+        .filter((i) => i.loading !== "lazy")
+        .map((i) => new URL(i.getAttribute("src"), location.href).pathname),
+    );
+
+    for (const thumb of eager) {
+      const bytes = (await (await request.get(thumb)).body()).length;
+      expect(bytes, `${thumb} is ${bytes} B`).toBeLessThan(32 * 1024);
+    }
   });
 
   test("a launch does not wait on the network", async ({ page, context, baseURL }) => {
@@ -250,6 +312,171 @@ test.describe("service worker", () => {
     } finally {
       await context.setOffline(false);
     }
+  });
+
+  // A shared challenge link is the same document as the game's own URL — the
+  // parameters are read from location.search at runtime. While the cache keyed
+  // on the full URL, every link anyone shared was a guaranteed miss that paid a
+  // cold round trip, and offline it hit the "not available offline" page for a
+  // game the player already had.
+  test("a shared link with parameters is served from cache", async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    test.skip(isDev(baseURL), "dev ships a self-unregistering worker");
+    await activateWorker(page);
+
+    await page.goto("/flip-it/");
+    await expect(page.locator("#board .tile").first()).toBeVisible();
+    await page.waitForTimeout(600);
+
+    await context.setOffline(true);
+    try {
+      const res = await page.goto("/flip-it/?moves=12&size=5");
+      expect(res?.status(), "a shared link must not hit the offline page").not.toBe(503);
+      await expect(page.locator("#board .tile").first()).toBeVisible();
+    } finally {
+      await context.setOffline(false);
+    }
+  });
+
+  // The runtime cache is never purged, so a key per shared link would grow it
+  // without bound with copies of one document.
+  test("shared links do not multiply cache entries", async ({ page, baseURL }) => {
+    test.skip(isDev(baseURL), "dev ships a self-unregistering worker");
+    await activateWorker(page);
+
+    for (const q of ["?moves=3&size=5", "?moves=9&size=6", ""]) {
+      await page.goto(`/flip-it/${q}`);
+      await expect(page.locator("#board .tile").first()).toBeVisible();
+      await page.waitForTimeout(400);
+    }
+
+    const keys = await keysIn(page, "twb-runtime");
+    expect(keys.filter((k) => k.startsWith("/flip-it/"))).toEqual(["/flip-it/"]);
+    expect(keys.filter((k) => k.includes("?")), "no key may carry a query").toEqual([]);
+  });
+
+  // caches.match() without a cacheName searches in creation order, and that
+  // order inverts on the first redeploy: twb-runtime predates every shell cache
+  // minted after it. A URL held by both was then answered from the runtime copy
+  // for good, while refresh() wrote the fresh one into the shell unread.
+  test("the shell wins over a runtime copy of the same URL", async ({ page, baseURL }) => {
+    test.skip(isDev(baseURL), "dev ships a self-unregistering worker");
+
+    // Reproduce a device that has been through a deploy. On a first install the
+    // shell is created before the runtime cache and the hazard is invisible, so
+    // this has to rebuild the shell *after* the runtime cache exists — which is
+    // what a second deploy does.
+    await activateWorker(page);
+    await page.goto("/honeycomb/");
+    await expect(page.locator("#board .tile").first()).toBeVisible();
+    await page.waitForTimeout(600);
+
+    await page.evaluate(async () => {
+      for (const k of await caches.keys()) {
+        if (k.startsWith("twb-shell-")) await caches.delete(k);
+      }
+      const r = await navigator.serviceWorker.getRegistration();
+      if (r) await r.unregister();
+    });
+    await activateWorker(page);
+
+    const order = await page.evaluate(() => caches.keys());
+    expect(
+      order.indexOf("twb-runtime"),
+      "precondition: the runtime cache now predates the shell, so creation " +
+        "order would search it first",
+    ).toBeLessThan(order.findIndex((k) => k.startsWith("twb-shell-")));
+
+    await page.evaluate(async () => {
+      const c = await caches.open("twb-runtime");
+      await c.put(
+        "/",
+        new Response("<!doctype html><title>stale</title><body>STALE COPY", {
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        }),
+      );
+    });
+
+    await page.goto("/");
+    await expect(page.locator("main.shelf")).toBeVisible();
+    await expect(page.locator("body")).not.toContainText("STALE COPY");
+  });
+
+  // Devices in the field are already in that state, so activate has to repair
+  // it rather than merely avoid causing it.
+  test("activate evicts shell URLs that leaked into the runtime cache", async ({
+    page,
+    baseURL,
+  }) => {
+    test.skip(isDev(baseURL), "dev ships a self-unregistering worker");
+    await activateWorker(page);
+
+    await page.evaluate(async () => {
+      const c = await caches.open("twb-runtime");
+      await c.put("/", new Response("stale"));
+      await c.put("/?utm_source=test", new Response("stale"));
+      await caches.keys().then(() => {});
+    });
+    expect(await keysIn(page, "twb-runtime")).toContain("/");
+
+    // A fresh registration reruns install and activate against the same build.
+    await page.evaluate(async () => {
+      const r = await navigator.serviceWorker.getRegistration();
+      if (r) await r.unregister();
+    });
+    await activateWorker(page);
+    await page.waitForTimeout(500);
+
+    const keys = await keysIn(page, "twb-runtime");
+    expect(keys, "the shell owns / — the runtime copy must go").not.toContain("/");
+    expect(keys.filter((k) => k.startsWith("/?"))).toEqual([]);
+  });
+
+  test("a new build swaps the shelf without a launch in between", async ({
+    page,
+    baseURL,
+  }) => {
+    test.skip(isDev(baseURL), "dev ships a self-unregistering worker");
+    await activateWorker(page);
+    // Reload so this copy of the page was controlled from the start, which is
+    // what tells the snippet there was an older build to replace.
+    await page.reload();
+    await expect(page.locator("main.shelf")).toBeVisible();
+
+    const watch = await markAndWatch(page);
+    await announceNewBuild(page);
+    expect(await watch.reloaded(), "the shelf must pick up the new build").toBe(true);
+    await expect(page.locator("main.shelf")).toBeVisible();
+  });
+
+  test("a new build never reloads a game in progress", async ({ page, baseURL }) => {
+    test.skip(isDev(baseURL), "dev ships a self-unregistering worker");
+    await activateWorker(page);
+    await page.goto("/flip-it/");
+    await expect(page.locator("#board .tile").first()).toBeVisible();
+
+    const watch = await markAndWatch(page);
+    await announceNewBuild(page);
+    expect(await watch.reloaded(), "reloading mid-play would destroy the board").toBe(
+      false,
+    );
+  });
+
+  // The first-ever install claims a page that is already showing this build.
+  // Reloading it would be a visible flash for no change at all.
+  test("the first install does not reload the page it claims", async ({
+    page,
+    baseURL,
+  }) => {
+    test.skip(isDev(baseURL), "dev ships a self-unregistering worker");
+    await activateWorker(page);
+
+    const watch = await markAndWatch(page);
+    await announceNewBuild(page);
+    expect(await watch.reloaded()).toBe(false);
   });
 
   test("leaderboard requests are never served from cache", async ({ page, baseURL }) => {
