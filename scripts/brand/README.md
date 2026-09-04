@@ -2,7 +2,7 @@
 
 `mark.svg` is the source for every piece of brand imagery the site ships: the
 app icons, the social card, and the favicon's design. It lives here rather than
-in `public/` or `src/` for the same reason `sw-template.js` does — it is an
+in `public/` or `src/` for the same reason `theme-bootstrap.js` does — it is an
 input to the build's *authoring*, not a file any page requests.
 
 512 × 512 viewBox, vector, no external references. It replaced a raster
@@ -59,8 +59,9 @@ diameter, and the largest square inside that circle has a side of
 **The PNGs are posterized to 5 bits per channel.** The art is flat vector with
 one soft gradient, and it is the gradient's dither — not the drawing — that PNG
 cannot compress. Dropping the low bits roughly halves each file with no banding
-visible at any size the icon is shown. `icon-192.png` is precached with the app
-shell (§19), so its weight is paid on every install.
+visible at any size the icon is shown. `icon-192.png` is also the
+apple-touch-icon every page links, so its weight is paid on more than the
+install.
 
 **`favicon.svg` is a reduction, not a scale.** At 16px the hand and the tap
 ripples are indistinguishable mush, so the favicon keeps only what survives: the

@@ -238,11 +238,20 @@ Do not require mobile and desktop layouts to be identical.
 When changing PWA functionality, test:
 
 * Manifest availability
-* Service worker registration
+* Every declared icon existing
 * Application loading
-* Previously visited game loading offline
-* Core gameplay offline
-* Cache behavior
+* That no page registers a service worker
+* That nothing lands in Cache Storage
+* That a visited game is *not* playable offline
+* That a cache left over from an earlier build is cleared
+* That registering `/sw.js` unregisters itself and takes the caches with it
+
+There is no caching and no offline mode, in a browser tab or in the installed
+app (ARCHITECTURE.md §19), so most of these specs assert an absence.
+`asInstalledApp()` in `tests/pwa/pwa.spec.js` fakes a standalone launch for the
+one spec that checks an install does not turn caching back on — `display-mode`
+itself cannot be emulated, because Chromium's `Emulation.setEmulatedMedia`
+ignores the feature.
 
 A PWA change requires PWA tests in addition to the affected game tests.
 
