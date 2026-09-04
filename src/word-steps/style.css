@@ -162,7 +162,10 @@ html, body {
   flex-direction: column;
   align-items: center;
   gap: 0.4svh;
-  padding: 1.4svh 0 1svh;
+  /* --sheet-inset is set by openLetterPicker(): the picker sheet is fixed to
+     the bottom of the viewport and overlays the scroller, so the strip it
+     covers is reserved here to scroll the edited row up out from under it. */
+  padding: 1.4svh 0 calc(1svh + var(--sheet-inset, 0px));
 }
 
 .step-arrow {
@@ -303,22 +306,34 @@ html, body {
   cursor: pointer;
 }
 
+/* Three keyboard rows. --key-size is sized by the 10-key top row so every row
+   gets identical square keys; the negative margin lets the keyboard use more
+   width than the sheet's 6vw padding, without moving the sheet header. */
 .letter-grid {
+  --key-gap: min(6px, 1.2vw);
+  --key-size: min(38px, calc((94vw - 9 * var(--key-gap)) / 10));
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--key-gap);
+  margin: 0 -3vw;
+}
+
+.letter-row {
+  display: flex;
   justify-content: center;
-  gap: 1.6vw 1.8vw;
+  gap: var(--key-gap);
 }
 
 .letter-btn {
-  width: 38px;
-  height: 38px;
+  width: var(--key-size);
+  height: var(--key-size);
   border-radius: 10px;
   border: 1.5px solid var(--line);
   background: var(--paper);
   color: var(--ink);
   font-family: inherit;
-  font-size: 15px;
+  font-size: clamp(11px, calc(var(--key-size) * 0.44), 15px);
   font-weight: 800;
   display: flex;
   align-items: center;

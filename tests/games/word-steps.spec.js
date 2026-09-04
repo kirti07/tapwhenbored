@@ -113,6 +113,61 @@ test("undo reverses a step", async ({ page }) => {
   expect(await currentWord(page)).toBe(start);
 });
 
+/** Play any one valid step, whatever today's puzzle is. Returns false at a dead end. */
+async function playAnyStep(page) {
+  const before = await completedSteps(page).count();
+  // Position 0 alone is not always enough once a few steps are in, so walk all
+  // four. A rejected attempt reverts the tile 450ms later, so the row has to
+  // settle back before touching a different position, or the next pick reads as
+  // a two-letter change and can never commit.
+  for (let i = 0; i < 4; i++) {
+    if (i > 0) await page.waitForTimeout(500);
+    for (const letter of "ABCDEFGHIJKLMNOPRSTUVWY") {
+      await playLetter(page, i, letter);
+      if ((await completedSteps(page).count()) > before) return true;
+    }
+  }
+  return false;
+}
+
+/** Where the row being edited sits, against the top edge the sheet slides up to. */
+const sheetGeometry = (page) =>
+  page.evaluate(() => {
+    const tile = document.querySelector("#ladder .active-row .tile");
+    const sheet = document.getElementById("letterSheet");
+    // offsetHeight, not the rect: the rect is mid-slide while the sheet animates.
+    return {
+      rowBottom: tile.getBoundingClientRect().bottom,
+      sheetTop: window.innerHeight - sheet.offsetHeight,
+    };
+  });
+
+test("the row being edited is lifted clear of the letter sheet", async ({ page }) => {
+  // A short window is what breaks: the ladder scroller pins itself to its own
+  // bottom, and the sheet is fixed over that bottom, so the row the player is
+  // editing hides behind the keyboard. Grow the ladder until that is true, then
+  // prove opening the picker lifts the row into view.
+  await page.setViewportSize({ width: 390, height: 420 });
+
+  let covered = false;
+  for (let i = 0; i < 6 && !covered; i++) {
+    const { rowBottom, sheetTop } = await sheetGeometry(page);
+    covered = rowBottom > sheetTop;
+    if (!covered) {
+      expect(await playAnyStep(page), "no valid step was accepted").toBe(true);
+    }
+  }
+  expect(covered, "the ladder never grew past the sheet, so nothing was proven").toBe(
+    true,
+  );
+
+  await activeRow(page).locator(".tile").first().click();
+  await expect(page.locator("#letterSheet")).toHaveClass(/show/);
+
+  const lifted = await sheetGeometry(page);
+  expect(lifted.rowBottom).toBeLessThanOrEqual(lifted.sheetTop);
+});
+
 test("restart returns to a clean board without reloading", async ({ page }) => {
   const start = (await page.locator("#startWord").innerText()).trim();
   const stepsBefore = await completedSteps(page).count();
