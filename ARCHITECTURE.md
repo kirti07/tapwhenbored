@@ -11,7 +11,6 @@ The architecture is optimized for:
 * Fast page loads
 * Mobile and desktop play
 * Installable PWA experience
-* Offline-capable gameplay
 * Independent game development
 * AI-assisted development
 * Automated functional testing
@@ -67,8 +66,8 @@ The architecture standardizes the things around the games:
 | Game implementation    | Vanilla JS                        |
 | Styling                | CSS                               |
 | Deployment             | Vercel                            |
-| PWA                    | Web App Manifest + Service Worker |
-| Offline gameplay       | Yes                               |
+| PWA                    | Web App Manifest + icons          |
+| Offline gameplay       | No — installable, not offline     |
 | Backend                | None                           |
 | Leaderboards           | Supabase            |
 | Browser testing        | Playwright                        |
@@ -82,7 +81,7 @@ The architecture standardizes the things around the games:
 | Build output           | `dist/`                           |
 | Trailing slash         | Canonical, enforced in Vercel     |
 | Game discovery         | Filesystem, validated vs registry |
-| Offline model          | Visited games become offline-capable |
+| Offline model          | None — nothing is cached (§19)    |
 
 ---
 
@@ -222,7 +221,7 @@ Rejected approaches:
 | Approach | Why rejected |
 | -------- | ------------ |
 | `src/games/<slug>/` sources | Emits `/games/<slug>/` — changes every live URL |
-| A build plugin hoisting output out of `games/` | Dev and preview would still serve `/games/<slug>/`; only production would be flat, and the build manifest and service-worker precache list would disagree with real URLs |
+| A build plugin hoisting output out of `games/` | Dev and preview would still serve `/games/<slug>/`; only production would be flat, and the build manifest would disagree with real URLs |
 | Vercel `rewrites` mapping flat URLs onto `/games/<slug>/` | Production-only indirection that cannot be exercised locally; a catch-all rule shadows every future top-level path |
 
 ---
@@ -307,9 +306,10 @@ tap-when-bored/
 └── dist/                     build output (gitignored)
 ```
 
-`sitemap.xml` and `sw.js` are deliberately absent from `public/` — both are
-emitted by Vite plugins: the sitemap from the registry (§28), and the service
-worker from `scripts/sw-template.js` (§18). Neither can drift.
+`sitemap.xml` is deliberately absent from `public/` — it is emitted by a Vite
+plugin from the registry (§28), so it cannot drift. `sw.js` *is* in `public/`,
+because it is no longer generated from anything: it is a fixed tombstone that
+removes the caching worker this site used to ship (§19).
 
 Games are flat directories under `src/`, not nested under `src/games/`, because
 the source directory name is the production URL (§4, §5).
@@ -717,204 +717,116 @@ Architecture should not duplicate those documents.
 
 # 18. PWA Architecture
 
-Tap When Bored is an installable Progressive Web App.
+Tap When Bored is an **installable** Progressive Web App. It is not an offline
+one.
 
 The PWA is a **platform layer** on top of the MPA architecture.
 
 It must not convert the site into an SPA.
 
-The PWA consists primarily of:
+The PWA consists of:
 
 ```text
 Web App Manifest
         +
-Service Worker
-        +
 Application Icons
-        +
-Offline Cache
 ```
+
+That is all of it. There is no service worker and no cache — §19.
 
 The PWA should provide:
 
 * Installability
 * App-like launch
-* Offline access
-* Offline gameplay for previously cached games
-* Fast repeat visits
 * Graceful handling of network failures
 
-## Where the service worker comes from
+Installability does not need a worker: Chrome dropped the registered-worker
+requirement in 108 on mobile and 112 on desktop, so an install still gets its
+own window, icon and splash screen. It does not get an offline copy.
 
-The worker must be served from the site root (`/sw.js`) to hold root scope.
-
-It is **generated, not copied from `public/`**: its precache list needs the
-homepage's content-hashed filenames, which do not exist until the bundle has
-been generated. The source lives at `scripts/sw-template.js` — outside `src/`,
-so it is not a page, and outside `public/`, so it is not copied verbatim — and a
-Vite plugin substitutes a build version plus the resolved precache list, then
-emits the result to `/sw.js`.
-
-The dev server deliberately serves a *different* worker: one that clears every
-`twb-*` cache and unregisters itself. A caching worker in development serves
-stale modules and fights HMR, which is a confusing failure worth designing out.
-
-Because this is an MPA, the worker must not use a navigation fallback. Every
-flat URL is a real document (§5); answering a navigation with a cached shell
-would break both gameplay and SEO. A navigation that is offline and uncached is
-an unvisited game, and gets a short page saying so rather than a broken one.
+The manifest and apple-touch-icon links are injected into every page by `pwa()`
+in `vite.config.js`, which is also what inlines the cleanup snippet §19
+describes. Nothing else is generated for the PWA.
 
 ---
 
-# 19. PWA Caching Strategy
+# 19. Caching and Offline Mode
 
-Do not eagerly download every game when the PWA is installed.
+**There is none.** Nothing is cached by the application — not in a browser tab,
+not in the installed app — and no page is available without the network.
 
-Bad:
+This was removed deliberately. The site shipped a service worker that precached
+the app shell and cached each game as it was opened. It worked, and it cost a
+worker lifecycle, a two-cache invalidation scheme, an update-announcement
+protocol between worker and page, and a standing risk of serving a stale build —
+for games that load in a few kB over any working connection. Offline is a
+feature to add back on purpose, not one to keep running by inertia.
 
-```text
-Install PWA
- ↓
-Download all 50 games
- ↓
-Large cache
-```
+What follows from that:
 
-Preferred:
+* **A page load is a page load.** Every document and every asset comes from the
+  network, subject only to HTTP cache headers (§36). Nothing in the browser
+  answers a navigation on the site's behalf.
+* **A deploy is live on the next navigation.** There is no cache to invalidate
+  and no worker to update, which is why §21 is now a paragraph rather than a
+  protocol.
+* **Offline is the browser's own failure page.** There is no "not available
+  offline" document, because nothing pretends to hold a copy.
+* **Gameplay still must not depend on the network** once a page is open (§20).
+  That is a property of the game code, not of a cache.
 
-```text
-Install PWA
- ↓
-Cache application shell
- ↓
-Open Honeycomb
- ↓
-Cache Honeycomb assets
- ↓
-Open Doodle
- ↓
-Cache Doodle assets
-```
+### Removing the worker from devices that already have one
 
-This keeps installation lightweight.
+Shipping no worker is not enough by itself. A device that visited while there
+was one still has it registered, and an active worker keeps answering out of its
+caches — so it would go on serving an old build for as long as the player keeps
+the app installed. Two things remove it.
 
-The cache should generally contain:
+**`public/sw.js` — the tombstone.** Ten lines at the URL the old worker lived
+at: `skipWaiting`, then drop every `twb-*` cache, claim the pages the old worker
+was serving, and `unregister()`. It has no fetch handler, so the moment it
+activates nothing on the origin is answered from a cache — including the page
+that is already open, which is why this beats simply deleting the file.
 
-### Documents
-
-**Cache-first**, refreshed behind the response. There is no second strategy in
-the worker; documents follow the same rule as everything else.
-
-A document is the only thing served here whose filename is not content-hashed,
-so it is the only thing a stale cache entry can serve against a new build. Two
-properties keep that harmless:
-
-* **It lasts a moment, not a launch.** `install` precaches `/` with
-  `cache: "reload"`, `activate` deletes every older *shell* and then announces
-  itself to the pages that are open, and the shelf swaps to the new build out of
-  the cache `install` has just filled (§21). The old shelf is what paints first,
-  which is the point — but a new game is visible in the same launch, not the
-  next one.
-* **What it shows in the meantime is internally consistent.** The previous
-  build's document and the `/static/` hashes it names came from the same cache,
-  so the page is a coherent older version rather than a broken newer one.
-
-**A document is keyed by its path, with the query stripped** — `cacheKey()` in
-the worker. Every page's HTML is static per route, and the four games that build
-share links with parameters (`/flip-it/?moves=12&size=5`, and the same shape in
-bubble-tap and slide-n-order) read them from `location.search` at runtime, never
-from the document. Keying on the full URL bought nothing and cost three things:
-every shared link was a guaranteed cache miss that paid a cold round trip, every
-distinct link left another copy of the same document in the runtime cache that
-is never purged, and a shared link opened offline hit the "not available
-offline" page for a game the player already had. It also dropped
-`/?utm_source=…` into the runtime cache, where the homepage never again got the
-shell's freshness guarantee.
-
-Subresources keep their full URL.
-
-Documents were network-first for one commit, and the cost showed up on a phone.
-An installed PWA's cold start has to wake the radio and redo DNS and TLS before
-the document arrives, and a network-first navigation waits for all of it behind
-the launch splash — with a perfectly good copy of the page already in the cache.
-A site whose promise is that a game opens instantly does not spend a cold-start
-round trip to avoid one stale launch.
-
-Offline is unchanged: a navigation that is both offline and uncached still gets
-the short "not available offline" page.
-
-### App shell, and previously visited game assets
-
-Cache-first. Everything under `/static/` is content-hashed, so a cache hit is
-by definition the right answer. `/assets/` is not hashed but is stable, and gets
-a background refresh after being served.
-
-A refreshed file is written back to the cache it came from, because the lookup
-reads the shell before the runtime cache and a copy written to the wrong one is
-never read.
-
-That order is a decision, not an accident, and the worker opens both caches **by
-name** to make it one. `caches.match()` without a `cacheName` searches every
-cache in *creation* order, and that order inverts on the first redeploy:
-`twb-runtime` is created the first time a game is opened, so every shell cache
-minted after it is searched last.
+Claim comes *before* unregister: claim is what takes the open pages away from
+the old worker, and once the registration is gone there is nothing left to claim
+with.
 
 ```text
-deploy 1   install → twb-shell-A        [twb-shell-A]
-           first game visit             [twb-shell-A, twb-runtime]
-deploy 2   install → twb-shell-B        [twb-shell-A, twb-runtime, twb-shell-B]
-           activate deletes shell-A     [twb-runtime, twb-shell-B]   ← runtime first
+navigation   the old worker still answers this one from cache
+             the update check fetches /sw.js, finds a byte-different script
+install      skipWaiting
+activate     twb-* caches deleted, open pages claimed, registration removed
+             → every request from here on goes to the network
 ```
 
-While the worker relied on that ordering, a URL held by both caches was answered
-from the runtime copy indefinitely while `refresh()` wrote the fresh one into the
-shell, where nothing read it. `activate` also deletes every `PRECACHE` URL from
-the runtime cache, which is the repair for devices already in that state — a
-shell entry can get there by 404ing during an earlier install, or by only later
-becoming shell, as a thumbnail does when its card moves above the fold.
+Serving a 404 instead also removes the registration in Chromium, but it leaves
+the caches behind and other engines need not do it at all. It is deliberately
+kept as a real script, and it must stay deployed for as long as any device might
+still carry the old worker.
 
-The single exception to refreshing in place is the homepage document:
-it is the guaranteed offline entry point and `install` republishes it atomically
-with the `/static/` hashes it names, so refreshing it alone could pair a new
-document with hashes nothing has cached. Everything else in the shell is a leaf
-and *must* be refreshed — thumbnails, fonts and icons live in `public/`, which
-is copied verbatim and never hashed, so replacing one changes no filename, bumps
-no version and never re-runs `install`.
+Measured against a real installed app window carrying the previous build's
+worker and caches: both caches and the registration were gone within about two
+seconds of the launch, and the next navigation in that same session already came
+from the network. Only the first paint of the first launch is the old build.
 
-### What counts as the shell
+**`scripts/sw-cleanup.js` — the page-side half.** Inlined into every page; on
+every load it unregisters every registration for the origin and deletes every
+`twb-*` cache. Idempotent, silent, and gated on nothing. It covers what the
+tombstone cannot reach: a registration that has already gone while its caches
+stayed behind, anything done by hand in DevTools, and the state of the world
+after the tombstone is eventually deleted.
 
-The homepage document, its stylesheet, the weight-700 webfont, the manifest and
-icons — and **the thumbnails of the cards at the fold**. Without those last
-ones, a cold launch paints a shelf of empty placeholder boxes that fill in from
-the network afterwards, which is most of what "the app takes a moment to settle"
-looked like on a phone.
+Both are temporary in principle. Once no device in the field can still be
+carrying a worker, `public/sw.js` and the snippet with its injection can go.
 
-The count is fixed, not proportional to the catalogue: `EAGER_CARDS` in
-`vite.config.js` decides both which cards render eagerly and which thumbnails
-are precached, so this is four entries at seven games and four at fifty. The
-cards below the fold are `loading="lazy"` and are not precached, and a test
-asserts both directions so this cannot quietly grow into precaching the shelf.
+### What the fold rule is now for
 
-Weight 800 of the webfont is **not** shell. One rule in the site renders it
-(honeycomb's `.tile-label`), so by the rule above it is that game's asset.
-
-### What survives a new version
-
-The shell cache is versioned and replaced wholesale. The runtime cache is
-**not versioned and is never purged**.
-
-`VERSION` is a hash over every emitted filename, so a one-line fix to one game
-changes it for the whole site. While the runtime cache carried the version too,
-that deploy threw away every game the player had made offline-capable — the
-opposite of what §18 promises. Nothing in there needs discarding: `/static/`
-entries are content-addressed, so an entry can never be wrong, and a game's
-document is refreshed behind the response while staying consistent with the
-hashed files cached beside it.
-
-The cost is that superseded `/static/` chunks are never reclaimed — a few
-hundred kB per deploy, for games the player actually reopens, against an origin
-quota measured in megabytes. It is not self-pruning. If it ever needs to be,
-that is a deliberate change, not a bug fix.
+`EAGER_CARDS` in `vite.config.js` decides how many shelf cards are fetched
+eagerly — a fixed four, whether the catalogue holds seven games or fifty. It
+used to feed the precache list too; it is now purely a first-paint bound, and
+the point is unchanged: the launch cost must not grow with the shelf. The cards
+below the fold are `loading="lazy"`, and a smoke test asserts both directions.
 
 ### Network-dependent APIs
 
@@ -926,9 +838,11 @@ Must never block gameplay.
 
 ---
 
-# 20. Offline Gameplay
+# 20. Network-Independent Gameplay
 
-Core gameplay should not depend on network connectivity.
+Core gameplay should not depend on network connectivity **once the page is
+open**. Loading the page needs the network (§19); everything after that must
+not.
 
 A game should continue functioning when:
 
@@ -962,57 +876,20 @@ Game unavailable
 
 # 21. PWA Update Strategy
 
-Service-worker changes require deliberate versioning and testing.
+There is nothing to update.
 
-Detecting an update is not the same as applying one, and only the second makes a
-new game visible. The worker already called `skipWaiting()` and `clients.claim()`
-— a new build took over silently — but nothing told the page that was already
-showing the old shelf, so a player launched the app, saw no new game, and closed
-it. The shelf is the only place a game is discoverable and `start_url` is `/`, so
-that is the whole front door.
+With no service worker, a deploy is live on the next navigation: the document
+comes from the network, and the `/static/` files it names are content-hashed, so
+a page can never pair a new document with stale code.
 
-```text
-New build
-   ↓
-New service worker byte-differs from the installed one
-   ↓
-install: precache the new shell, cache: "reload"        ← the new "/" is now local
-   ↓
-activate: drop older shells, evict leaked shell URLs
-   ↓
-clients.claim()
-   ↓
-postMessage "twb:activated" to every open window        ← the missing step
-   ↓
-the shelf reloads itself out of the shell install just filled
-```
+This section used to describe a worker lifecycle — precache the new shell, drop
+the older ones, claim the open pages, announce the new build, and reload the
+shelf but only if the player had not touched it yet, and never a game in play.
+All of it went with the worker (§19). Reintroducing caching means reintroducing
+that protocol, which is most of what the trade actually costs.
 
-The reload costs no round trip and works offline: `install` completed before
-`activate` ran, so the new homepage and the `/static/` hashes it names are
-already in the new shell. Claim happens *before* the message so the reload is
-served by the new worker.
-
-**What acts on the message is the client's business, not the worker's.** The
-worker reloads nobody. `scripts/sw-register.js` reloads only the shelf, and only
-under three guards:
-
-* **The shelf only.** A game is mid-play and is never reloaded (§20). It picks up
-  the new build the next time it is opened.
-* **Not the first-ever install**, which claims an uncontrolled page with nothing
-  newer to show. The snippet records `navigator.serviceWorker.controller` before
-  registering to tell the two apart.
-* **Not once the player has touched the page.** Swapping the shelf under a finger
-  already reaching for a card is worse than one stale launch, and the next launch
-  is current regardless.
-
-An installed PWA that is *resumed* rather than cold-launched never navigates, so
-nothing would otherwise check for a new build at all. The same snippet calls
-`registration.update()` on `visibilitychange`, throttled to a quarter of an hour.
-
-Cache invalidation must not leave the user with incompatible combinations of old
-and new assets.
-
-Vite-generated hashed assets should be preferred for cache safety.
+The one moving part left is the cleanup snippet in §19, which removes a worker
+installed by an older build.
 
 ---
 
@@ -1158,17 +1035,15 @@ went from 150 kB to 61 kB, in line with its peers at the same 640².
 alongside its licence. Nothing is loaded from a font CDN.
 
 This is a first-paint decision, not a privacy or licensing one. A cross-origin
-stylesheet in the `<head>` blocks rendering until it arrives, and the service
-worker only handles same-origin requests — so on an installed cold start every
-byte of the app came from cache *except* that one request, and the splash screen
-sat there waiting for it. Local files are precached with the shell (§19) and the
-page paints offline.
+stylesheet in the `<head>` blocks rendering until it arrives, so a launch paid a
+DNS lookup, a TLS handshake and a round trip to a third party before it could
+paint its own title. Same-origin files ride the connection the document already
+opened.
 
 The same reasoning is why the font is subset, and why a page preloads only the
 weights it actually renders. `bubble-tap` is deliberately system-font and loads
-none. Weight 700 is precached with the shell because nearly every page paints
-its title in it; weight 800 is not, because exactly one rule in the site renders
-it and it is therefore honeycomb's asset (§19).
+none. Weight 700 is the one nearly every page paints its title in; weight 800 is
+loaded by honeycomb alone, because exactly one rule in the site renders it.
 
 A preloaded face is fetched at the browser's highest priority, ahead of the
 things the page paints with, so preloading an unused weight is not a harmless
@@ -1325,7 +1200,7 @@ application backend.
 
 * No game requires it to start, run, or finish.
 * No gameplay state, progress, or player data is stored in it.
-* Local play, local best scores, and offline play are unaffected by its absence.
+* Local play and local best scores are unaffected by its absence.
 * A game with `leaderboard: false` never contacts it.
 * Credentials reach the browser as `VITE_`-prefixed env vars (§35). The anon key
   is public by design; row-level security protects the data.
@@ -1432,8 +1307,8 @@ Three layers:
   `hasRestart` and `hasOverlay`, rather than assumed.
 * **Game-specific** — core mechanic, win and loss conditions, restart. Only for
   games whose complexity earns it.
-* **PWA** — manifest, icons, service-worker registration, and the
-  visit-then-offline flow.
+* **PWA** — manifest and icons, and the absence of any worker, cache or
+  offline mode (§19).
 
 Suites run against both the dev server and the preview server, which serve
 identical URLs (§5), so no spec needs environment-specific paths.
@@ -1600,8 +1475,8 @@ The production build should contain:
 * Individual game pages
 * Static assets
 * PWA manifest
-* Service worker
 * Icons
+* The tombstone service worker (§19)
 * Sitemap
 * Metadata
 
@@ -1703,7 +1578,7 @@ Before introducing a major architectural change, evaluate:
 4. Does it increase bundle size?
 5. Does it make AI development easier or harder?
 6. Does it weaken game isolation?
-7. Does it affect PWA caching?
+7. Does it reintroduce caching or an offline mode (§19)?
 8. Does it increase testing complexity?
 9. Can the problem be solved locally instead?
 

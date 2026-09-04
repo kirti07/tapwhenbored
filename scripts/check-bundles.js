@@ -86,27 +86,6 @@ console.log(
   `\nBudgets: JS ${BUDGET.js / 1024} kB, CSS ${BUDGET.css / 1024} kB gzipped per page (§23).`,
 );
 
-// The shell is what the PWA precaches on install, so it is worth its own line.
-const swPath = path.join(distDir, "sw.js");
-if (existsSync(swPath)) {
-  const precache = readFileSync(swPath, "utf8").match(
-    /const PRECACHE = (\[[^\]]*\])/,
-  )?.[1];
-  if (precache) {
-    const urls = JSON.parse(precache);
-    const gamePaths = new Set(games.map((g) => g.path));
-    const leaked = urls.filter((u) => gamePaths.has(u));
-    console.log(`Service worker precaches ${urls.length} shell entries.`);
-    if (leaked.length) {
-      console.error(
-        `check-bundles: precache contains games (${leaked.join(", ")}). ` +
-          `Installing must not download the catalogue (§19).`,
-      );
-      breaches++;
-    }
-  }
-}
-
 if (breaches && strict) {
   console.error(`\ncheck-bundles: ${breaches} budget breach(es)`);
   process.exit(1);

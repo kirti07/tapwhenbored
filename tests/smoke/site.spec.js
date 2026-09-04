@@ -78,6 +78,29 @@ test.describe("homepage", () => {
     }
   });
 
+  // A fixed number of cards is fetched eagerly and everything below waits to be
+  // scrolled towards, so the launch cost does not grow with the shelf (§19).
+  // Asserted in both directions, because the bound is the point.
+  test("the cards at the fold load eagerly, and only those", async ({ page }) => {
+    await page.goto(home.path);
+    const { eager, lazy } = await page.evaluate(() => {
+      const imgs = [...document.querySelectorAll("main.shelf img.thumb")];
+      return {
+        eager: imgs.filter((i) => i.loading !== "lazy").length,
+        lazy: imgs.filter((i) => i.loading === "lazy").length,
+      };
+    });
+    expect(eager, "some cards must be eager").toBeGreaterThan(0);
+    expect(lazy, "the cards below the fold must be lazy").toBeGreaterThan(0);
+    expect(eager + lazy, "every card is one or the other").toBe(games.length);
+
+    // The first card is the LCP element.
+    await expect(page.locator("main.shelf img.thumb").first()).toHaveAttribute(
+      "fetchpriority",
+      "high",
+    );
+  });
+
   test("no horizontal overflow", async ({ page }) => {
     await page.goto(home.path);
     const overflow = await page.evaluate(

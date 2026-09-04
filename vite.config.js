@@ -1,6 +1,5 @@
 import { defineConfig, loadEnv } from "vite";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { games, home, SITE_URL } from "./src/data/games.js";
@@ -124,11 +123,8 @@ const HOME_DARK_THEME_COLOR = "#0d0e1a";
  * phone, so roughly the first four: those are fetched eagerly (the first as the
  * LCP candidate) and everything below waits until it is scrolled towards.
  *
- * Two places need this and must not disagree — the card markup below, and the
- * service worker's precache list, which carries exactly these thumbnails so an
- * installed launch paints its first screen without the network. It is a fixed
- * four whether the catalogue holds seven games or fifty, which is what keeps
- * the install proportional (ARCHITECTURE.md §19).
+ * A fixed four whether the catalogue holds seven games or fifty — the point is
+ * that the launch cost does not grow with the shelf (ARCHITECTURE.md §19).
  */
 const EAGER_CARDS = 4;
 
@@ -272,141 +268,59 @@ function sitemap() {
 }
 
 /**
- * The PWA layer: manifest link, service-worker registration, and the worker
- * itself.
+ * The PWA layer: the manifest link, the apple-touch icon, and the snippet that
+ * clears out the service worker this site used to ship.
  *
- * The worker is emitted rather than copied from public/ because its precache
- * list needs the homepage's content-hashed filenames, which only exist after
- * the bundle is generated. It still lands at /sw.js, which is what gives it
- * root scope.
- *
- * Only the app shell is precached. Games are cached when opened, so installing
- * does not pull down every game (ARCHITECTURE.md §19).
+ * The app is installable and nothing more. There is no worker and no cache, so
+ * neither a browser tab nor the installed app has an offline mode
+ * (ARCHITECTURE.md §18, §19) — and installability does not need one: Chrome
+ * dropped the registered-worker requirement in 108 on mobile and 112 on
+ * desktop.
  */
 function pwa() {
-  let swSource = "";
-  let swRegister = "";
-  // Collected from the homepage's final HTML, which is the only place the
-  // content-hashed shell filenames appear.
-  let shellAssets = [];
+  let swCleanup = "";
   return {
     name: "twb:pwa",
-    // The precache list needs the emitted homepage, so this plugin's
-    // generateBundle must run after vite:build-html's.
-    enforce: "post",
 
     buildStart() {
-      swSource = readFileSync(path.join(rootDir, "scripts/sw-template.js"), "utf8");
       // Same read-as-a-string treatment as the theme bootstrap: the header
-      // documents the build contract rather than the runtime behaviour, so it
-      // does not belong in every page, and the body is collapsed to one line.
-      // That collapse is why the file's code carries no `//` comments.
-      swRegister = readFileSync(path.join(rootDir, "scripts/sw-register.js"), "utf8")
+      // documents the contract rather than the runtime behaviour, so it does
+      // not belong in every page, and the body is collapsed to one line. That
+      // collapse is why the file's code carries no `//` comments.
+      swCleanup = readFileSync(path.join(rootDir, "scripts/sw-cleanup.js"), "utf8")
         .replace(/^(?:\/\/.*\n)+/, "")
         .replace(/\s+/g, " ")
         .trim();
-      // Rebuild when either changes during dev.
-      this.addWatchFile?.(path.join(rootDir, "scripts/sw-template.js"));
-      this.addWatchFile?.(path.join(rootDir, "scripts/sw-register.js"));
+      // Rebuild when it changes during dev.
+      this.addWatchFile?.(path.join(rootDir, "scripts/sw-cleanup.js"));
     },
 
     transformIndexHtml: {
       order: "post",
-      handler: (html, ctx) => {
-        if (isHomepage(ctx)) {
-          shellAssets = [
-            ...String(html).matchAll(/(?:href|src)="(\/static\/[^"]+)"/g),
-          ].map((m) => m[1]);
-        }
-        return [
-        { tag: "link", attrs: { rel: "manifest", href: "/manifest.webmanifest" }, injectTo: "head" },
+      handler: () => [
+        {
+          tag: "link",
+          attrs: { rel: "manifest", href: "/manifest.webmanifest" },
+          injectTo: "head",
+        },
         {
           tag: "link",
           attrs: { rel: "apple-touch-icon", href: "/icons/icon-192.png" },
           injectTo: "head",
         },
         {
-          // The client half of the worker contract: registration, and applying
-          // a new build to a page that is already open. See
-          // scripts/sw-register.js for why each guard is there.
+          // Unregisters any worker still installed from an earlier build and
+          // drops its caches. See scripts/sw-cleanup.js for why the page does
+          // this rather than leaving it to the browser's own update check.
           //
           // Inlined rather than shipped as a chunk. The homepage otherwise
           // emits no JavaScript at all, so an external file would add a request
-          // and a precache entry to every page for ~1 kB of source.
+          // to every page for ~350 bytes of source.
           tag: "script",
-          children: swRegister,
+          children: swCleanup,
           injectTo: "body",
         },
-      ];
-      },
-    },
-
-    generateBundle(_options, bundle) {
-      // The shell is the homepage document plus the files it needs to paint its
-      // first screen. Game chunks are deliberately excluded.
-      const shell = new Set([
-        "/",
-        "/manifest.webmanifest",
-        "/favicon.svg",
-        "/icons/icon-192.png",
-        // The display webfont, weight 700. Precached rather than left to the
-        // runtime cache because it is render-blocking-adjacent: every page but
-        // bubble-tap paints its title in it, and the whole point of self-hosting
-        // it was that a cold start should never wait on a network round trip.
-        //
-        // Weight 800 is deliberately absent. Exactly one rule in the whole site
-        // renders it — honeycomb's .tile-label — so by this section's own rule
-        // it is that game's asset, and it enters the runtime cache the first
-        // time honeycomb is opened, like the rest of honeycomb.
-        "/fonts/nunito-latin-700.woff2",
-        // The thumbnails of the cards at the fold. Without these the shelf
-        // paints as empty placeholder boxes on a cold launch and fills in from
-        // the network afterwards, which is most of what "the app takes a moment
-        // to settle" looked like. Bounded at EAGER_CARDS, not the catalogue.
-        ...games.slice(0, EAGER_CARDS).map((g) => g.thumb),
-        ...shellAssets,
-      ]);
-
-      // A version that changes whenever any emitted file changes, so activate
-      // can drop every older cache without guessing.
-      const version = createHash("sha256")
-        .update(Object.keys(bundle).sort().join("|"))
-        .update(
-          Object.values(bundle)
-            .map((c) => c.fileName)
-            .sort()
-            .join("|"),
-        )
-        .digest("hex")
-        .slice(0, 12);
-
-      this.emitFile({
-        type: "asset",
-        fileName: "sw.js",
-        source: swSource
-          .replace("__VERSION__", version)
-          .replace("__PRECACHE__", JSON.stringify([...shell], null, 2)),
-      });
-    },
-
-    configureServer(server) {
-      // In dev there are no hashed assets and no bundle, so serve a worker
-      // that only unregisters itself. A caching worker in dev would serve
-      // stale modules and fight HMR — the confusing failure this avoids.
-      server.middlewares.use("/sw.js", (_req, res) => {
-        res.setHeader("Content-Type", "application/javascript");
-        res.end(
-          "// Dev build: caching is disabled so it cannot fight HMR.\n" +
-            "self.addEventListener('install', () => self.skipWaiting());\n" +
-            "self.addEventListener('activate', (e) => e.waitUntil(\n" +
-            "  (async () => {\n" +
-            "    for (const k of await caches.keys()) if (k.startsWith('twb-')) await caches.delete(k);\n" +
-            "    await self.registration.unregister();\n" +
-            "    await self.clients.claim();\n" +
-            "  })()\n" +
-            "));\n",
-        );
-      });
+      ],
     },
   };
 }
