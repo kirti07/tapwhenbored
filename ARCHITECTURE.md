@@ -802,24 +802,80 @@ The cache should generally contain:
 
 ### Documents
 
-**Network-first**, falling back to the cache.
+**Cache-first**, refreshed behind the response. There is no second strategy in
+the worker; documents follow the same rule as everything else.
 
-This is the one exception to cache-first, and it follows from the build rather
-than from taste: a document is the only thing served here whose filename is not
-content-hashed, so it is the only thing a stale cache entry can serve against a
-new build. Cache-first HTML meant a returning player got the *previous* build's
-document — its old title, its old structured data, its old `og:image`, its old
-`/static/` hashes — and only met the new build on the visit after that. A page
-is a couple of kB; being a deploy behind is not worth the milliseconds.
+A document is the only thing served here whose filename is not content-hashed,
+so it is the only thing a stale cache entry can serve against a new build. Two
+properties keep that harmless:
 
-Offline is unaffected: the cached copy is the fallback, and a navigation that is
-both offline and uncached still gets the short "not available offline" page.
+* **It is bounded to one launch.** `install` precaches `/` with
+  `cache: "reload"` and `activate` deletes every older *shell*, so the launch
+  after a deploy is on the current build.
+* **That one launch is internally consistent.** The previous build's document
+  and the `/static/` hashes it names came from the same cache, so the page is a
+  coherent older version rather than a broken newer one.
+
+Documents were network-first for one commit, and the cost showed up on a phone.
+An installed PWA's cold start has to wake the radio and redo DNS and TLS before
+the document arrives, and a network-first navigation waits for all of it behind
+the launch splash — with a perfectly good copy of the page already in the cache.
+A site whose promise is that a game opens instantly does not spend a cold-start
+round trip to avoid one stale launch.
+
+Offline is unchanged: a navigation that is both offline and uncached still gets
+the short "not available offline" page.
 
 ### App shell, and previously visited game assets
 
 Cache-first. Everything under `/static/` is content-hashed, so a cache hit is
-by definition the right answer. `/assets/` and `/fonts/` are not hashed but are
-stable, and get a background refresh after being served.
+by definition the right answer. `/assets/` is not hashed but is stable, and gets
+a background refresh after being served.
+
+A refreshed file is written back to the cache it came from, because
+`caches.match()` searches the shell before the runtime cache and a copy written
+to the wrong one is never read. The single exception is the homepage document:
+it is the guaranteed offline entry point and `install` republishes it atomically
+with the `/static/` hashes it names, so refreshing it alone could pair a new
+document with hashes nothing has cached. Everything else in the shell is a leaf
+and *must* be refreshed — thumbnails, fonts and icons live in `public/`, which
+is copied verbatim and never hashed, so replacing one changes no filename, bumps
+no version and never re-runs `install`.
+
+### What counts as the shell
+
+The homepage document, its stylesheet, the weight-700 webfont, the manifest and
+icons — and **the thumbnails of the cards at the fold**. Without those last
+ones, a cold launch paints a shelf of empty placeholder boxes that fill in from
+the network afterwards, which is most of what "the app takes a moment to settle"
+looked like on a phone.
+
+The count is fixed, not proportional to the catalogue: `EAGER_CARDS` in
+`vite.config.js` decides both which cards render eagerly and which thumbnails
+are precached, so this is four entries at seven games and four at fifty. The
+cards below the fold are `loading="lazy"` and are not precached, and a test
+asserts both directions so this cannot quietly grow into precaching the shelf.
+
+Weight 800 of the webfont is **not** shell. One rule in the site renders it
+(honeycomb's `.tile-label`), so by the rule above it is that game's asset.
+
+### What survives a new version
+
+The shell cache is versioned and replaced wholesale. The runtime cache is
+**not versioned and is never purged**.
+
+`VERSION` is a hash over every emitted filename, so a one-line fix to one game
+changes it for the whole site. While the runtime cache carried the version too,
+that deploy threw away every game the player had made offline-capable — the
+opposite of what §18 promises. Nothing in there needs discarding: `/static/`
+entries are content-addressed, so an entry can never be wrong, and a game's
+document is refreshed behind the response while staying consistent with the
+hashed files cached beside it.
+
+The cost is that superseded `/static/` chunks are never reclaimed — a few
+hundred kB per deploy, for games the player actually reopens, against an origin
+quota measured in megabytes. It is not self-pruning. If it ever needs to be,
+that is a deliberate change, not a bug fix.
 
 ### Network-dependent APIs
 
@@ -1015,9 +1071,15 @@ that it is validated (§29) rather than left to drift. It is also the one page
 whose card is `summary_large_image`; the games' images are 640² squares, where
 `summary` is correct.
 
-Replacing an OG image means a **new filename**. Social networks cache previews
-keyed on the URL and will keep serving the old picture indefinitely, on top of
-the 24-hour CDN TTL `vercel.json` gives `/assets/*`.
+Changing the *picture* in an OG image means a **new filename**. Social networks
+cache previews keyed on the URL and will keep serving the old picture
+indefinitely, on top of the 24-hour CDN TTL `vercel.json` gives `/assets/*`.
+
+Re-encoding the same picture is the exception, and overwrites in place. A stale
+cached preview is then still the *correct* preview, so there is nothing to bust
+— and renaming would cost a registry field, two meta tags, and a dead file kept
+around forever for already-shared links. This is how `marble-nostalgia-og.jpg`
+went from 150 kB to 61 kB, in line with its peers at the same 640².
 
 ## Fonts are local
 
@@ -1031,8 +1093,20 @@ byte of the app came from cache *except* that one request, and the splash screen
 sat there waiting for it. Local files are precached with the shell (§19) and the
 page paints offline.
 
-The same reasoning is why the font is subset and why a page that does not use it
-does not link it: `bubble-tap` is deliberately system-font and loads none.
+The same reasoning is why the font is subset, and why a page preloads only the
+weights it actually renders. `bubble-tap` is deliberately system-font and loads
+none. Weight 700 is precached with the shell because nearly every page paints
+its title in it; weight 800 is not, because exactly one rule in the site renders
+it and it is therefore honeycomb's asset (§19).
+
+A preloaded face is fetched at the browser's highest priority, ahead of the
+things the page paints with, so preloading an unused weight is not a harmless
+extra — it is ~16 kB of the critical path spent on nothing. Every page but
+honeycomb shipped the 800 face that way for a while.
+`tests/smoke/site.spec.js` now pins each page's preloads to the weights its own
+stylesheet renders. Beware when auditing this by hand: a rule can declare
+`font-weight: 800` and mean the *system* font, which consumes nothing from
+`public/fonts/`.
 
 ---
 

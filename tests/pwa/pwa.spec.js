@@ -55,6 +55,12 @@ test.describe("manifest and icons", () => {
     expect(m.background_color).toBeTruthy();
     expect(m.theme_color).toBeTruthy();
 
+    // Android paints the launch screen in background_color and cross-fades it
+    // into the page. If the two colours differ, opening the app reads as a
+    // coloured flash — which is exactly what a purple background_color over a
+    // near-white page did.
+    expect(m.background_color).toBe(m.theme_color);
+
     // Installability needs a 192 and a 512, and Android needs a maskable one
     // or it crops the artwork into a circle.
     const sizes = m.icons.map((i) => i.sizes);
@@ -103,6 +109,74 @@ test.describe("service worker", () => {
     for (const g of games) {
       expect(urls, `${g.slug} must not be precached`).not.toContain(g.path);
     }
+  });
+
+  // The shelf's own artwork is part of the homepage, not part of a game, and
+  // without it a cold launch paints a screen of empty placeholder boxes that
+  // fill in from the network afterwards. Asserted in both directions, because
+  // the bound is the point: precaching the whole shelf would grow the install
+  // with every game added.
+  test("precaches the cards at the fold, and only those", async ({ page, baseURL }) => {
+    test.skip(isDev(baseURL), "dev ships a self-unregistering worker");
+    await activateWorker(page);
+
+    // Which cards are "at the fold" is decided once, in the card markup. Read
+    // it back off the page rather than repeating the number here, so the two
+    // cannot drift apart.
+    const { eager, lazy } = await page.evaluate(() => {
+      const src = (img) => new URL(img.getAttribute("src"), location.href).pathname;
+      const imgs = [...document.querySelectorAll("main.shelf img.thumb")];
+      return {
+        eager: imgs.filter((i) => i.loading !== "lazy").map(src),
+        lazy: imgs.filter((i) => i.loading === "lazy").map(src),
+      };
+    });
+    expect(eager.length, "some cards must be eager").toBeGreaterThan(0);
+    expect(lazy.length, "some cards must be lazy").toBeGreaterThan(0);
+
+    const urls = await cachedUrls(page);
+    for (const thumb of eager) expect(urls, `${thumb} is at the fold`).toContain(thumb);
+    for (const thumb of lazy) expect(urls, `${thumb} is below the fold`).not.toContain(thumb);
+  });
+
+  test("a launch does not wait on the network", async ({ page, context, baseURL }) => {
+    test.skip(isDev(baseURL), "dev ships a self-unregistering worker");
+    await activateWorker(page);
+
+    // Everything from here on takes three seconds to reach the server — the
+    // shape of a cold start on a phone, where the radio and TLS have to come
+    // back up before the document does. A cache-first worker never notices. A
+    // network-first one holds the launch splash for the whole of it, which is
+    // the regression this test exists for.
+    await context.route("**/*", async (route) => {
+      await new Promise((r) => setTimeout(r, 3000));
+      await route.continue();
+    });
+
+    const started = Date.now();
+    // "commit" rather than "load": the analytics tag is deliberately outside
+    // the worker's scope, so waiting for load would time the delayed request
+    // for it rather than the page.
+    await page.goto("/", { waitUntil: "commit" });
+    await expect(page.locator("main.shelf")).toBeVisible();
+
+    // Not just the layout — the artwork. An empty shelf of placeholder boxes
+    // that fills in afterwards is the thing this is meant to prevent, and it is
+    // what happens when the thumbnails are left out of the precache.
+    const firstCard = page.locator("main.shelf img.thumb").first();
+    await expect
+      .poll(() => firstCard.evaluate((img) => img.naturalWidth), {
+        message: "the card at the fold must paint from cache, not load later",
+        timeout: 2000,
+      })
+      .toBeGreaterThan(0);
+    const elapsed = Date.now() - started;
+
+    await context.unroute("**/*");
+    expect(
+      elapsed,
+      "the homepage must come from the cache, not from a round trip",
+    ).toBeLessThan(2000);
   });
 
   test("gameplay works offline after a visit, and reload still works", async ({

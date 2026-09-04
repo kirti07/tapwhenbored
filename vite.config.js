@@ -120,6 +120,19 @@ const escapeHtml = (v) =>
 const HOME_DARK_THEME_COLOR = "#0d0e1a";
 
 /**
+ * How many shelf cards are at or near the fold. The shelf is two columns on a
+ * phone, so roughly the first four: those are fetched eagerly (the first as the
+ * LCP candidate) and everything below waits until it is scrolled towards.
+ *
+ * Two places need this and must not disagree — the card markup below, and the
+ * service worker's precache list, which carries exactly these thumbnails so an
+ * installed launch paints its first screen without the network. It is a fixed
+ * four whether the catalogue holds seven games or fifty, which is what keeps
+ * the install proportional (ARCHITECTURE.md §19).
+ */
+const EAGER_CARDS = 4;
+
+/**
  * Inlines the theme bootstrap into every page in place of its
  * `<!-- theme-bootstrap -->` marker.
  *
@@ -174,13 +187,10 @@ function themeBootstrap() {
  * is what ships.
  */
 function homepageFromRegistry() {
-  // The shelf is two columns on a phone, so roughly the first four cards are at
-  // or near the fold: those are fetched eagerly, the first as the LCP
-  // candidate, and everything below waits until it is scrolled towards.
   const card = (g, i) => `    <a class="card ${g.cardClass}" href="${g.path}">
       <img class="thumb" src="${g.thumb}" width="640" height="640" decoding="async"${
         i === 0 ? ' fetchpriority="high"' : ""
-      }${i < 4 ? "" : ' loading="lazy"'} alt="${escapeHtml(g.thumbAlt)}">
+      }${i < EAGER_CARDS ? "" : ' loading="lazy"'} alt="${escapeHtml(g.thumbAlt)}">
       <div class="card-body">
         <div class="card-text">
           <h2 class="card-name">${escapeHtml(g.title)}</h2>
@@ -306,15 +316,21 @@ function pwa() {
           injectTo: "head",
         },
         {
-          // Registered after load so it never competes with the game's own
-          // startup, and failure is swallowed: the PWA is an enhancement and
-          // must never affect whether a game runs.
+          // Registered when the browser is idle, so it never competes with the
+          // page's own startup. Not on "load": that waits for every image and
+          // for the analytics tag, which is the slowest thing on the page and
+          // is deliberately outside the worker's scope — so a slow first visit
+          // installed the worker late, and the *next* launch still had no shell
+          // cached. Idle gets the same non-competition without chaining to it.
+          //
+          // Failure is swallowed: the PWA is an enhancement and must never
+          // affect whether a game runs.
           tag: "script",
           children:
             'if("serviceWorker"in navigator){' +
-            'addEventListener("load",function(){' +
-            'navigator.serviceWorker.register("/sw.js").catch(function(){})' +
-            "})}",
+            'var r=function(){navigator.serviceWorker.register("/sw.js").catch(function(){})};' +
+            '"requestIdleCallback"in window?requestIdleCallback(r,{timeout:3000})' +
+            ':addEventListener("load",r)}',
           injectTo: "body",
         },
       ];
@@ -322,19 +338,28 @@ function pwa() {
     },
 
     generateBundle(_options, bundle) {
-      // The shell is the homepage document plus the files it loads. Game
-      // chunks are deliberately excluded.
+      // The shell is the homepage document plus the files it needs to paint its
+      // first screen. Game chunks are deliberately excluded.
       const shell = new Set([
         "/",
         "/manifest.webmanifest",
         "/favicon.svg",
         "/icons/icon-192.png",
-        // The display webfont. Precached with the shell rather than left to the
+        // The display webfont, weight 700. Precached rather than left to the
         // runtime cache because it is render-blocking-adjacent: every page but
         // bubble-tap paints its title in it, and the whole point of self-hosting
         // it was that a cold start should never wait on a network round trip.
+        //
+        // Weight 800 is deliberately absent. Exactly one rule in the whole site
+        // renders it — honeycomb's .tile-label — so by this section's own rule
+        // it is that game's asset, and it enters the runtime cache the first
+        // time honeycomb is opened, like the rest of honeycomb.
         "/fonts/nunito-latin-700.woff2",
-        "/fonts/nunito-latin-800.woff2",
+        // The thumbnails of the cards at the fold. Without these the shelf
+        // paints as empty placeholder boxes on a cold launch and fills in from
+        // the network afterwards, which is most of what "the app takes a moment
+        // to settle" looked like. Bounded at EAGER_CARDS, not the catalogue.
+        ...games.slice(0, EAGER_CARDS).map((g) => g.thumb),
         ...shellAssets,
       ]);
 

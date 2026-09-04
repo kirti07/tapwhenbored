@@ -279,6 +279,62 @@ if (!existsSync(homepage)) {
   }
 }
 
+// ---------- the manifest's colours vs. the page they frame ----------
+//
+// Android paints an installed PWA's launch screen in the manifest's
+// background_color, holds it until the page's first paint, then cross-fades to
+// the page. So background_color is not decoration: it is the colour of the
+// screen the homepage fades in from, and if it disagrees with the homepage the
+// launch reads as a coloured flash rather than as the app opening.
+//
+// That is exactly what shipped once — background_color was changed to a purple
+// while the page stayed near-white — and nothing could catch it, because all
+// three values are just string literals in three different files. Pin them
+// together.
+{
+  const manifestPath = path.join(publicDir, "manifest.webmanifest");
+  if (!existsSync(manifestPath)) {
+    err("public/manifest.webmanifest is missing");
+  } else {
+    let manifest;
+    try {
+      manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    } catch (e) {
+      err(`public/manifest.webmanifest: not valid JSON — ${e.message}`);
+    }
+
+    if (manifest) {
+      const { background_color: bg, theme_color: theme } = manifest;
+
+      if (!bg) err("public/manifest.webmanifest: no background_color");
+      if (!theme) err("public/manifest.webmanifest: no theme_color");
+
+      if (bg && theme && bg !== theme)
+        err(
+          `public/manifest.webmanifest: background_color "${bg}" and theme_color ` +
+            `"${theme}" disagree — the launch screen would not match the page ` +
+            "it fades into",
+        );
+
+      // The homepage's light theme-color. The bootstrap swaps it for the dark
+      // one at runtime, but the manifest has no dark variant to match, so the
+      // light value is the one that has to agree.
+      const pageColor = existsSync(homepage)
+        ? readFileSync(homepage, "utf8").match(
+            /<meta name="theme-color" content="([^"]+)"/,
+          )?.[1]
+        : null;
+
+      if (pageColor && bg && pageColor !== bg)
+        err(
+          `public/manifest.webmanifest: background_color "${bg}" but ` +
+            `src/index.html's theme-color is "${pageColor}" — the launch screen ` +
+            "and the page it opens must be the same colour",
+        );
+    }
+  }
+}
+
 // ---------- registry vs. the database's game_config ----------
 //
 // Direction and daily-ness are enforced by submit_game_score() from

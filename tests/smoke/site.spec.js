@@ -294,6 +294,59 @@ test("the how-to sheet is laid out identically in every game", async ({ page }) 
   }
 });
 
+// A preloaded webfont is fetched at the browser's highest priority, ahead of
+// the things a page actually paints with. Preloading a weight the page never
+// renders is therefore not a harmless extra — it is ~16 kB of the critical path
+// spent on nothing, which is how every page but honeycomb came to be shipping
+// the 800 face.
+//
+// The pairing matters: a bare search for `font-weight: 800` would wrongly flag
+// word-steps and bubble-tap, which use that weight against the system font
+// stack. Only a rule that sets BOTH the display family and weight 800 consumes
+// the 800 file.
+test.describe("font preloads match what the page renders", () => {
+  const rendersDisplayAt800 = (css) =>
+    css
+      .split("}")
+      .some(
+        (rule) =>
+          /font-family:\s*var\(--font-display\)/.test(rule) &&
+          /font-weight:\s*800/.test(rule),
+      );
+
+  for (const entry of [home, ...games]) {
+    const name = entry.path === "/" ? "homepage" : entry.slug;
+
+    test(`${name} preloads only the weights it uses`, async ({ request }) => {
+      const html = await (await request.get(entry.path)).text();
+
+      const preloaded = new Set(
+        [...html.matchAll(/rel="preload"[^>]*href="(\/fonts\/[^"]+)"/g)].map((m) => m[1]),
+      );
+
+      const sheet = html.match(/<link rel="stylesheet"[^>]*href="([^"]+)"/)?.[1];
+      expect(sheet, `${name} has a stylesheet`).toBeTruthy();
+      const css = await (await request.get(sheet)).text();
+
+      const usesDisplay = css.includes("var(--font-display)");
+      expect(
+        preloaded.has("/fonts/nunito-latin-700.woff2"),
+        usesDisplay
+          ? `${name} renders the display font, so it must preload weight 700`
+          : `${name} never uses the display font, so it must not preload it`,
+      ).toBe(usesDisplay);
+
+      const uses800 = rendersDisplayAt800(css);
+      expect(
+        preloaded.has("/fonts/nunito-latin-800.woff2"),
+        uses800
+          ? `${name} renders the display font at 800, so it must preload it`
+          : `${name} never renders weight 800 — the preload is dead weight`,
+      ).toBe(uses800);
+    });
+  }
+});
+
 test.describe("routing", () => {
   test("a slugless game URL redirects to the canonical trailing slash", async ({
     request,

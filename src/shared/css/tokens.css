@@ -12,6 +12,21 @@
  * 16.5 kB. Nunito is SIL OFL 1.1, which permits this and asks that the licence
  * travel with the files — see public/fonts/Nunito-OFL.txt.
  *
+ * A page preloads only the weights it actually renders, and only weight 700 is
+ * precached with the app shell. Weight 800 is honeycomb's alone — its
+ * .tile-label is the one rule in the site that pairs var(--font-display) with
+ * font-weight: 800 — so it is that game's asset and enters the cache when
+ * honeycomb is opened. Every other page preloaded it for a while and never drew
+ * a glyph in it, which is ~16 kB of the critical path at the highest fetch
+ * priority the browser has. tests/smoke/site.spec.js now pins the two together.
+ *
+ * Note that `font-weight: 600` against these faces resolves to the 700 file:
+ * with no 600 available, CSS font matching for a target above 500 checks
+ * heavier weights first. That is why the shared .overlay-global and the various
+ * .share-btn rules need no third face. It is also the trap in auditing this by
+ * hand — a rule can say 800 and mean the *system* font, as word-steps' tiles
+ * and bubble-tap's record line do, and those consume nothing from here.
+ *
  * A game's palette is part of its identity and lives in its own style.css.
  * This file must never set --bg, --ink, --line, --accent, or any other colour a
  * game defines for itself: the token NAMES agree across games but the VALUES
