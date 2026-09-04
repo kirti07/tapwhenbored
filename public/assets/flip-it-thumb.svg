@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" role="img" aria-label="Flip It — a five by five grid of lit and unlit tiles">
+  <defs>
+    <radialGradient id="bg" cx="26%" cy="18%" r="98%">
+      <stop offset="0%" stop-color="#fffbf2"/>
+      <stop offset="52%" stop-color="#fdf6e9"/>
+      <stop offset="100%" stop-color="#f6e8d0"/>
+    </radialGradient>
+    <linearGradient id="on" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffe27a"/>
+      <stop offset="100%" stop-color="#ffce33"/>
+    </linearGradient>
+    <linearGradient id="off" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#d3dbe5"/>
+      <stop offset="100%" stop-color="#c0cad8"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="640" fill="url(#bg)"/>
+  <circle cx="86" cy="556" r="104" fill="#ffb4a2" opacity="0.28"/>
+  <circle cx="574" cy="92" r="82" fill="#4db2e8" opacity="0.18"/>
+  <rect x="62" y="62" width="516" height="516" rx="46" fill="#fbf1df"/>
+  <rect x="62" y="62" width="516" height="516" rx="46" fill="none" stroke="#f0e4cf" stroke-width="3"/>
+  <g>
+    <rect x="92.0" y="97.0" width="76.8" height="76.8" rx="18.4" fill="#eda01c"/>
+    <rect x="92.0" y="90.0" width="76.8" height="76.8" rx="18.4" fill="url(#on)"/>
+    <rect x="186.8" y="97.0" width="76.8" height="76.8" rx="18.4" fill="#a3aebe"/>
+    <rect x="186.8" y="90.0" width="76.8" height="76.8" rx="18.4" fill="url(#off)"/>
+    <rect x="281.6" y="97.0" width="76.8" height="76.8" rx="18.4" fill="#eda01c"/>
+    <rect x="281.6" y="90.0" width="76.8" height="76.8" rx="18.4" fill="url(#on)"/>
+    <rect x="376.4" y="97.0" width="76.8" height="76.8" rx="18.4" fill="#a3aebe"/>
+    <rect x="376.4" y="90.0" width="76.8" height="76.8" rx="18.4" fill="url(#off)"/>
+    <rect x="471.2" y="97.0" width="76.8" height="76.8" rx="18.4" fill="#a3aebe"/>
+    <rect x="471.2" y="90.0" width="76.8" height="76.8" rx="18.4" fill="url(#off)"/>
+    <rect x="92.0" y="191.8" width="76.8" height="76.8" rx="18.4" fill="#a3aebe"/>
+    <rect x="92.0" y="184.8" width="76.8" height="76.8" rx="18.4" fill="url(#off)"/>
+    <rect x="186.8" y="191.8" width="76.8" height="76.8" rx="18.4" fill="#eda01c"/>
+    <rect x="186.8" y="184.8" width="76.8" height="76.8" rx="18.4" fill="url(#on)"/>
+    <rect x="281.6" y="191.8" width="76.8" height="76.8" rx="18.4" fill="#a3aebe"/>
+    <rect x="281.6" y="184.8" width="76.8" height="76.8" rx="18.4" fill="url(#off)"/>
+    <rect x="376.4" y="191.8" width="76.8" height="76.8" rx="18.4" fill="#a3aebe"/>
+    <rect x="376.4" y="184.8" width="76.8" height="76.8" rx="18.4" fill="url(#off)"/>
+    <rect x="471.2" y="191.8" width="76.8" height="76.8" rx="18.4" fill="#eda01c"/>
+    <rect x="471.2" y="184.8" width="76.8" height="76.8" rx="18.4" fill="url(#on)"/>
+    <rect x="92.0" y="286.6" width="76.8" height="76.8" rx="18.4" fill="#a3aebe"/>
+    <rect x="92.0" y="279.6" width="76.8" height="76.8" rx="18.4" fill="url(#off)"/>
+    <rect x="186.8" y="286.6" width="76.8" height="76.8" rx="18.4" fill="#eda01c"/>
+    <rect x="186.8" y="279.6" width="76.8" height="76.8" rx="18.4" fill="url(#on)"/>
+    <rect x="281.6" y="286.6" width="76.8" height="76.8" rx="18.4" fill="#eda01c"/>
+    <rect x="281.6" y="279.6" width="76.8" height="76.8" rx="18.4" fill="url(#on)"/>
+    <rect x="376.4" y="286.6" width="76.8" height="76.8" rx="18.4" fill="#a3aebe"/>
+    <rect x="376.4" y="279.6" width="76.8" height="76.8" rx="18.4" fill="url(#off)"/>
+    <rect x="471.2" y="286.6" width="76.8" height="76.8" rx="18.4" fill="#a3aebe"/>
+    <rect x="471.2" y="279.6" width="76.8" height="76.8" rx="18.4" fill="url(#off)"/>
+    <rect x="92.0" y="381.4" width="76.8" height="76.8" rx="18.4" fill="#eda01c"/>
+    <rect x="92.0" y="374.4" width="76.8" height="76.8" rx="18.4" fill="url(#on)"/>
+    <rect x="186.8" y="381.4" width="76.8" height="76.8" rx="18.4" fill="#a3aebe"/>
+    <rect x="186.8" y="374.4" width="76.8" height="76.8" rx="18.4" fill="url(#off)"/>
+    <rect x="281.6" y="381.4" width="76.8" height="76.8" rx="18.4" fill="#a3aebe"/>
+    <rect x="281.6" y="374.4" width="76.8" height="76.8" rx="18.4" fill="url(#off)"/>
+    <rect x="376.4" y="381.4" width="76.8" height="76.8" rx="18.4" fill="#eda01c"/>
+    <rect x="376.4" y="374.4" width="76.8" height="76.8" rx="18.4" fill="url(#on)"/>
+    <rect x="471.2" y="381.4" width="76.8" height="76.8" rx="18.4" fill="#a3aebe"/>
+    <rect x="471.2" y="374.4" width="76.8" height="76.8" rx="18.4" fill="url(#off)"/>
+    <rect x="92.0" y="476.2" width="76.8" height="76.8" rx="18.4" fill="#a3aebe"/>
+    <rect x="92.0" y="469.2" width="76.8" height="76.8" rx="18.4" fill="url(#off)"/>
+    <rect x="186.8" y="476.2" width="76.8" height="76.8" rx="18.4" fill="#a3aebe"/>
+    <rect x="186.8" y="469.2" width="76.8" height="76.8" rx="18.4" fill="url(#off)"/>
+    <rect x="281.6" y="476.2" width="76.8" height="76.8" rx="18.4" fill="#a3aebe"/>
+    <rect x="281.6" y="469.2" width="76.8" height="76.8" rx="18.4" fill="url(#off)"/>
+    <rect x="376.4" y="476.2" width="76.8" height="76.8" rx="18.4" fill="#a3aebe"/>
+    <rect x="376.4" y="469.2" width="76.8" height="76.8" rx="18.4" fill="url(#off)"/>
+    <rect x="471.2" y="476.2" width="76.8" height="76.8" rx="18.4" fill="#eda01c"/>
+    <rect x="471.2" y="469.2" width="76.8" height="76.8" rx="18.4" fill="url(#on)"/>
+  </g>
+</svg>
