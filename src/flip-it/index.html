@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#fdf6e9">
 <!-- theme-bootstrap -->
 <title>Flip It — Free Online Lights Out Puzzle Game</title>
-<meta name="description" content="A free online Lights Out puzzle. Tap a tile to flip it and its four neighbours, and turn the whole grid off in as few moves as possible. New board every time, no signup.">
+<meta name="description" content="A free online Lights Out puzzle. Tap a tile to flip it and its four neighbours, and turn the whole grid off in as few moves as possible. Easy, medium and hard levels, new board every time, no signup.">
 <link rel="canonical" href="https://www.tapwhenbored.com/flip-it/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Flip It — Free Online Lights Out Puzzle Game">
@@ -58,6 +58,9 @@
         <p class="subtitle">PUZZLE</p>
       </div>
       <div class="top-actions">
+        <button class="icon-btn" id="resetBtn" title="Reset board" aria-label="Reset board">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.9-6.16"/><path d="M4 4v5h5"/></svg>
+        </button>
         <button class="icon-btn" id="restartBtn" title="New puzzle" aria-label="New puzzle">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.9-6.16"/><path d="M20 4v5h-5"/></svg>
         </button>
@@ -90,12 +93,11 @@
       </div>
 
       <div class="controls">
-        <div class="sizes" id="sizes" role="group" aria-label="Board size">
-          <button class="size-btn is-active" data-size="5" type="button" aria-pressed="true">5</button>
-          <button class="size-btn" data-size="6" type="button" aria-pressed="false">6</button>
-          <button class="size-btn" data-size="7" type="button" aria-pressed="false">7</button>
+        <div class="levels" id="levels" role="group" aria-label="Difficulty">
+          <button class="level-btn is-active" data-level="easy" type="button" aria-pressed="true">EASY</button>
+          <button class="level-btn" data-level="medium" type="button" aria-pressed="false">MEDIUM</button>
+          <button class="level-btn" data-level="hard" type="button" aria-pressed="false">HARD</button>
         </div>
-        <button class="pill-btn pill-btn--quiet" id="resetBtn" type="button">Reset</button>
       </div>
     </div>
 
@@ -108,7 +110,8 @@
         directly above, below, left and right of it — never the diagonals — so every move
         undoes part of the last one. Clear the grid by turning every tile off, in as few moves
         as you can. Every board is generated solvable, and the game works out the shortest
-        possible solution so you can see how close you got. No levels, no signup.
+        possible solution so you can see how close you got. Pick easy, medium or hard —
+        easy clears in a handful of moves, hard takes closer to twenty. No signup.
       </p>
     </details>
   </div>
@@ -120,7 +123,7 @@
       <p class="overlay-sub" id="overlaySub"></p>
       <p class="overlay-time" id="overlayTime"></p>
       <p class="overlay-global" id="globalBest" hidden></p>
-      <p class="overlay-hint" id="lbHint" hidden>Match the optimal on 5×5 to enter the global board.</p>
+      <p class="overlay-hint" id="lbHint" hidden>Match the optimal on Medium to enter the global board.</p>
       <div class="overlay-actions">
         <button class="again-btn" id="againBtn">Play Again</button>
         <button class="share-btn" id="shareBtn">Share</button>

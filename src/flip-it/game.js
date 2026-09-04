@@ -3,37 +3,44 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 (function () {
   "use strict";
 
-  var SIZES = [5, 6, 7];
-  var DEFAULT_SIZE = 5;
+  // Each level spans two board sizes and a band of optimal-move counts per
+  // size. Generation presses exactly k distinct tiles, so the band IS the
+  // optimal-move count rather than a filter over random boards — the whole
+  // point being that Easy is genuinely short, not a small grid that still
+  // needs ten moves.
+  var LEVELS = {
+    easy:   { label: "EASY",   sizes: [4, 5], moves: { 4: [3, 4],   5: [4, 5] } },
+    medium: { label: "MEDIUM", sizes: [5, 6], moves: { 5: [7, 9],   6: [8, 11] } },
+    hard:   { label: "HARD",   sizes: [6, 7], moves: { 6: [14, 17], 7: [16, 20] } },
+  };
+  var LEVEL_ORDER = ["easy", "medium", "hard"];
+  var DEFAULT_LEVEL = "easy";
 
-  // Minimum optimal-move count a generated board must need, per size. Measured
-  // over the random population: 5x5 spans 4-15 optimal moves with 60% at 10 or
-  // more, 6x6 spans 7-28, 7x7 spans 13-37. These floors cut the trivial tail
-  // without making generation retry more than a couple of times.
-  var MIN_OPTIMAL = { 5: 10, 6: 15, 7: 20 };
+  // Links shared when the picker was 5/6/7 still open on a sensible level.
+  var LEGACY_SIZE_LEVEL = { "4": "easy", "5": "easy", "6": "medium", "7": "hard" };
   var GEN_ATTEMPTS = 200;
   var RECENT_MAX = 12;
 
-  // Only 5x5 perfect solves reach the leaderboard. Boards are random, so a
+  // Only Medium perfect solves reach the leaderboard. Boards are random, so a
   // plain "fewest moves" record would just log whoever drew the easiest board —
   // the reason untangle has no leaderboard at all. Requiring the run to match
   // the computed optimal removes that, and timing it keeps the record moving.
-  // Mixing three board sizes into one record would put the problem straight
-  // back, so the other two sizes are personal-best only.
-  var LB_SIZE = 5;
+  // Mixing three levels into one record would put the problem straight back,
+  // so Easy and Hard are personal-best only.
+  var LB_LEVEL = "medium";
 
   var RIPPLE_STEP_MS = 45;
   var TICK_MS = 250;
 
-  var BEST_KEY = "flipIt:v1";
+  var BEST_KEY = "flipIt:v2"; // v1 was keyed by board size, before levels
   var RECENT_KEY = "flipItRecent";
-  var SIZE_KEY = "flipItSize";
+  var LEVEL_KEY = "flipItLevel";
   var SOUND_KEY = "twb_sound"; // shared with bubble-tap: one sound preference
 
   var board = document.getElementById("board");
   var movesVal = document.getElementById("movesVal");
   var timeVal = document.getElementById("timeVal");
-  var sizes = document.getElementById("sizes");
+  var levels = document.getElementById("levels");
   var resetBtn = document.getElementById("resetBtn");
   var restartBtn = document.getElementById("restartBtn");
   var soundBtn = document.getElementById("soundBtn");
@@ -51,7 +58,8 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   var howtoSheet = document.getElementById("howtoSheet");
   var howtoBackdrop = document.getElementById("howtoBackdrop");
 
-  var size = readSize();
+  var level = readLevel();
+  var size = LEVELS[level].sizes[0]; // the dealt board decides; this is a seed
   var state = null;      // Uint8Array, 1 = lit
   var startState = null; // the board Reset returns to
   var optimal = 0;       // fewest moves this board can be solved in
@@ -68,15 +76,15 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 
   // ---------- storage (all of it optional, none of it load-bearing) ----------
 
-  function readSize() {
+  function readLevel() {
     try {
-      var v = parseInt(localStorage.getItem(SIZE_KEY), 10);
-      return SIZES.indexOf(v) !== -1 ? v : DEFAULT_SIZE;
-    } catch (e) { return DEFAULT_SIZE; }
+      var v = localStorage.getItem(LEVEL_KEY);
+      return LEVEL_ORDER.indexOf(v) !== -1 ? v : DEFAULT_LEVEL;
+    } catch (e) { return DEFAULT_LEVEL; }
   }
 
-  function writeSize(v) {
-    try { localStorage.setItem(SIZE_KEY, String(v)); } catch (e) { /* ignore */ }
+  function writeLevel(v) {
+    try { localStorage.setItem(LEVEL_KEY, v); } catch (e) { /* ignore */ }
   }
 
   function readRecent() {
@@ -183,9 +191,9 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
    * Fewest moves that clear `lit`, or null if it cannot be cleared.
    *
    * The relation is symmetric — pressing i toggles j exactly when pressing j
-   * toggles i — so matrixFor(n) doubles as the coefficient matrix. 5x5 has a
-   * two-dimensional null space, so four solutions exist and the lightest wins;
-   * 6x6 and 7x7 have exactly one solution each.
+   * toggles i — so matrixFor(n) doubles as the coefficient matrix. 4x4 has a
+   * four-dimensional null space (16 solutions) and 5x5 a two-dimensional one
+   * (4 solutions); the lightest wins. 6x6 and 7x7 have exactly one each.
    */
   function solveOptimal(n, lit) {
     var N = n * n;
@@ -236,8 +244,8 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
       basis.push(v);
     }
 
-    // 2 free variables on 5x5, none on 6x6 and 7x7. The cap is a guard against
-    // a size that was never meant to be here, not a real case.
+    // 4 free variables on 4x4, 2 on 5x5, none on 6x6 and 7x7. The cap is a
+    // guard against a size that was never meant to be here, not a real case.
     var combos = basis.length <= 12 ? 1 << basis.length : 1;
     var bestWeight = -1;
     var bestSol = null;
@@ -271,43 +279,56 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     return true;
   }
 
-  /**
-   * A fresh board, solvable by construction: it is built by pressing a random
-   * set of tiles on an empty grid, so the presses themselves are a solution and
-   * an impossible puzzle cannot be produced. Boards that are trivial, already
-   * clear, or served in the last dozen deals are rejected and redrawn.
-   */
-  function generate(n) {
+  /** An empty grid with k distinct random tiles pressed. */
+  function pressRandomK(n, k) {
     var N = n * n;
+    var lit = new Uint8Array(N);
+    var idx = [];
+    for (var i = 0; i < N; i++) idx.push(i);
+    for (i = N - 1; i > 0; i--) {                 // Fisher-Yates, partial
+      var j = (Math.random() * (i + 1)) | 0;
+      var t = idx[i]; idx[i] = idx[j]; idx[j] = t;
+    }
+    for (i = 0; i < k; i++) press(n, lit, idx[i]);
+    return lit;
+  }
+
+  /**
+   * A fresh board for a level, solvable by construction: pressing k distinct
+   * tiles on an empty grid makes those presses a solution, so an impossible
+   * puzzle cannot be produced and the optimal is k in all but a few percent of
+   * draws (a shorter route can exist through the null space). The solver still
+   * has the last word on `optimal`; a draw that lands under the level's floor
+   * is redrawn. Boards served in the last dozen deals are rejected too.
+   */
+  function generate(lvl) {
+    var cfg = LEVELS[lvl];
+    var n = cfg.sizes[(Math.random() * cfg.sizes.length) | 0];
+    var band = cfg.moves[n];
+    var k = band[0] + ((Math.random() * (band[1] - band[0] + 1)) | 0);
     var fallback = null;
-    var floor = MIN_OPTIMAL[n];
 
-    for (var pass = 0; pass < 2; pass++) {
-      for (var attempt = 0; attempt < GEN_ATTEMPTS; attempt++) {
-        var lit = new Uint8Array(N);
-        for (var i = 0; i < N; i++) if (Math.random() < 0.5) press(n, lit, i);
-        if (isCleared(lit)) continue;
+    for (var attempt = 0; attempt < GEN_ATTEMPTS; attempt++) {
+      var lit = pressRandomK(n, k);
+      if (isCleared(lit)) continue;
 
-        var sig = signature(lit);
-        if (recent.indexOf(sig) !== -1) continue;
+      var sig = signature(lit);
+      if (recent.indexOf(sig) !== -1) continue;
 
-        var solved = solveOptimal(n, lit);
-        if (!solved) continue;
+      var solved = solveOptimal(n, lit);
+      if (!solved) continue;
 
-        var puzzle = { lit: lit, optimal: solved.moves, sig: sig };
-        if (!fallback) fallback = puzzle;
-        if (solved.moves >= floor) return puzzle;
-      }
-      floor -= 2; // relax once, then take the best thing we saw
+      var puzzle = { n: n, lit: lit, optimal: solved.moves, sig: sig };
+      if (!fallback) fallback = puzzle;
+      if (solved.moves >= band[0]) return puzzle;
     }
 
     if (fallback) return fallback;
 
-    // Unreachable in practice — every pass above would have to draw the empty
+    // Unreachable in practice — the loop above would have to draw the empty
     // board 200 times running. Still cheaper to have an answer than to throw.
-    var last = new Uint8Array(N);
-    press(n, last, 0);
-    return { lit: last, optimal: 1, sig: signature(last) };
+    var last = pressRandomK(n, 1);
+    return { n: n, lit: last, optimal: 1, sig: signature(last) };
   }
 
   // ---------- board ----------
@@ -437,7 +458,7 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 
   function showResult() {
     var perfect = moves === optimal;
-    var key = String(size);
+    var key = level;
     var prev = bests[key] || null;
     var isNewBest =
       !prev || moves < prev.moves || (moves === prev.moves && finalMs < prev.ms);
@@ -458,7 +479,7 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 
     // The end card is complete before the leaderboard is asked anything, so a
     // slow or failed request costs nothing but this one line.
-    if (size === LB_SIZE && perfect) {
+    if (level === LB_LEVEL && perfect) {
       lbHint.hidden = true;
       renderGlobalBest(globalBest, {
         slug: "flip-it",
@@ -508,10 +529,11 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     updateHud();
   }
 
-  /** The topbar refresh: a fresh board at the current size. */
+  /** The topbar refresh: a fresh board at the current level. */
   function deal() {
     clearRun();
-    var puzzle = generate(size);
+    var puzzle = generate(level);
+    size = puzzle.n;
     startState = new Uint8Array(puzzle.lit);
     state = new Uint8Array(puzzle.lit);
     optimal = puzzle.optimal;
@@ -521,20 +543,20 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     updateHud();
   }
 
-  function syncSizeButtons() {
-    var btns = sizes.querySelectorAll(".size-btn");
+  function syncLevelButtons() {
+    var btns = levels.querySelectorAll(".level-btn");
     for (var i = 0; i < btns.length; i++) {
-      var active = parseInt(btns[i].dataset.size, 10) === size;
+      var active = btns[i].dataset.level === level;
       btns[i].classList.toggle("is-active", active);
       btns[i].setAttribute("aria-pressed", active ? "true" : "false");
     }
   }
 
-  function setSize(next) {
-    if (SIZES.indexOf(next) === -1 || next === size) return;
-    size = next;
-    writeSize(size);
-    syncSizeButtons();
+  function setLevel(next) {
+    if (LEVEL_ORDER.indexOf(next) === -1 || next === level) return;
+    level = next;
+    writeLevel(level);
+    syncLevelButtons();
     deal();
   }
 
@@ -545,15 +567,16 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     url.search = "";
     url.hash = "";
     url.searchParams.set("moves", String(moves));
-    url.searchParams.set("size", String(size));
+    url.searchParams.set("level", level);
     return url.toString();
   }
 
   function shareResult() {
     var url = shareUrl();
     var text =
-      "I cleared FLIP IT " + size + "×" + size + " in " + moves +
-      (moves === 1 ? " move" : " moves") + " (optimal " + optimal + "). Can you beat that?";
+      "I cleared FLIP IT on " + LEVELS[level].label + " (" + size + "×" + size +
+      ") in " + moves + (moves === 1 ? " move" : " moves") +
+      " (optimal " + optimal + "). Can you beat that?";
 
     if (navigator.share) {
       navigator.share({ title: "Flip It", text: text, url: url }).catch(function () {});
@@ -570,18 +593,23 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     shareNote.classList.add("show");
   }
 
-  /** A shared link carries the friend's score and the size they played. */
+  /** A shared link carries the friend's score and the level they played. */
   function checkChallengeLink() {
     if (!challengeBanner) return;
     var params = new URLSearchParams(location.search);
     var theirMoves = parseInt(params.get("moves"), 10);
-    var theirSize = parseInt(params.get("size"), 10);
+    var theirLevel = params.get("level");
     if (!isFinite(theirMoves) || theirMoves <= 0) return;
 
+    // Links shared before levels existed carry ?size= instead.
+    if (LEVEL_ORDER.indexOf(theirLevel) === -1) {
+      theirLevel = LEGACY_SIZE_LEVEL[params.get("size")] || null;
+    }
+
     var label = "the board";
-    if (SIZES.indexOf(theirSize) !== -1) {
-      label = theirSize + "×" + theirSize;
-      size = theirSize; // read before the first deal, so play starts on their size
+    if (theirLevel) {
+      label = LEVELS[theirLevel].label;
+      level = theirLevel; // read before the first deal, so play starts on their level
     }
     challengeBanner.textContent =
       "A friend cleared " + label + " in " + theirMoves +
@@ -624,11 +652,11 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     if (e.animationName === "tile-flip") e.target.classList.remove("tile--flip");
   });
 
-  sizes.addEventListener("click", function (e) {
-    var el = e.target.closest(".size-btn");
+  levels.addEventListener("click", function (e) {
+    var el = e.target.closest(".level-btn");
     if (!el) return;
     sndUi();
-    setSize(parseInt(el.dataset.size, 10));
+    setLevel(el.dataset.level);
   });
 
   resetBtn.addEventListener("click", function () { sndUi(); resetBoard(); });
@@ -645,6 +673,6 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 
   checkChallengeLink();
   syncSound();
-  syncSizeButtons();
+  syncLevelButtons();
   deal();
 })();
