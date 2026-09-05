@@ -1,7 +1,8 @@
 import { pickRound, drawShape } from "./prompts.js";
-import { initHowto, initShare, createNote, bindOverlay } from "../shared/ui/shell.js";
-import { tone as playTone, toggle as toggleSound, onChange as onSoundChange } from "../shared/ui/audio.js";
+import { initHowto, createNote, bindOverlay } from "../shared/ui/shell.js";
+import { tone as playTone, initSoundToggle } from "../shared/ui/audio.js";
 import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
+import { recordPlay } from "../shared/ui/progress.js";
 
 (function () {
   "use strict";
@@ -606,6 +607,9 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     if (phase === "finished") return;
     finalLeft = msLeft(); // while the phase still says "playing"
     phase = "finished";
+    /* The result is the drawing, not a number, so the slot fills with no score.
+       Both endings — the clock and the Done button — come through here. */
+    recordPlay("doodle-on", null, true);
     drawing = false;
     stopTimer(true);
     renderTimer();
@@ -817,7 +821,6 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     }, "image/png");
   }
 
-  // ---------- how to play ----------
 
   // ---------- wiring ----------
   strokeCanvas.addEventListener("pointerdown", beginStroke);
@@ -837,20 +840,12 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 
   bindOverlay(overlay, {
     primary: againBtn,
-    inertRoot: document.querySelector(".stage"),
-    label: "Round over",
+    label: "Game over",
   });
 
   initThemeToggle(themeBtn);
 
-  onSoundChange(function (on) {
-    soundBtn.classList.toggle("is-off", !on);
-    soundBtn.setAttribute("aria-pressed", on ? "true" : "false");
-    soundBtn.setAttribute("aria-label", on ? "Sound on" : "Sound off");
-  });
-  soundBtn.addEventListener("click", function () {
-    if (toggleSound()) sndEnd();
-  });
+  initSoundToggle(soundBtn, sndEnd);
 
   shareBtn.addEventListener("click", shareResult);
   initHowto({

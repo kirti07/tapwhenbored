@@ -2,7 +2,7 @@ import { defineConfig, loadEnv } from "vite";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { games, home, SITE_URL } from "./src/data/games.js";
+import { games, home, pages, SITE_URL } from "./src/data/games.js";
 
 // Absolute, derived from this file's own location. A relative `root: "src"`
 // would be resolved against process.cwd(), which is not necessarily the repo.
@@ -108,6 +108,8 @@ function vercelInsights() {
  * to be an exact comparison.
  */
 const isHomepage = (ctx) => ctx.path === "/index.html" || ctx.path === "/";
+const isBook = (ctx) => ctx.path === "/book/index.html" || ctx.path === "/book/";
+const isWall = (ctx) => ctx.path === "/wall/index.html" || ctx.path === "/wall/";
 
 const escapeHtml = (v) =>
   String(v).replace(
@@ -116,17 +118,7 @@ const escapeHtml = (v) =>
   );
 
 // The homepage's dark theme-color. Games carry their own in the registry.
-const HOME_DARK_THEME_COLOR = "#0d0e1a";
-
-/**
- * How many shelf cards are at or near the fold. The shelf is two columns on a
- * phone, so roughly the first four: those are fetched eagerly (the first as the
- * LCP candidate) and everything below waits until it is scrolled towards.
- *
- * A fixed four whether the catalogue holds seven games or fifty — the point is
- * that the launch cost does not grow with the shelf (ARCHITECTURE.md §19).
- */
-const EAGER_CARDS = 4;
+const HOME_DARK_THEME_COLOR = "#0f0e18";
 
 /**
  * Inlines the theme bootstrap into every page in place of its
@@ -173,6 +165,55 @@ function themeBootstrap() {
 }
 
 /**
+ * Markup that every page draws the same way, kept in one file each.
+ *
+ * The sprite was 50 identical lines in two documents and the theme button four
+ * lines in eleven, which had already drifted into three variants — the games'
+ * copy was missing the `aria-hidden` the others had. Neither is a runtime
+ * concern, so neither belongs in a module: they are substituted into the HTML
+ * at build time, exactly like the shelf and the slots.
+ *
+ * The button's class differs by page family (`.iconbtn` on the homepage and the
+ * book, `.icon-btn` in the game shells), so that one bit is a parameter.
+ */
+function sharedMarkup() {
+  let sprite = "";
+  let themeBtn = "";
+
+  const read = () => {
+    sprite = readFileSync(path.join(rootDir, "scripts/sprite.svg"), "utf8").trim();
+    themeBtn = readFileSync(path.join(rootDir, "scripts/theme-button.html"), "utf8").trim();
+  };
+
+  return {
+    name: "twb:shared-markup",
+    buildStart() {
+      read();
+      this.addWatchFile?.(path.join(rootDir, "scripts/sprite.svg"));
+      this.addWatchFile?.(path.join(rootDir, "scripts/theme-button.html"));
+    },
+    configureServer() {
+      read();
+    },
+    transformIndexHtml: {
+      order: "pre",
+      handler(html) {
+        if (html.includes("<!-- sprite -->")) {
+          html = html.replace("<!-- sprite -->", sprite);
+        }
+        return html.replace(/([ \t]*)<!-- theme-btn(?::([\w-]+))? -->/g, (_m, indent, cls) =>
+          indent +
+          themeBtn
+            .replace("{cls}", cls || "iconbtn")
+            .split("\n")
+            .join("\n" + indent),
+        );
+      },
+    },
+  };
+}
+
+/**
  * Fills the homepage's game shelf and its WebSite/hasPart JSON-LD from the
  * registry, replacing what used to be seven hand-maintained card blocks and a
  * parallel hand-maintained list of the same seven games.
@@ -183,28 +224,111 @@ function themeBootstrap() {
  * is what ships.
  */
 function homepageFromRegistry() {
-  const card = (g, i) => `    <a class="card ${g.cardClass}" href="${g.path}">
-      <img class="thumb" src="${g.thumb}" width="640" height="640" decoding="async"${
-        i === 0 ? ' fetchpriority="high"' : ""
-      }${i < EAGER_CARDS ? "" : ' loading="lazy"'} alt="${escapeHtml(g.thumbAlt)}">
-      <div class="card-body">
-        <div class="card-text">
-          <h2 class="card-name">${escapeHtml(g.title)}</h2>
-          <p class="card-desc">${escapeHtml(g.tagline)}</p>
-        </div>
-        <span class="play-btn" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>
-      </div>
-    </a>`;
+  /* A small deterministic tilt per card. Decoration, so it is derived from
+     position rather than stored in the registry — a field nothing but a
+     rotation reads would be a field nobody maintains. */
+  const TILT = [2.6, -3, 1.2, -1.8, 2.2, -2.6, 1.5, -0.9];
+  const tilt = (i) => TILT[i % TILT.length];
+
+  const vars = (g) => `--accent:${g.accent};--accent-d:${g.accentDark}`;
+
+  const sticker = (g, size, rot) =>
+    `<span class="sb" style="${vars(g)};--sz:${size};--rot:${rot}deg" aria-hidden="true">` +
+    `<svg viewBox="0 0 48 48"><use href="#${g.sticker}"/></svg></span>`;
+
+  const card = (g, i) => `        <a class="card" href="${g.path}" style="${vars(g)}">
+          <span class="card-art">${sticker(g, "64px", tilt(i))}</span>
+          <span class="card-b">
+            <h2 class="card-n">${escapeHtml(g.title)}</h2>
+            <span class="card-t">${escapeHtml(g.tagline)}</span>
+            <span class="card-f">
+              <span class="card-best" data-best="${g.slug}" hidden></span>
+              <span class="card-new" data-new="${g.slug}">New sticker</span>
+              <span class="card-go" aria-hidden="true"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M8.5 5.6 18 12l-9.5 6.4z"/></svg></span>
+            </span>
+          </span>
+        </a>`;
+
+  /* One outline per game, in shelf order. home.js swaps a slot to its filled
+     sticker when that game has a local best. Rendered here rather than in JS so
+     the strip has its final height on the first frame. */
+  const slot = (g) => `        <span class="slot slot--e" data-slot="${g.slug}" title="${escapeHtml(g.title)}">` +
+    `<svg viewBox="0 0 48 48" aria-hidden="true"><use href="#${g.sticker}"/></svg>` +
+    `<span class="slot-fill">${sticker(g, "100%", 0)}</span></span>`;
+
+  /* The wall, one tile per game that actually has a board. The number and the
+     signature arrive from the network; both are rendered as placeholders that
+     already occupy their final height, so the tile never grows under the
+     reader. `unit` finally has a consumer. */
+  const tile = (g, i) => `        <figure class="stk" data-slug="${g.slug}" style="${vars(g)};--rot:${tilt(i)}deg">
+          <span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#${g.sticker}"/></svg></span>
+          <figcaption class="g">${escapeHtml(g.title)}</figcaption>
+          <p class="s num" data-score>&mdash;</p>
+          <p class="u">${escapeHtml(g.scoreUnit)}</p>
+          <p class="sig" data-sig>Unsigned</p>
+        </figure>`;
+
+  /* The book page's full-size slots. Same registry, same sprite, but a card
+     rather than a chip: each one carries the game's name and has room for
+     today's score. Rendered at build time so the grid has its final height on
+     the first frame — the counts arrive from script a moment later, and nothing
+     may move underneath the reader when they do. */
+  const bookSlot = (g, i) => `        <div class="slot slot--e" data-slot="${g.slug}" style="${vars(g)};--rot:${tilt(i)}deg">
+          <span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#${g.sticker}"/></svg></span>
+          <p class="g">${escapeHtml(g.title)}</p>
+          <p class="lab" data-lab>Not played today</p>
+          <p class="s num" data-score hidden></p>
+          <p class="u" data-unit hidden>${escapeHtml(g.scoreUnit || "")}</p>
+          <p class="sig" data-sig hidden></p>
+          <a class="btn btn--s" href="${g.path}">Play</a>
+        </div>`;
+
+  /* The wall, one row per game that has a board.
+     Same read as the homepage tiles, laid out as a list so each record has room
+     for the things a tile has no space for: which way round the game scores,
+     and when the record was set. Rendered here rather than in script so the
+     list has its final height on the first frame — the numbers arrive from the
+     network a moment later and must not push anything down. */
+  const wallRow = (g) => `        <li class="wrow" data-slug="${g.slug}">
+          <a class="stk" href="${g.path}" style="${vars(g)}">
+            <span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#${g.sticker}"/></svg></span>
+            <span class="wg">
+              <span class="g">${escapeHtml(g.title)}</span>
+              <span class="wrule">${g.leaderboard.lowerIsBetter ? "fewer is better" : "higher is better"}</span>
+            </span>
+            <span class="wn" data-holder>Unsigned</span>
+            <span class="wt" data-when></span>
+            <span class="wv">
+              <span class="s num" data-score>&mdash;</span>
+              <span class="u">${escapeHtml(g.scoreUnit)}</span>
+            </span>
+          </a>
+        </li>`;
 
   return {
     name: "twb:homepage-from-registry",
     transformIndexHtml: {
       order: "pre",
       handler(html, ctx) {
+        if (isBook(ctx)) {
+          return html.replace(
+            "        <!-- book-slots -->",
+            games.map(bookSlot).join("\n"),
+          );
+        }
+        if (isWall(ctx)) {
+          return html.replace(
+            "        <!-- wall-rows -->",
+            games.filter((g) => g.leaderboard !== false).map(wallRow).join("\n"),
+          );
+        }
         // Homepage only; every other page is served untouched.
         if (!isHomepage(ctx)) return html;
 
-        const shelf = games.map(card).join("\n\n");
+        const shelf = games.map(card).join("\n");
+        const slots = games.map(slot).join("\n");
+        const boarded = games.filter((g) => g.leaderboard !== false);
+        const tiles = boarded.map(tile).join("\n");
         const hasPart = games
           .map(
             (g) =>
@@ -215,6 +339,8 @@ function homepageFromRegistry() {
 
         return html
           .replace("    <!-- games-shelf -->", shelf)
+          .replace("        <!-- book-slots -->", slots)
+          .replace("        <!-- wall-tiles -->", tiles)
           .replace('  "hasPart": []', `  "hasPart": [\n${hasPart}\n  ]`);
       },
     },
@@ -235,7 +361,7 @@ function homepageFromRegistry() {
  */
 function sitemap() {
   const render = () => {
-    const entries = [home, ...games];
+    const entries = [home, ...pages, ...games];
     const urls = entries
       .map(
         (e) =>
@@ -391,6 +517,7 @@ export default defineConfig(({ mode }) => {
   plugins: [
     trailingSlashParity(),
     themeBootstrap(),
+    sharedMarkup(),
     homepageFromRegistry(),
     vercelInsights(),
     sitemap(),

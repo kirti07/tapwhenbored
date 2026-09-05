@@ -1,0 +1,126 @@
+<svg class="sprite" aria-hidden="true" focusable="false" width="0" height="0">
+<!-- The eight game glyphs, drawn once and substituted into every page that
+     needs them (see sharedMarkup() in vite.config.js).
+
+     Each one has to say what the game *is* at a glance, because the cards are
+     otherwise identical: same frame, same tint, same layout. They are drawn in
+     currentColor so each takes its game's accent, with opacity standing in for
+     a second tone — a lit tile against an unlit one, a filled hole against an
+     empty one.
+
+     Everything here has to survive 30px, which is the wall row. That rules out
+     a 3x3 of numbers: the digit grids are 2x2 for that reason. -->
+
+<!-- The peg board: a full ring of marbles with the centre hole open, which is
+     how a game of solitaire starts. -->
+<symbol id="st-marble" viewBox="0 0 48 48">
+  <circle cx="24" cy="24" r="19.5" fill="none" stroke="currentColor" stroke-width="2" opacity=".28"/>
+  <g fill="currentColor">
+    <circle cx="18" cy="12.5" r="2.2"/><circle cx="24" cy="12.5" r="2.2"/><circle cx="30" cy="12.5" r="2.2"/>
+    <circle cx="12" cy="18.2" r="2.2"/><circle cx="18" cy="18.2" r="2.2"/><circle cx="24" cy="18.2" r="2.2"/><circle cx="30" cy="18.2" r="2.2"/><circle cx="36" cy="18.2" r="2.2"/>
+    <circle cx="12" cy="24" r="2.2"/><circle cx="18" cy="24" r="2.2"/><circle cx="30" cy="24" r="2.2"/><circle cx="36" cy="24" r="2.2"/>
+    <circle cx="12" cy="29.8" r="2.2"/><circle cx="18" cy="29.8" r="2.2"/><circle cx="24" cy="29.8" r="2.2"/><circle cx="30" cy="29.8" r="2.2"/><circle cx="36" cy="29.8" r="2.2"/>
+    <circle cx="18" cy="35.5" r="2.2"/><circle cx="24" cy="35.5" r="2.2"/><circle cx="30" cy="35.5" r="2.2"/>
+  </g>
+  <circle cx="24" cy="24" r="2.2" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".5"/>
+</symbol>
+
+<!-- Bubbles, one still unpopped. -->
+<symbol id="st-bubble" viewBox="0 0 48 48">
+  <circle cx="18" cy="19" r="10" fill="currentColor"/>
+  <circle cx="32" cy="32" r="7" fill="currentColor"/>
+  <circle cx="34" cy="13" r="4.6" fill="none" stroke="currentColor" stroke-width="2.4"/>
+</symbol>
+
+<!-- Numbered tiles with one space to slide into. -->
+<symbol id="st-slide" viewBox="0 0 48 48">
+  <g fill="currentColor" opacity=".16">
+    <rect x="6" y="6" width="17" height="17" rx="4.5"/>
+    <rect x="25" y="6" width="17" height="17" rx="4.5"/>
+    <rect x="6" y="25" width="17" height="17" rx="4.5"/>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="1.8">
+    <rect x="6" y="6" width="17" height="17" rx="4.5"/>
+    <rect x="25" y="6" width="17" height="17" rx="4.5"/>
+    <rect x="6" y="25" width="17" height="17" rx="4.5"/>
+  </g>
+  <rect x="25" y="25" width="17" height="17" rx="4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="4 3.4" opacity=".45"/>
+  <g fill="currentColor" font-family="ui-rounded, system-ui, -apple-system, sans-serif" font-size="12" font-weight="700" text-anchor="middle" dominant-baseline="central">
+    <text x="14.5" y="15">1</text>
+    <text x="33.5" y="15">2</text>
+    <text x="14.5" y="34">3</text>
+  </g>
+</symbol>
+
+<!-- Lights out: the plus a tap flips, lit against the tiles it left alone. -->
+<symbol id="st-flip" viewBox="0 0 48 48">
+  <g fill="currentColor" opacity=".22">
+    <rect x="3" y="3" width="12" height="12" rx="3.4"/>
+    <rect x="33" y="3" width="12" height="12" rx="3.4"/>
+    <rect x="3" y="33" width="12" height="12" rx="3.4"/>
+    <rect x="33" y="33" width="12" height="12" rx="3.4"/>
+  </g>
+  <g fill="currentColor">
+    <rect x="18" y="3" width="12" height="12" rx="3.4"/>
+    <rect x="3" y="18" width="12" height="12" rx="3.4"/>
+    <rect x="18" y="18" width="12" height="12" rx="3.4"/>
+    <rect x="33" y="18" width="12" height="12" rx="3.4"/>
+    <rect x="18" y="33" width="12" height="12" rx="3.4"/>
+  </g>
+</symbol>
+
+<!-- Letter tiles. One word, one letter changing at a time. -->
+<symbol id="st-word" viewBox="0 0 48 48">
+  <g fill="currentColor" opacity=".16">
+    <rect x="4.5" y="4.5" width="18" height="18" rx="4.4"/>
+    <rect x="25.5" y="4.5" width="18" height="18" rx="4.4"/>
+    <rect x="4.5" y="25.5" width="18" height="18" rx="4.4"/>
+    <rect x="25.5" y="25.5" width="18" height="18" rx="4.4"/>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="1.7">
+    <rect x="4.5" y="4.5" width="18" height="18" rx="4.4"/>
+    <rect x="25.5" y="4.5" width="18" height="18" rx="4.4"/>
+    <rect x="4.5" y="25.5" width="18" height="18" rx="4.4"/>
+    <rect x="25.5" y="25.5" width="18" height="18" rx="4.4"/>
+  </g>
+  <g fill="currentColor" font-family="ui-rounded, system-ui, -apple-system, sans-serif" font-size="12" font-weight="700" text-anchor="middle" dominant-baseline="central">
+    <text x="13.5" y="14">W</text>
+    <text x="34.5" y="14">O</text>
+    <text x="13.5" y="35">R</text>
+    <text x="34.5" y="35">D</text>
+  </g>
+</symbol>
+
+<!-- Four pinned dots and two lines that cross — the thing you have to undo. -->
+<symbol id="st-untangle" viewBox="0 0 48 48">
+  <g stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none">
+    <path d="M11 12 37 36M37 12 11 36"/>
+  </g>
+  <g fill="currentColor">
+    <circle cx="11" cy="12" r="4.4"/><circle cx="37" cy="12" r="4.4"/>
+    <circle cx="11" cy="36" r="4.4"/><circle cx="37" cy="36" r="4.4"/>
+  </g>
+</symbol>
+
+<!-- A cell short of a full comb. -->
+<symbol id="st-honey" viewBox="0 0 48 48">
+  <g fill="currentColor">
+    <path d="M24.0 17.6 29.5 20.8 29.5 27.2 24.0 30.4 18.5 27.2 18.5 20.8z"/>
+    <path d="M11.9 17.6 17.4 20.8 17.4 27.2 11.9 30.4 6.3 27.2 6.3 20.8z"/>
+    <path d="M36.1 17.6 41.7 20.8 41.7 27.2 36.1 30.4 30.6 27.2 30.6 20.8z"/>
+    <path d="M17.9 7.1 23.5 10.3 23.5 16.7 17.9 19.9 12.4 16.7 12.4 10.3z"/>
+    <path d="M30.1 7.1 35.6 10.3 35.6 16.7 30.1 19.9 24.5 16.7 24.5 10.3z"/>
+    <path d="M30.1 28.1 35.6 31.3 35.6 37.7 30.1 40.9 24.5 37.7 24.5 31.3z"/>
+  </g>
+  <path d="M17.9 28.1 23.5 31.3 23.5 37.7 17.9 40.9 12.4 37.7 12.4 31.3z" fill="none" stroke="currentColor" stroke-width="2" opacity=".5"/>
+</symbol>
+
+<!-- One line, drawn. -->
+<symbol id="st-doodle" viewBox="0 0 48 48">
+  <path d="M5 33c4-14 11-18 15-10s9 8 13-6" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>
+  <g fill="currentColor">
+    <path d="M31.6 32.2 40.9 22.9a2.6 2.6 0 0 1 3.7 3.7l-9.3 9.3z"/>
+    <path d="M31 32.8 34.7 36.5 28.9 38.6z"/>
+  </g>
+</symbol>
+</svg>

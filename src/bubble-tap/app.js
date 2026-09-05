@@ -1,6 +1,7 @@
 import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
-import { initHowto, createNote, bindOverlay } from "../shared/ui/shell.js";
+import { recordPlay } from "../shared/ui/progress.js";
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
 import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 
 (() => {
@@ -80,7 +81,6 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
   const themeBtn = document.getElementById("themeBtn");
 
   // ---------- helpers ----------
-  const note = createNote(shareNote);
   const rand = (a, b) => a + Math.random() * (b - a);
   const randInt = (a, b) => Math.floor(rand(a, b + 1));
   const pad = (n, w) => String(n).padStart(w, "0");
@@ -534,6 +534,8 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 
   // ---------- game over / restart ----------
   function showGameOver() {
+    // Higher is better here, unlike every other game on the shelf.
+    recordPlay("bubble-tap", state.score, false);
     finalScoreEl.textContent = pad(state.score, 5);
     const best = Math.max(state.score, Number(getPref("bubble-tap.best", 0) || 0));
     setPref("bubble-tap.best", best);
@@ -588,30 +590,15 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     return url.toString();
   }
 
-  async function handleShare() {
-    const score = state.score;
-    const url = shareUrl(score);
-    const text = `I scored ${score} popping bubbles in Tap When Bored — dodge the hidden bombs and beat me:`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "Tap When Bored", text, url });
-      } catch (e) {
-        // user cancelled the share sheet — nothing to do
-      }
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(`${text} ${url}`);
-      // Was `shareBtn.textContent = "LINK COPIED"`. Relabelling the control
-      // destroys its accessible name for as long as the confirmation shows,
-      // and it announced nothing. Every other game uses a separate line; so
-      // does this one now.
-      note.show("Link copied");
-    } catch (e) {
-      note.show("Press and hold to copy");
-    }
-  }
-  shareBtn.addEventListener("click", handleShare);
+  initShare({
+    btn: shareBtn,
+    note: shareNote,
+    title: "Tap When Bored",
+    text: () =>
+      `I scored ${state.score} popping bubbles in Tap When Bored — ` +
+      "dodge the hidden bombs and beat me:",
+    url: () => shareUrl(state.score),
+  });
 
   // ---------- challenge banner ----------
   function checkChallengeLink() {

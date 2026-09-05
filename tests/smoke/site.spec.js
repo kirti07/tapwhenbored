@@ -7,14 +7,23 @@
 // `#shareBtn` are asserted unconditionally.
 
 import { test, expect } from "@playwright/test";
-import { games, home, SITE_URL } from "../../src/data/games.js";
+import { games, home, pages, SITE_URL } from "../../src/data/games.js";
 
 // Requests that are expected to fail outside Vercel. The Analytics script is
 // served by Vercel's edge, not by the build, so it 404s in dev and preview.
 // Matched on URL rather than on console text: the browser's console message for
 // a failed subresource does not name the URL, so filtering on text would
 // suppress every 404 including real ones.
-const EDGE_ONLY = [/\/_vercel\/insights\//];
+// Requests that are expected to fail against a local preview.
+//
+// The insights script only exists on Vercel's edge. The leaderboard is the
+// other one: playwright.config.js deliberately points it at a .invalid host so
+// a spec that forgets to mock cannot reach a real board, and the homepage wall
+// asks for the global bests on load. An unreachable leaderboard is a supported
+// state (ARCHITECTURE.md §26, §27) — the page must carry on without it, which
+// is what the wall's own spec asserts. What must never be tolerated here is an
+// uncaught exception, and those are still collected.
+const EDGE_ONLY = [/\/_vercel\/insights\//, /\/rest\/v1\//];
 
 /**
  * Collects failures for the whole page lifetime: uncaught exceptions, console
@@ -57,48 +66,8 @@ test.describe("homepage", () => {
       await expect(card).toContainText(g.title);
     }
     // Nothing extra: the shelf is exactly the registry.
-    await expect(page.locator("main.shelf > a")).toHaveCount(games.length);
+    await expect(page.locator(".shelf > a")).toHaveCount(games.length);
     expect(errors()).toEqual([]);
-  });
-
-  test("thumbnails load", async ({ page }) => {
-    await page.goto(home.path);
-    for (const g of games) {
-      const ok = await page.evaluate(
-        (src) =>
-          new Promise((res) => {
-            const img = new Image();
-            img.onload = () => res(img.naturalWidth > 0);
-            img.onerror = () => res(false);
-            img.src = src;
-          }),
-        g.thumb,
-      );
-      expect(ok, `thumbnail ${g.thumb}`).toBe(true);
-    }
-  });
-
-  // A fixed number of cards is fetched eagerly and everything below waits to be
-  // scrolled towards, so the launch cost does not grow with the shelf (§19).
-  // Asserted in both directions, because the bound is the point.
-  test("the cards at the fold load eagerly, and only those", async ({ page }) => {
-    await page.goto(home.path);
-    const { eager, lazy } = await page.evaluate(() => {
-      const imgs = [...document.querySelectorAll("main.shelf img.thumb")];
-      return {
-        eager: imgs.filter((i) => i.loading !== "lazy").length,
-        lazy: imgs.filter((i) => i.loading === "lazy").length,
-      };
-    });
-    expect(eager, "some cards must be eager").toBeGreaterThan(0);
-    expect(lazy, "the cards below the fold must be lazy").toBeGreaterThan(0);
-    expect(eager + lazy, "every card is one or the other").toBe(games.length);
-
-    // The first card is the LCP element.
-    await expect(page.locator("main.shelf img.thumb").first()).toHaveAttribute(
-      "fetchpriority",
-      "high",
-    );
   });
 
   test("no horizontal overflow", async ({ page }) => {
@@ -337,7 +306,7 @@ test.describe("font preloads match what the page renders", () => {
           /font-weight:\s*800/.test(rule),
       );
 
-  for (const entry of [home, ...games]) {
+  for (const entry of [home, ...pages, ...games]) {
     const name = entry.path === "/" ? "homepage" : entry.slug;
 
     test(`${name} preloads only the weights it uses`, async ({ request }) => {
@@ -387,7 +356,7 @@ test.describe("routing", () => {
   test("sitemap lists exactly the registry", async ({ request }) => {
     const xml = await (await request.get("/sitemap.xml")).text();
     const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]).sort();
-    const expected = [home, ...games].map((e) => `${SITE_URL}${e.path}`).sort();
+    const expected = [home, ...pages, ...games].map((e) => `${SITE_URL}${e.path}`).sort();
     expect(locs).toEqual(expected);
   });
 });

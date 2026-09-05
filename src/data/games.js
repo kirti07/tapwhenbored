@@ -21,10 +21,12 @@ export const games = [
     description:
       "A classic peg-solitaire marble board, free to play online. Jump marbles to capture, finish with one — undo anytime, no signup.",
     path: "/marble-nostalgia/",
-    thumb: "/assets/marble-nostalgia-thumb.webp",
-    thumbAlt: "Marble Nostalgia — peg solitaire marble board preview",
     ogImage: "/assets/marble-nostalgia-og.jpg",
-    cardClass: "card--marble",
+    accent: "#1684d1",
+    accentDark: "#22d3ee",
+    sticker: "st-marble",
+    scoreUnit: "marbles left",
+    scoreFormat: "int",
     darkThemeColor: "#0d0e1a",
     updated: "2026-08-24",
     changefreq: "monthly",
@@ -35,7 +37,6 @@ export const games = [
       // quickly — that is inherent to the game, not a bug.
       lowerIsBetter: true,
       daily: false,
-      unit: "marbles left",
     },
   },
   {
@@ -45,10 +46,12 @@ export const games = [
     description:
       "Bored? Pop endless bubble wrap online — the same satisfying burst as popping a pimple or real bubble wrap, minus the mess. Free, no download, no signup.",
     path: "/bubble-tap/",
-    thumb: "/assets/bubble-tap-thumb.svg",
-    thumbAlt: "Bubble Tap — bubble wrap popping game preview",
     ogImage: "/assets/bubble-tap-og.jpg",
-    cardClass: "card--bubble",
+    accent: "#4fb6e0",
+    accentDark: "#22e5ff",
+    sticker: "st-bubble",
+    scoreUnit: "points",
+    scoreFormat: "int",
     darkThemeColor: "#0d0e1a",
     updated: "2026-08-24",
     changefreq: "monthly",
@@ -56,7 +59,7 @@ export const games = [
     // No overlay: bubble-tap predates the shared page template and shows its
     // game-over state inline instead.
     hasOverlay: false,
-    leaderboard: { lowerIsBetter: false, daily: false, unit: "points" },
+    leaderboard: { lowerIsBetter: false, daily: false },
   },
   {
     slug: "slide-n-order",
@@ -65,16 +68,18 @@ export const games = [
     description:
       "A free online 15-puzzle. Slide the numbered tiles back into order 1 to 15 — no timer, no signup, undo-free thinking at your own pace.",
     path: "/slide-n-order/",
-    thumb: "/assets/slide-n-order-thumb.svg",
-    thumbAlt: "Slide N Order — 15-puzzle sliding tile game preview",
     ogImage: "/assets/slide-n-order-og.jpg",
-    cardClass: "card--slide",
+    accent: "#8b7fe0",
+    accentDark: "#a855f7",
+    sticker: "st-slide",
+    scoreUnit: "moves",
+    scoreFormat: "int",
     darkThemeColor: "#0d0e1a",
     updated: "2026-08-24",
     changefreq: "monthly",
     hasRestart: true,
     hasOverlay: true,
-    leaderboard: { lowerIsBetter: true, daily: false, unit: "moves" },
+    leaderboard: { lowerIsBetter: true, daily: false },
   },
   {
     slug: "flip-it",
@@ -83,10 +88,12 @@ export const games = [
     description:
       "A free online Lights Out puzzle. Tap a tile to flip it and its four neighbours, and turn the whole grid off in as few moves as possible. Easy, medium and hard levels, new board every time, no signup.",
     path: "/flip-it/",
-    thumb: "/assets/flip-it-thumb.svg",
-    thumbAlt: "Flip It — Lights Out grid puzzle preview",
     ogImage: "/assets/flip-it-og.jpg",
-    cardClass: "card--flip-it",
+    accent: "#f0a825",
+    accentDark: "#ffd60a",
+    sticker: "st-flip",
+    scoreUnit: "perfect time",
+    scoreFormat: "time",
     darkThemeColor: "#070b16",
     updated: "2026-09-04",
     changefreq: "monthly",
@@ -103,7 +110,6 @@ export const games = [
       // levels in one record would put the same problem straight back.
       lowerIsBetter: true,
       daily: false,
-      unit: "perfect time",
     },
   },
   {
@@ -113,10 +119,12 @@ export const games = [
     description:
       "A free daily word ladder puzzle. Change one letter at a time to turn the start word into the target word. New puzzle every day, no signup.",
     path: "/word-steps/",
-    thumb: "/assets/word-steps-thumb.svg",
-    thumbAlt: "Word Steps — daily word ladder puzzle preview",
     ogImage: "/assets/word-steps-og.jpg",
-    cardClass: "card--word",
+    accent: "#1f9974",
+    accentDark: "#34e19a",
+    sticker: "st-word",
+    scoreUnit: "steps",
+    scoreFormat: "int",
     darkThemeColor: "#0d0e1a",
     updated: "2026-08-25",
     // The puzzle rotates daily, so this page genuinely changes daily.
@@ -129,7 +137,6 @@ export const games = [
       // ever published and then never move.
       lowerIsBetter: true,
       daily: true,
-      unit: "steps",
     },
   },
   {
@@ -139,10 +146,12 @@ export const games = [
     description:
       "A free online untangle puzzle. Move the dots until no lines cross — a brand-new random puzzle every time, no levels, no signup.",
     path: "/untangle/",
-    thumb: "/assets/untangle-thumb.svg",
-    thumbAlt: "Untangle — dot and line untangling puzzle preview",
     ogImage: "/assets/untangle-og.jpg",
-    cardClass: "card--untangle",
+    accent: "#ef6a55",
+    accentDark: "#ff6b57",
+    sticker: "st-untangle",
+    scoreUnit: "moves",
+    scoreFormat: "int",
     darkThemeColor: "#170f11",
     updated: "2026-08-28",
     changefreq: "monthly",
@@ -161,10 +170,12 @@ export const games = [
     description:
       "A free online hive puzzle. Move edge tiles, watch the clue numbers change, and keep the hive connected — a brand-new random hive every time, no levels, no signup.",
     path: "/honeycomb/",
-    thumb: "/assets/honeycomb-thumb.svg",
-    thumbAlt: "Honeycomb — hexagonal hive puzzle preview",
     ogImage: "/assets/honeycomb-og.jpg",
-    cardClass: "card--honeycomb",
+    accent: "#8b6fd9",
+    accentDark: "#b48cff",
+    sticker: "st-honey",
+    scoreUnit: "time",
+    scoreFormat: "time",
     darkThemeColor: "#14101f",
     updated: "2026-08-30",
     changefreq: "monthly",
@@ -174,7 +185,6 @@ export const games = [
       // Completion time in milliseconds.
       lowerIsBetter: true,
       daily: false,
-      unit: "time",
     },
   },
   {
@@ -184,10 +194,10 @@ export const games = [
     description:
       "A free online drawing game. Get a random shape and a random idea, then turn one into the other in 30 seconds. Draw, fill, share. No score, no signup.",
     path: "/doodle-on/",
-    thumb: "/assets/doodle-on-thumb.svg",
-    thumbAlt: "Doodle On — 30-second shape-and-idea drawing game preview",
     ogImage: "/assets/doodle-on-og.jpg",
-    cardClass: "card--doodle",
+    accent: "#7c5cff",
+    accentDark: "#ff5fb3",
+    sticker: "st-doodle",
     darkThemeColor: "#0d0e1a",
     updated: "2026-09-03",
     changefreq: "monthly",
@@ -207,6 +217,33 @@ export const games = [
 // game, and nothing caught it because the validator only ever walked `games`.
 // Landscape rather than the games' 640² squares, so the homepage is the one
 // page that earns a summary_large_image card.
+/* Pages that are neither the homepage nor a game.
+ *
+ * The build discovers pages from the filesystem, but validation, the sitemap
+ * and the test suites are all registry-driven — so a directory that is not
+ * listed here fails `npm run validate`, which gates the deploy. Anything with
+ * an index.html under src/ belongs in `games`, in `pages`, or nowhere. */
+export const pages = [
+  {
+    slug: "book",
+    title: "Your sticker book",
+    path: "/book/",
+    updated: "2026-09-05",
+    changefreq: "monthly",
+    priority: "0.5",
+  },
+  {
+    slug: "wall",
+    title: "The wall",
+    path: "/wall/",
+    // Every game's record on one page. Unlike the book, this is public content
+    // and is indexed, so it changes as often as somebody beats a record.
+    updated: "2026-09-05",
+    changefreq: "weekly",
+    priority: "0.7",
+  },
+];
+
 export const home = {
   path: "/",
   ogImage: "/assets/tapwhenbored-og.jpg",

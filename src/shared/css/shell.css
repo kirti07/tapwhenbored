@@ -59,6 +59,11 @@
 
 /* word-steps adds an opacity transition and re-declares this after the import,
    so its own version wins there. */
+/* The glyph size used to be an inline width/height on every icon SVG in every
+   game. The theme button is injected from one file now, so the size belongs
+   here — where a game can still override it, as bubble-tap does. */
+.icon-btn svg { width: 20px; height: 20px; }
+
 .icon-btn {
   width: 44px;
   height: 44px;

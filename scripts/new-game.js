@@ -24,6 +24,9 @@ const RESERVED = new Set([
   "shared",
   "api",
   "_vercel",
+  // Non-game pages (src/data/games.js `pages`).
+  "book",
+  "wall",
 ]);
 
 const slug = process.argv[2];
@@ -120,10 +123,7 @@ const html = `<!doctype html>
           <svg class="ico-sound-on" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.2L12 18.5v-13L7.2 9.5H4z"/><path d="M16 9.2a4 4 0 0 1 0 5.6"/><path d="M18.6 6.6a7.6 7.6 0 0 1 0 10.8"/></svg>
           <svg class="ico-sound-off" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.2L12 18.5v-13L7.2 9.5H4z"/><path d="M16.5 10l5 4"/><path d="M21.5 10l-5 4"/></svg>
         </button>
-        <button class="icon-btn" id="themeBtn" type="button" title="Dark theme" aria-label="Switch to dark theme">
-          <svg data-theme-icon="dark" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          <svg data-theme-icon="light" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-        </button>
+        <!-- theme-btn:icon-btn -->
       </div>
     </header>
 
@@ -372,16 +372,26 @@ const entry = `  {
     description:
       "TODO: one sentence for search results, ending in no signup.",
     path: ${JSON.stringify(`/${slug}/`)},
-    thumb: ${JSON.stringify(`/assets/${slug}-thumb.svg`)},
-    thumbAlt: ${JSON.stringify(`${title} — preview`)},
     ogImage: ${JSON.stringify(`/assets/${slug}-og.jpg`)},
-    cardClass: ${JSON.stringify(`card--${slug}`)},
-    darkThemeColor: "#0d0e1a",
+    // The homepage card's colour, light and dark. These used to be a pair of
+    // hand-written CSS rules that nothing checked, so a forgotten pair shipped
+    // a purple card; they are registry data now and the validator wants them.
+    accent: "#8b7fe0",
+    accentDark: "#a855f7",
+    // The glyph the card and the wall draw, from the sprite in src/index.html.
+    // Add a <symbol id="st-TODO"> there before this validates.
+    sticker: "st-TODO",
+    // What this game's score counts, and whether the number is milliseconds
+    // ("time") or a plain count ("int"). Delete both only if the game has no
+    // score at all.
+    scoreUnit: "TODO",
+    scoreFormat: "int",
+    darkThemeColor: "#0f0e18",
     updated: ${JSON.stringify(today)},
     changefreq: "monthly",
     hasRestart: true,
     hasOverlay: true,
-    // A descriptor ({ lowerIsBetter, daily, unit }) opts this game into the
+    // A descriptor ({ lowerIsBetter, daily }) opts this game into the
     // global-best line; see ARCHITECTURE.md §27 for what else that needs.
     leaderboard: false,
   },
@@ -398,13 +408,14 @@ writeFileSync(
 console.log(`Created src/${slug}/ and added the registry entry.
 
 Still to do:
-  1. public/assets/${slug}-thumb.svg   homepage card art (640x640)
-  2. public/assets/${slug}-og.jpg      social preview, raster not SVG (640x640)
-  3. Replace every TODO in src/${slug}/ and in the registry entry
-  4. Add .card--${slug} { --accent: ...; } to src/style.css
-  5. Replace the three TODO bullets in the "How to play" sheet
-  6. Build the mechanic in src/${slug}/game.js
-  7. tests/games/${slug}.spec.js once the mechanic works
+  1. public/assets/${slug}-og.jpg      social preview, raster not SVG (640x640)
+  2. A <symbol id="st-${slug}"> in the sprite at the top of src/index.html,
+     then set sticker: "st-${slug}" in the registry entry
+  3. Replace every TODO in src/${slug}/ and in the registry entry, including
+     accent / accentDark / scoreUnit
+  4. Replace the three TODO bullets in the "How to play" sheet
+  5. Build the mechanic in src/${slug}/game.js
+  6. tests/games/${slug}.spec.js once the mechanic works
 
   npm run validate    checks the wiring
   npm run dev         then open http://localhost:5173/${slug}/

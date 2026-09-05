@@ -1,7 +1,8 @@
 import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
-import { tone, isOn as soundIsOn, toggle as toggleSound, onChange as onSoundChange } from "../shared/ui/audio.js";
+import { tone, initSoundToggle } from "../shared/ui/audio.js";
 import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
-import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
+import { getInt, set as setPref } from "../shared/ui/prefs.js";
+import { recordPlay } from "../shared/ui/progress.js";
 
 (function () {
   "use strict";
@@ -45,7 +46,7 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
   var crossings = 0;   // last rendered count; the HUD is a view of this, never the source
   var startTime = 0;
   var ended = false;
-  var best = readBest();
+  var best = getInt(BEST_KEY);
 
   var activePointerId = null;
   var dragIndex = -1;
@@ -72,10 +73,6 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
     boundaryEl.classList.add("pulse");
   }
 
-  function readBest() {
-    var v = getPref(BEST_KEY, null);
-    return v ? parseInt(v, 10) : null;
-  }
 
   function writeBest(v) {
     best = v;
@@ -470,6 +467,9 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
   function checkSolved(count) {
     if (ended || count !== 0) return;
     ended = true;
+    /* Recorded here rather than in showOverlay(), so closing the tab during the
+       win animation still fills today's slot. */
+    recordPlay("untangle", moves, true);
     if (best == null || moves < best) writeBest(moves);
     updateBestHud();
     sndWin();
@@ -501,20 +501,12 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
   // solved puzzle underneath.
   bindOverlay(overlay, {
     primary: againBtn,
-    inertRoot: document.querySelector(".stage"),
-    label: "Puzzle solved",
+    label: "Game over",
   });
 
   initThemeToggle(themeBtn);
 
-  onSoundChange(function (on) {
-    soundBtn.classList.toggle("is-off", !on);
-    soundBtn.setAttribute("aria-pressed", on ? "true" : "false");
-    soundBtn.setAttribute("aria-label", on ? "Sound on" : "Sound off");
-  });
-  soundBtn.addEventListener("click", function () {
-    if (toggleSound()) sndRelease();
-  });
+  initSoundToggle(soundBtn, sndRelease);
   // Coalesced to one render a frame. A resize arrives in bursts — an
   // orientation change, a window drag — and render() measures the board and
   // then rewrites an SVG attribute per node and per edge, which is far too

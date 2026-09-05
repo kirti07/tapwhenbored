@@ -12,7 +12,7 @@ import { gzipSync } from "node:zlib";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { games, home } from "../src/data/games.js";
+import { games, pages } from "../src/data/games.js";
 
 const rootDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const distDir = path.join(rootDir, "dist");
@@ -40,11 +40,11 @@ function pageAssets(htmlPath) {
     .filter((f) => existsSync(f));
 }
 
-const pages = [
+const measured = [
   { label: "/", html: path.join(distDir, "index.html") },
-  ...games.map((g) => ({
-    label: g.path,
-    html: path.join(distDir, g.slug, "index.html"),
+  ...[...pages, ...games].map((e) => ({
+    label: e.path,
+    html: path.join(distDir, e.slug, "index.html"),
   })),
 ];
 
@@ -53,7 +53,7 @@ console.log("Per-page production weight (gzipped)\n");
 console.log("page".padEnd(20) + "JS".padStart(10) + "CSS".padStart(11) + "  status");
 console.log("-".repeat(52));
 
-for (const { label, html } of pages) {
+for (const { label, html } of measured) {
   if (!existsSync(html)) {
     console.log(`${label.padEnd(20)}${"missing".padStart(21)}`);
     breaches++;

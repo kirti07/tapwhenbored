@@ -324,8 +324,13 @@ export function initShare(opts) {
     var url = shareUrl();
 
     if (navigator.share) {
+      /* `url` is omitted rather than sent empty when a game has none. word-steps
+         writes its link into the body of the result, and passing "" here would
+         either duplicate it or hand the share sheet a blank field. */
+      var shareData = { title: opts.title || document.title, text: text };
+      if (url) shareData.url = url;
       navigator
-        .share({ title: opts.title || document.title, text: text, url: url })
+        .share(shareData)
         /* A completed native share needs no confirmation line — the sheet the
            player just used is the confirmation. Only a cancel lands in catch,
            and that deserves silence too. */
@@ -333,7 +338,7 @@ export function initShare(opts) {
       return;
     }
 
-    var payload = text ? text + " " + url : url;
+    var payload = text && url ? text + " " + url : text || url;
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard
         .writeText(payload)

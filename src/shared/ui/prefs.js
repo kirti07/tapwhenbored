@@ -124,6 +124,22 @@ export function setJSON(key, value) {
   }
 }
 
+/**
+ * A whole-number preference, or `fallback`.
+ *
+ * Four games had their own `readBest`, all the same three lines, and two of
+ * them wrapped it in a try/catch — dead code, since nothing in this file
+ * throws. That is the trouble with a helper each game writes for itself: the
+ * defensiveness gets copied along with the logic, and then outlives the reason
+ * for it.
+ */
+export function getInt(key, fallback = null) {
+  var raw = get(key, null);
+  if (raw === null) return fallback;
+  var n = parseInt(raw, 10);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 /** Remove a preference, and the legacy key it may have been migrated from. */
 export function remove(key) {
   if (!usable()) return;

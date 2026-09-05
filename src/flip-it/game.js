@@ -1,8 +1,12 @@
 import { renderGlobalBest } from "../shared/ui/leaderboard.js";
-import { initHowto, initShare, createNote, bindOverlay } from "../shared/ui/shell.js";
-import { tone, toggle as toggleSound, onChange as onSoundChange } from "../shared/ui/audio.js";
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import { tone, initSoundToggle } from "../shared/ui/audio.js";
 import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 import { getJSON, setJSON, get as getPref, set as setPref } from "../shared/ui/prefs.js";
+import { recordPlay } from "../shared/ui/progress.js";
+/* Was a local formatter that zero-padded the minutes, so a nine-second solve
+   read "00:09". The site now spells a duration one way. */
+import { formatDuration as formatTime } from "../shared/ui/format.js";
 
 (function () {
   "use strict";
@@ -60,7 +64,6 @@ import { getJSON, setJSON, get as getPref, set as setPref } from "../shared/ui/p
   var howtoBtn = document.getElementById("howtoBtn");
   var howtoSheet = document.getElementById("howtoSheet");
   var howtoBackdrop = document.getElementById("howtoBackdrop");
-  var soundBtn = document.getElementById("soundBtn");
   var themeBtn = document.getElementById("themeBtn");
 
   var level = readLevel();
@@ -373,6 +376,11 @@ import { getJSON, setJSON, get as getPref, set as setPref } from "../shared/ui/p
   function win(lastIndex) {
     ended = true;
     stopClock();
+    /* Here rather than in showResult(), whose renderGlobalBest call is behind
+       `level === LB_LEVEL && perfect` — most finished boards never reach it,
+       and every finished board earns the sticker. stopClock() has just stamped
+       finalMs. */
+    recordPlay("flip-it", Math.round(finalMs), true);
     board.classList.add("is-locked");
     sndWin();
 
@@ -399,12 +407,6 @@ import { getJSON, setJSON, get as getPref, set as setPref } from "../shared/ui/p
     return performance.now() - startedAt;
   }
 
-  function formatTime(ms) {
-    var total = Math.floor(ms / 1000);
-    var m = Math.floor(total / 60);
-    var s = total % 60;
-    return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
-  }
 
   function startClock() {
     startedAt = performance.now();
@@ -542,28 +544,6 @@ import { getJSON, setJSON, get as getPref, set as setPref } from "../shared/ui/p
     return url.toString();
   }
 
-  function shareResult() {
-    var url = shareUrl();
-    var text =
-      "I cleared FLIP IT on " + LEVELS[level].label + " (" + size + "×" + size +
-      ") in " + moves + (moves === 1 ? " move" : " moves") +
-      " (optimal " + optimal + "). Can you beat that?";
-
-    if (navigator.share) {
-      navigator.share({ title: "Flip It", text: text, url: url }).catch(function () {});
-      return;
-    }
-
-    var payload = text + " " + url;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(payload).then(showShareNote).catch(function () {});
-    }
-  }
-
-  function showShareNote() {
-    note.show("Link copied");
-  }
-
   /** A shared link carries the friend's score and the level they played. */
   function checkChallengeLink() {
     if (!challengeBanner) return;
@@ -593,11 +573,6 @@ import { getJSON, setJSON, get as getPref, set as setPref } from "../shared/ui/p
 
   // ---------- sound toggle ----------
 
-  function syncSound(on) {
-    soundBtn.classList.toggle("is-off", !on);
-    soundBtn.setAttribute("aria-pressed", on ? "true" : "false");
-    soundBtn.setAttribute("aria-label", on ? "Sound on" : "Sound off");
-  }
 
   // ---------- how to play ----------
   initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });
@@ -622,23 +597,25 @@ import { getJSON, setJSON, get as getPref, set as setPref } from "../shared/ui/p
   resetBtn.addEventListener("click", function () { sndUi(); resetBoard(); });
   restartBtn.addEventListener("click", function () { sndUi(); deal(); });
   againBtn.addEventListener("click", function () { sndUi(); deal(); });
-  shareBtn.addEventListener("click", shareResult);
-
-  // The preference is site-wide now, so this stays in step with a mute made
-  // in any other game rather than only with flip-it's own button.
-  onSoundChange(syncSound);
-  soundBtn.addEventListener("click", function () {
-    if (toggleSound()) sndUi();
+  initShare({
+    btn: shareBtn,
+    note: shareNote,
+    title: "Flip It",
+    text: function () {
+      return "I cleared FLIP IT on " + LEVELS[level].label + " (" + size + "×" + size +
+        ") in " + moves + (moves === 1 ? " move" : " moves") +
+        " (optimal " + optimal + "). Can you beat that?";
+    },
+    url: shareUrl,
   });
+
+  initSoundToggle(soundBtn, sndUi);
 
   initThemeToggle(themeBtn);
 
-  var note = createNote(shareNote);
-
   bindOverlay(overlay, {
     primary: againBtn,
-    inertRoot: document.querySelector(".stage"),
-    label: "Board cleared",
+    label: "Game over",
   });
 
   checkChallengeLink();

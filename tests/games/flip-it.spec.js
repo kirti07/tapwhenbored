@@ -154,7 +154,9 @@ test("a fresh board is dealt, lit, and waiting", async ({ page }) => {
   expect(board.some((v) => v === 1)).toBe(true);
 
   await expect(page.locator("#movesVal")).toHaveText("0");
-  await expect(page.locator("#timeVal")).toHaveText("00:00");
+  // 0:00, not 00:00 — flip-it was the only game that zero-padded its minutes,
+  // and it now spells a duration the way the rest of the site does.
+  await expect(page.locator("#timeVal")).toHaveText("0:00");
   await expect(page.locator("#overlay")).not.toHaveClass(/show/);
 });
 
@@ -174,10 +176,10 @@ test("a tap flips the tile and its four neighbours, and nothing else", async ({ 
 test("the clock starts on the first move, not on load", async ({ page }) => {
   // Sitting on the board thinking must not cost anything.
   await page.waitForTimeout(1500);
-  await expect(page.locator("#timeVal")).toHaveText("00:00");
+  await expect(page.locator("#timeVal")).toHaveText("0:00");
 
   await tiles(page).nth(0).click();
-  await expect(page.locator("#timeVal")).not.toHaveText("00:00", { timeout: 4000 });
+  await expect(page.locator("#timeVal")).not.toHaveText("0:00", { timeout: 4000 });
 });
 
 test("tapping the same tile twice returns the board and costs two moves", async ({ page }) => {
@@ -209,16 +211,16 @@ test("Reset restores the starting board; the topbar refresh deals another", asyn
   await tiles(page).nth(4).click();
   await tiles(page).nth(13).click();
   await expect(page.locator("#movesVal")).toHaveText("2");
-  await expect(page.locator("#timeVal")).not.toHaveText("00:00", { timeout: 4000 });
+  await expect(page.locator("#timeVal")).not.toHaveText("0:00", { timeout: 4000 });
 
   await page.locator("#resetBtn").click();
   expect(await readBoard(page)).toEqual(start);
   await expect(page.locator("#movesVal")).toHaveText("0");
-  await expect(page.locator("#timeVal")).toHaveText("00:00");
+  await expect(page.locator("#timeVal")).toHaveText("0:00");
 
   await page.locator("#restartBtn").click();
   await expect(page.locator("#movesVal")).toHaveText("0");
-  await expect(page.locator("#timeVal")).toHaveText("00:00");
+  await expect(page.locator("#timeVal")).toHaveText("0:00");
   expect(LEVELS[DEFAULT_LEVEL].sizes).toContain((await readSizedBoard(page)).n);
 });
 

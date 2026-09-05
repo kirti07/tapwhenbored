@@ -11,7 +11,7 @@
 // with it is asserted directly.
 
 import { test, expect } from "@playwright/test";
-import { games } from "../../src/data/games.js";
+import { games, pages } from "../../src/data/games.js";
 
 /** Every URL currently held in any twb-* cache. */
 function cachedUrls(page) {
@@ -103,7 +103,7 @@ test.describe("manifest and icons", () => {
   });
 
   test("every page links the manifest", async ({ page }) => {
-    for (const path of ["/", ...games.map((g) => g.path)]) {
+    for (const path of ["/", ...pages.map((p) => p.path), ...games.map((g) => g.path)]) {
       await page.goto(path);
       await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
         "href",
@@ -116,7 +116,7 @@ test.describe("manifest and icons", () => {
 test.describe("no worker, no cache, no offline", () => {
   test("no page registers a worker or caches anything", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator("main.shelf")).toBeVisible();
+    await expect(page.locator(".shelf")).toBeVisible();
     await page.goto("/honeycomb/");
     await expect(page.locator("#board .tile").first()).toBeVisible();
     // Comfortably longer than any idle-callback registration would have taken.
@@ -137,7 +137,7 @@ test.describe("no worker, no cache, no offline", () => {
     await asInstalledApp(context);
 
     await page.goto("/");
-    await expect(page.locator("main.shelf")).toBeVisible();
+    await expect(page.locator(".shelf")).toBeVisible();
     await page.goto("/flip-it/");
     await expect(page.locator("#board .tile").first()).toBeVisible();
     await page.waitForTimeout(1500);

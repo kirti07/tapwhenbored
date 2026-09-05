@@ -1,8 +1,9 @@
 import { renderGlobalBest } from "../shared/ui/leaderboard.js";
-import { initHowto, initShare, createNote, bindOverlay } from "../shared/ui/shell.js";
-import { tone, toggle as toggleSound, onChange as onSoundChange } from "../shared/ui/audio.js";
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import { tone, initSoundToggle } from "../shared/ui/audio.js";
 import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
-import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
+import { getInt, set as setPref } from "../shared/ui/prefs.js";
+import { recordPlay } from "../shared/ui/progress.js";
 
 (function () {
   "use strict";
@@ -45,14 +46,8 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
   var tileEls = {};      // index -> tile button el
   var moves = 0;
   var ended = false;
-  var best = readBest();
+  var best = getInt(BEST_KEY);
 
-  function readBest() {
-    try {
-      var v = getPref(BEST_KEY, null);
-      return v ? parseInt(v, 10) : null;
-    } catch (e) { return null; }
-  }
 
   function writeBest(v) {
     best = v;
@@ -384,6 +379,8 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
   function checkWin() {
     if (isSolved()) {
       ended = true;
+      // Before the 350ms overlay delay below, not inside it.
+      recordPlay("slide-n-order", moves, true);
       var isNewBest = best == null || moves < best;
       if (isNewBest) writeBest(moves);
       updateBestHud();
@@ -429,25 +426,6 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
     return url.toString();
   }
 
-  function shareResult() {
-    var url = shareUrl(moves);
-    var text = "I solved Slide N Order in " + moves + (moves === 1 ? " move" : " moves") + ". Can you beat that?";
-
-    if (navigator.share) {
-      navigator.share({ title: "Slide N Order", text: text, url: url }).catch(function () {});
-      return;
-    }
-
-    var payload = text + " " + url;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(payload).then(showShareNote).catch(function () {});
-    }
-  }
-
-  function showShareNote() {
-    note.show("Link copied");
-  }
-
   function checkChallengeLink() {
     if (!challengeBanner) return;
     var params = new URLSearchParams(location.search);
@@ -476,26 +454,25 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
 
   restartBtn.addEventListener("click", restart);
   againBtn.addEventListener("click", restart);
-  var note = createNote(shareNote);
-
   bindOverlay(overlay, {
     primary: againBtn,
-    inertRoot: document.querySelector(".stage"),
-    label: "Puzzle solved",
+    label: "Game over",
   });
 
   initThemeToggle(themeBtn);
 
-  onSoundChange(function (on) {
-    soundBtn.classList.toggle("is-off", !on);
-    soundBtn.setAttribute("aria-pressed", on ? "true" : "false");
-    soundBtn.setAttribute("aria-label", on ? "Sound on" : "Sound off");
-  });
-  soundBtn.addEventListener("click", function () {
-    if (toggleSound()) sndSlide();
-  });
+  initSoundToggle(soundBtn, sndSlide);
 
-  shareBtn.addEventListener("click", shareResult);
+  initShare({
+    btn: shareBtn,
+    note: shareNote,
+    title: "Slide N Order",
+    text: function () {
+      return "I solved Slide N Order in " + moves +
+        (moves === 1 ? " move" : " moves") + ". Can you beat that?";
+    },
+    url: function () { return shareUrl(moves); },
+  });
 
   tilesGrid.addEventListener("pointerdown", function (e) {
     if (ended || activePointerId !== null || settling) return; // one interaction at a time, and only once the last one has fully committed

@@ -1,8 +1,10 @@
 import { renderGlobalBest } from "../shared/ui/leaderboard.js";
-import { initHowto, initShare, createNote, bindOverlay } from "../shared/ui/shell.js";
-import { isOn as soundIsOn, toggle as toggleSound, onChange as onSoundChange, resume as resumeAudio } from "../shared/ui/audio.js";
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import { isOn as soundIsOn, initSoundToggle } from "../shared/ui/audio.js";
 import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
-import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
+import { getInt, set as setPref } from "../shared/ui/prefs.js";
+import { recordPlay } from "../shared/ui/progress.js";
+import { formatDuration as formatTime } from "../shared/ui/format.js";
 
 (function () {
   "use strict";
@@ -109,7 +111,7 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
   var ended = false;
   var moving = false;     // guards against a second tap landing mid-flash/blast
   var bombsRemaining = 0;
-  var best = readBest();  // fastest completed run, in ms — null if none yet
+  var best = getInt(BEST_KEY);  // fastest completed run, in ms — null if none yet
   var runStartTime = 0;
   var finalElapsedMs = 0;
   var timerHandle = null;
@@ -123,25 +125,12 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
   var endTimer = null;
 
   // ---------- persistence ----------
-  function readBest() {
-    try {
-      var v = getPref(BEST_KEY, null);
-      return v ? parseInt(v, 10) : null;
-    } catch (e) { return null; }
-  }
   function writeBest(v) {
     best = v;
     setPref(BEST_KEY, v);
   }
 
   // ---------- timer ----------
-  function formatTime(ms) {
-    if (ms == null) return "--:--";
-    var totalSec = Math.floor(ms / 1000);
-    var m = Math.floor(totalSec / 60);
-    var s = totalSec % 60;
-    return m + ":" + (s < 10 ? "0" : "") + s;
-  }
   function liveElapsed() {
     return ended ? finalElapsedMs : (Date.now() - runStartTime);
   }
@@ -992,6 +981,12 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
     // best time with bombs still on the board.
     wonLastRun = reason === "cleared";
 
+    /* A split hive is still a round played to its end, so it earns the sticker
+       — but it has no valid time, so only a win records a number. This sits
+       above the `if (!wonLastRun) return` below, which is the line that would
+       otherwise hide every loss from the book. */
+    recordPlay("honeycomb", wonLastRun ? finalElapsedMs : null, true);
+
     if (wonLastRun && (best === null || finalElapsedMs < best)) writeBest(finalElapsedMs);
     updateHud();
     showOverlay(reason);
@@ -1088,26 +1083,6 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
     overlay.classList.remove("show", "won");
   }
 
-  function shareResult() {
-    var url = new URL(location.href);
-    url.search = "";
-    url.hash = "";
-    var text = wonLastRun
-      ? "I cleared HONEYCOMB in " + formatTime(finalElapsedMs) + ". Can you beat it?"
-      : "I lasted " + formatTime(finalElapsedMs) + " in HONEYCOMB before the hive beat me. Can you beat it?";
-
-    if (navigator.share) {
-      navigator.share({ title: "Honeycomb", text: text, url: url.toString() }).catch(function () {});
-      return;
-    }
-    var payload = text + " " + url.toString();
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(payload).then(function () {
-        note.show("Link copied");
-      }).catch(function () {});
-    }
-  }
-
   // ---------- interaction (tap only, no drag, no destination choice) ----------
   boardEl.addEventListener("click", function (e) {
     if (ended || moving) return;
@@ -1118,27 +1093,26 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
 
   newBtn.addEventListener("click", startNewHive);
   againBtn.addEventListener("click", playAgain);
-  var note = createNote(shareNote);
-
   bindOverlay(overlay, {
     primary: againBtn,
-    inertRoot: document.querySelector(".stage"),
-    label: "Round over",
+    label: "Game over",
   });
 
   initThemeToggle(themeBtn);
 
-  onSoundChange(function (on) {
-    soundBtn.classList.toggle("is-off", !on);
-    soundBtn.setAttribute("aria-pressed", on ? "true" : "false");
-    soundBtn.setAttribute("aria-label", on ? "Sound on" : "Sound off");
-  });
-  soundBtn.addEventListener("click", function () {
-    toggleSound();
-    resumeAudio();
-  });
+  initSoundToggle(soundBtn);
 
-  shareBtn.addEventListener("click", shareResult);
+  initShare({
+    btn: shareBtn,
+    note: shareNote,
+    title: "Honeycomb",
+    text: function () {
+      return wonLastRun
+        ? "I cleared HONEYCOMB in " + formatTime(finalElapsedMs) + ". Can you beat it?"
+        : "I lasted " + formatTime(finalElapsedMs) +
+          " in HONEYCOMB before the hive beat me. Can you beat it?";
+    },
+  });
   initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });
   // Coalesced to one render a frame: a resize arrives in bursts and
   // renderInstant() rebuilds the whole hive.

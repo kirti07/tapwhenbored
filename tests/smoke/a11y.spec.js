@@ -12,10 +12,13 @@
 // whole purpose is to be invisible to the kind of interaction a test can make.
 
 import { test, expect } from "@playwright/test";
-import { games } from "../../src/data/games.js";
+import { games, pages } from "../../src/data/games.js";
+import { blockStorage } from "../helpers/storage.js";
 
 const paths = games.map((g) => g.path);
-const allPages = ["/", ...paths];
+/* Games plus every other page on the site. The game-only describes below use
+   `paths`; the ones that apply to anything with a URL use this. */
+const allPages = ["/", ...pages.map((p) => p.path), ...paths];
 
 /* Controls whose width is fixed by a grid pitch rather than by choice. Both are
    44 tall, which is the axis that was actually costing taps; widening them to
@@ -316,14 +319,7 @@ test.describe("storage", () => {
   test("a game still loads when localStorage throws", async ({ page }) => {
     // Safari private mode does not return null here, it throws on the property
     // access — which is what used to kill bubble-tap before it drew a frame.
-    await page.addInitScript(() => {
-      Object.defineProperty(window, "localStorage", {
-        configurable: true,
-        get() {
-          throw new DOMException("denied", "SecurityError");
-        },
-      });
-    });
+    await blockStorage(page);
 
     for (const path of paths) {
       const errors = [];

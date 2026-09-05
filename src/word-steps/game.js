@@ -1,9 +1,10 @@
 import * as DATA from "./data.js";
 import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
-import { initHowto, initShare, createNote, bindOverlay } from "../shared/ui/shell.js";
-import { tone as playTone, toggle as toggleSound, onChange as onSoundChange } from "../shared/ui/audio.js";
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import { tone as playTone, initSoundToggle } from "../shared/ui/audio.js";
 import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
+import { recordPlay } from "../shared/ui/progress.js";
 
 (function () {
   "use strict";
@@ -393,6 +394,7 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
       var steps = state.history.length - 1;
       state.solved = true;
       state.solvedSteps = steps;
+      recordPlay("word-steps", steps, true);
       state.bestSteps = (state.bestSteps === null) ? steps : Math.min(state.bestSteps, steps);
       persist();
       render();
@@ -490,51 +492,35 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
   }
 
   // ---------- share ----------
-  function shareResult() {
-    var steps = state.solvedSteps;
-    var lines = [
-      "Word Steps #" + (dayIndex + 1) + " — " + START + " → " + TARGET,
-      "Solved in " + stepLabel(steps) + " (best today: " + stepLabel(state.bestSteps) + ")",
-      "https://www.tapwhenbored.com/word-steps/"
-    ];
-    var text = lines.join("\n");
-
-    if (navigator.share) {
-      navigator.share({ title: "Word Steps", text: text }).catch(function () {});
-      return;
-    }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () {
-        note.show("Link copied");
-      }).catch(function () {});
-    }
-  }
-
-  // ---------- how to play ----------
   // ---------- wiring ----------
   undoBtn.addEventListener("click", undo);
   restartBtn.addEventListener("click", restart);
   againBtn.addEventListener("click", tryAgain);
-  var note = createNote(shareNote);
-
   bindOverlay(overlay, {
     primary: againBtn,
-    inertRoot: document.querySelector(".stage"),
-    label: "Puzzle solved",
+    label: "Game over",
   });
 
   initThemeToggle(themeBtn);
 
-  onSoundChange(function (on) {
-    soundBtn.classList.toggle("is-off", !on);
-    soundBtn.setAttribute("aria-pressed", on ? "true" : "false");
-    soundBtn.setAttribute("aria-label", on ? "Sound on" : "Sound off");
-  });
-  soundBtn.addEventListener("click", function () {
-    if (toggleSound()) sndStep();
-  });
+  initSoundToggle(soundBtn, sndStep);
 
-  shareBtn.addEventListener("click", shareResult);
+  initShare({
+    btn: shareBtn,
+    note: shareNote,
+    title: "Word Steps",
+    text: function () {
+      return [
+        "Word Steps #" + (dayIndex + 1) + " — " + START + " → " + TARGET,
+        "Solved in " + stepLabel(state.solvedSteps) +
+          " (best today: " + stepLabel(state.bestSteps) + ")",
+        "https://www.tapwhenbored.com/word-steps/",
+      ].join("\n");
+    },
+    /* The link is the last line of the result, the way a daily-puzzle share
+       reads. Returning nothing stops it being appended a second time. */
+    url: function () { return ""; },
+  });
   initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });
   letterBackdrop.addEventListener("click", closeLetterPicker);
   letterCloseBtn.addEventListener("click", closeLetterPicker);

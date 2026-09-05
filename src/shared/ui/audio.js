@@ -94,6 +94,29 @@ export function toggle() {
   return setOn(!on);
 }
 
+/**
+ * Wire a mute button: the icon state, the announced state, and the click.
+ *
+ * This was the same five lines in six games and a drifted seventh, all of them
+ * getting the aria right by copy rather than by contract.
+ *
+ * `onEnable` plays a confirmation when sound comes back, which is the one part
+ * that genuinely differs per game — each has its own note, and honeycomb passes
+ * nothing because it deliberately stays quiet.
+ */
+export function initSoundToggle(btn, onEnable) {
+  if (!btn) return;
+  onChange(function (isOn) {
+    btn.classList.toggle("is-off", !isOn);
+    btn.setAttribute("aria-pressed", isOn ? "true" : "false");
+    btn.setAttribute("aria-label", isOn ? "Sound on" : "Sound off");
+  });
+  btn.addEventListener("click", function () {
+    if (toggle() && onEnable) onEnable();
+    resume();
+  });
+}
+
 /** Subscribe to preference changes. Fires immediately with the current value. */
 export function onChange(fn) {
   listeners.push(fn);

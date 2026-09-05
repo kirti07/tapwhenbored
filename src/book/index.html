@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f3ece0">
+<!-- theme-bootstrap -->
+<title>Your Sticker Book — Tap When Bored</title>
+<meta name="description" content="Your sticker book on Tap When Bored. Finish a game and its sticker lights up for the day. Stored on your device, no account needed.">
+<link rel="canonical" href="https://www.tapwhenbored.com/book/">
+<meta name="robots" content="noindex, follow">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preload" href="/fonts/nunito-latin-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<!-- sprite -->
+
+<div class="wrap page">
+  <header class="top">
+    <div>
+      <a class="back-link" href="/">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+        <span>Games</span>
+      </a>
+      <h1 class="brand">Your sticker book</h1>
+    </div>
+    <div class="top-r">
+      <!-- theme-btn:iconbtn -->
+    </div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <p class="eyebrow">Today</p>
+      <!-- Reserved height: script rewrites this once it has read the day. -->
+      <h2 class="hero-h" id="bookH">Nothing played yet today</h2>
+      <p class="hero-p">Finish a game and its sticker lights up. At midnight the book empties and you start again.</p>
+    </div>
+
+    <!-- The name.
+         Local to this browser and not an account. Unset reads "Unsigned"
+         rather than a generated name: a name-shaped placeholder reads as a
+         suggestion and invites people to type their real one. -->
+    <section class="namecard" aria-labelledby="nameH">
+      <span class="av" id="avatar" aria-hidden="true">?</span>
+      <div class="who" id="nameView">
+        <p class="eyebrow" id="nameH">Signed as</p>
+        <p class="sig-big" id="nameOut">Unsigned</p>
+      </div>
+      <button class="btn btn--s" id="editBtn" type="button">Change name</button>
+      <div class="nameedit" id="nameEdit" hidden>
+        <label class="field" for="nameInp">
+          <span class="lbl">The name on your stickers</span>
+          <input class="inp" id="nameInp" type="text" maxlength="16" autocomplete="nickname"
+                 enterkeyhint="done" spellcheck="false" placeholder="Unsigned">
+        </label>
+        <button class="btn btn--p" id="saveBtn" type="button">Save name</button>
+        <button class="btn btn--s" id="cancelBtn" type="button">Not now</button>
+      </div>
+      <p class="hint" id="nameHint">Kept in this browser. Never uploaded, never shared.</p>
+    </section>
+
+    <section class="sec" aria-labelledby="slotsH">
+      <div class="sec-head">
+        <div>
+          <p class="eyebrow">The book</p>
+          <h2 class="sec-t" id="slotsH">8 slots</h2>
+        </div>
+        <a class="sec-link" href="/">Fill a slot &rarr;</a>
+      </div>
+      <div class="book-grid" id="bookGrid">
+        <!-- book-slots -->
+      </div>
+      <p class="honest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5" stroke-linecap="round"/><circle cx="12" cy="7.6" r="1.15" fill="currentColor" stroke="none"/></svg><span>Your book lives in this browser only. Clearing your history or switching phones starts it over.</span></p>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>More tiny games coming soon.</span>
+    <span class="foot-r">No account needed. Ever.</span>
+  </footer>
+</div>
+
+<script type="module" src="./book.js"></script>
+</body>
+</html>

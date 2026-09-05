@@ -1,8 +1,9 @@
 import { renderGlobalBest } from "../shared/ui/leaderboard.js";
-import { initHowto, initShare, createNote, bindOverlay } from "../shared/ui/shell.js";
-import { tone, toggle as toggleSound, onChange as onSoundChange } from "../shared/ui/audio.js";
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import { tone, initSoundToggle } from "../shared/ui/audio.js";
 import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
-import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
+import { get as getPref, getInt, set as setPref } from "../shared/ui/prefs.js";
+import { recordPlay } from "../shared/ui/progress.js";
 
 (function () {
   "use strict";
@@ -48,6 +49,12 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
   var ended = false;
 
   var HINT_STORAGE_KEY = "marble-nostalgia.played";
+  /* Deliberately a different key from HINT_STORAGE_KEY above, which despite its
+     name records that the how-to hint was dismissed, not that a game was
+     finished. This is the fewest marbles ever left — the one number this game
+     keeps, and the last gap in the homepage's "Best" badges. */
+  var BEST_KEY = "marble-nostalgia.best";
+  var best = null;       // fewest marbles ever left; set below, once readBest exists
   var hintsActive = false;
   try {
     hintsActive = !getPref(HINT_STORAGE_KEY, null);
@@ -212,6 +219,14 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
     setPref(HINT_STORAGE_KEY, "1");
   }
 
+
+  function writeBest(v) {
+    best = v;
+    setPref(BEST_KEY, v);
+  }
+
+  best = getInt(BEST_KEY);
+
   function marbleCount() {
     var n = 0;
     for (var r = 0; r < SIZE; r++) {
@@ -343,6 +358,10 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
     var n = marbleCount();
     if (n === 1) {
       ended = true;
+      /* One marble left is the win. Recorded before the 500ms celebration so a
+         player who closes the tab on it still keeps the sticker. */
+      recordPlay("marble-nostalgia", n, true);
+      if (best == null || n < best) writeBest(n);
       var lastKey = Object.keys(marbleEls)[0];
       if (lastKey) marbleEls[lastKey].classList.add("win-glow");
       setTimeout(function () {
@@ -351,6 +370,10 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
       }, 500);
     } else if (!anyMovesLeft()) {
       ended = true;
+      /* Out of moves is still a finished round, and four marbles left is a real
+         result — the game submits it to the global board too. */
+      recordPlay("marble-nostalgia", n, true);
+      if (best == null || n < best) writeBest(n);
       setTimeout(function () {
         showOverlay("NO MORE MOVES", n + " marbles left");
         showGlobalBest(n);
@@ -383,28 +406,6 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
 
   function hideOverlay() {
     overlay.classList.remove("show");
-  }
-
-  function shareResult() {
-    var n = marbleCount();
-    var text = n === 1
-      ? "I solved Marble Nostalgia — finished with 1 marble left!"
-      : "I played Marble Nostalgia and got down to " + n + " marbles. Can you beat that?";
-    var url = location.href;
-
-    if (navigator.share) {
-      navigator.share({ title: "Marble Nostalgia", text: text, url: url }).catch(function () {});
-      return;
-    }
-
-    var payload = text + " " + url;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(payload).then(showShareNote).catch(function () {});
-    }
-  }
-
-  function showShareNote() {
-    note.show("Link copied");
   }
 
   function onMarbleClick(e) {
@@ -445,26 +446,26 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
   restartBtn.addEventListener("click", restart);
   againBtn.addEventListener("click", restart);
   initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });
-  var note = createNote(shareNote);
-
   bindOverlay(overlay, {
     primary: againBtn,
-    inertRoot: document.querySelector(".stage"),
     label: "Game over",
   });
 
   initThemeToggle(themeBtn);
 
-  onSoundChange(function (on) {
-    soundBtn.classList.toggle("is-off", !on);
-    soundBtn.setAttribute("aria-pressed", on ? "true" : "false");
-    soundBtn.setAttribute("aria-label", on ? "Sound on" : "Sound off");
-  });
-  soundBtn.addEventListener("click", function () {
-    if (toggleSound()) sndClick();
-  });
+  initSoundToggle(soundBtn, sndClick);
 
-  shareBtn.addEventListener("click", shareResult);
+  initShare({
+    btn: shareBtn,
+    note: shareNote,
+    title: "Marble Nostalgia",
+    text: function () {
+      var n = marbleCount();
+      return n === 1
+        ? "I solved Marble Nostalgia — finished with 1 marble left!"
+        : "I played Marble Nostalgia and got down to " + n + " marbles. Can you beat that?";
+    },
+  });
   if (hintBannerClose) hintBannerClose.addEventListener("click", stopHinting);
 
   buildBoard();
