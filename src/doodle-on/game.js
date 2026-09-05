@@ -1,4 +1,7 @@
 import { pickRound, drawShape } from "./prompts.js";
+import { initHowto, initShare, createNote, bindOverlay } from "../shared/ui/shell.js";
+import { tone as playTone, toggle as toggleSound, onChange as onSoundChange } from "../shared/ui/audio.js";
+import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 
 (function () {
   "use strict";
@@ -76,6 +79,8 @@ import { pickRound, drawShape } from "./prompts.js";
   var howtoBtn = document.getElementById("howtoBtn");
   var howtoSheet = document.getElementById("howtoSheet");
   var howtoBackdrop = document.getElementById("howtoBackdrop");
+  var soundBtn = document.getElementById("soundBtn");
+  var themeBtn = document.getElementById("themeBtn");
 
   // ---------- state ----------
   var phase = "idle";        // "idle" | "playing" | "finished"
@@ -100,34 +105,13 @@ import { pickRound, drawShape } from "./prompts.js";
   var finishTimer = null, resizeTimer = null;
 
   // ---------- tiny procedural audio, no assets ----------
-  var actx = null;
-  function actxGet() {
-    if (!actx) {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      actx = new AC();
-    }
-    /* A round can end on the clock with no input at all, which means the
-       context is first created outside a user gesture and starts suspended.
-       Without this the end tone is silently dropped. */
-    if (actx.state === "suspended") {
-      try { actx.resume(); } catch (e) { /* ignore */ }
-    }
-    return actx;
-  }
+  // ---------- audio ----------
+  // Same adapter as word-steps: this game's helper was tone(freq, dur, gain),
+  // with the waveform always a sine.
   function tone(freq, dur, gain) {
-    try {
-      var c = actxGet();
-      var osc = c.createOscillator();
-      var g = c.createGain();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      g.gain.value = gain;
-      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
-      osc.connect(g).connect(c.destination);
-      osc.start();
-      osc.stop(c.currentTime + dur);
-    } catch (e) { /* audio not available, ignore */ }
+    playTone(freq, dur, "sine", gain);
   }
+
   function sndEnd() { tone(180, 0.22, 0.05); }
 
   // ---------- colours ----------
@@ -790,8 +774,10 @@ import { pickRound, drawShape } from "./prompts.js";
   }
 
   function showShareNote(text) {
-    shareNote.textContent = text;
-    shareNote.classList.add("show");
+    /* "Saved" is deliberately kept rather than folded into the site-wide
+       "Link copied". This branch really did write a PNG to the player's
+       downloads; telling them a link was copied would be false. */
+    note.show(text);
   }
 
   function shareResult() {
@@ -832,16 +818,6 @@ import { pickRound, drawShape } from "./prompts.js";
   }
 
   // ---------- how to play ----------
-  function openHowto() {
-    howtoSheet.classList.add("show");
-    howtoBackdrop.classList.add("show");
-    holdTimer();
-  }
-  function closeHowto() {
-    howtoSheet.classList.remove("show");
-    howtoBackdrop.classList.remove("show");
-    releaseTimer();
-  }
 
   // ---------- wiring ----------
   strokeCanvas.addEventListener("pointerdown", beginStroke);
@@ -857,9 +833,34 @@ import { pickRound, drawShape } from "./prompts.js";
 
   restartBtn.addEventListener("click", newRound);
   againBtn.addEventListener("click", newRound);
+  var note = createNote(shareNote);
+
+  bindOverlay(overlay, {
+    primary: againBtn,
+    inertRoot: document.querySelector(".stage"),
+    label: "Round over",
+  });
+
+  initThemeToggle(themeBtn);
+
+  onSoundChange(function (on) {
+    soundBtn.classList.toggle("is-off", !on);
+    soundBtn.setAttribute("aria-pressed", on ? "true" : "false");
+    soundBtn.setAttribute("aria-label", on ? "Sound on" : "Sound off");
+  });
+  soundBtn.addEventListener("click", function () {
+    if (toggleSound()) sndEnd();
+  });
+
   shareBtn.addEventListener("click", shareResult);
-  howtoBtn.addEventListener("click", openHowto);
-  howtoBackdrop.addEventListener("click", closeHowto);
+  initHowto({
+    btn: howtoBtn,
+    sheet: howtoSheet,
+    backdrop: howtoBackdrop,
+    // This is the only timed game whose rules sheet has to stop the clock.
+    onOpen: holdTimer,
+    onClose: releaseTimer,
+  });
 
   document.addEventListener("visibilitychange", function () {
     if (document.hidden) holdTimer(); else releaseTimer();

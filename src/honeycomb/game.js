@@ -1,4 +1,8 @@
 import { renderGlobalBest } from "../shared/ui/leaderboard.js";
+import { initHowto, initShare, createNote, bindOverlay } from "../shared/ui/shell.js";
+import { isOn as soundIsOn, toggle as toggleSound, onChange as onSoundChange, resume as resumeAudio } from "../shared/ui/audio.js";
+import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
+import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
 
 (function () {
   "use strict";
@@ -54,7 +58,7 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   // 1.5% of the largest hives still overran the cap, at 8 none do, for 0.1ms
   // per hive.
   var SHAPE_ATTEMPTS = 8;
-  var BEST_KEY = "honeycombBestTimeMs";
+  var BEST_KEY = "honeycomb.best";
   // Flat-top axial neighbour offsets.
   var NEIGHBORS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
   // The ONE cell a safe tile ever tries: 12 o'clock. It does not scan the
@@ -95,6 +99,8 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   var howtoBtn = document.getElementById("howtoBtn");
   var howtoSheet = document.getElementById("howtoSheet");
   var howtoBackdrop = document.getElementById("howtoBackdrop");
+  var soundBtn = document.getElementById("soundBtn");
+  var themeBtn = document.getElementById("themeBtn");
 
   var tiles = [];         // [{id, q, r, revealed, bomb, removed}]
   var posMap = new Map(); // "q,r" -> tile id
@@ -119,13 +125,13 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   // ---------- persistence ----------
   function readBest() {
     try {
-      var v = localStorage.getItem(BEST_KEY);
+      var v = getPref(BEST_KEY, null);
       return v ? parseInt(v, 10) : null;
     } catch (e) { return null; }
   }
   function writeBest(v) {
     best = v;
-    try { localStorage.setItem(BEST_KEY, String(v)); } catch (e) { /* ignore */ }
+    setPref(BEST_KEY, v);
   }
 
   // ---------- timer ----------
@@ -799,6 +805,10 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   // directly inside the click handler, so the AudioContext starts as a
   // direct result of the user gesture per browser autoplay rules.
   function playBombSound() {
+    // Honeycomb synthesises its blast from an oscillator plus a filtered noise
+    // buffer, which is not something the shared tone() helper does. It keeps
+    // its own synthesis and takes only the site-wide mute from there.
+    if (!soundIsOn()) return;
     try {
       var Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return;
@@ -1093,18 +1103,9 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     var payload = text + " " + url.toString();
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(payload).then(function () {
-        shareNote.classList.add("show");
+        note.show("Link copied");
       }).catch(function () {});
     }
-  }
-
-  function openHowto() {
-    howtoSheet.classList.add("show");
-    howtoBackdrop.classList.add("show");
-  }
-  function closeHowto() {
-    howtoSheet.classList.remove("show");
-    howtoBackdrop.classList.remove("show");
   }
 
   // ---------- interaction (tap only, no drag, no destination choice) ----------
@@ -1117,9 +1118,28 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 
   newBtn.addEventListener("click", startNewHive);
   againBtn.addEventListener("click", playAgain);
+  var note = createNote(shareNote);
+
+  bindOverlay(overlay, {
+    primary: againBtn,
+    inertRoot: document.querySelector(".stage"),
+    label: "Round over",
+  });
+
+  initThemeToggle(themeBtn);
+
+  onSoundChange(function (on) {
+    soundBtn.classList.toggle("is-off", !on);
+    soundBtn.setAttribute("aria-pressed", on ? "true" : "false");
+    soundBtn.setAttribute("aria-label", on ? "Sound on" : "Sound off");
+  });
+  soundBtn.addEventListener("click", function () {
+    toggleSound();
+    resumeAudio();
+  });
+
   shareBtn.addEventListener("click", shareResult);
-  howtoBtn.addEventListener("click", openHowto);
-  howtoBackdrop.addEventListener("click", closeHowto);
+  initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });
   // Coalesced to one render a frame: a resize arrives in bursts and
   // renderInstant() rebuilds the whole hive.
   var resizeFrame = 0;

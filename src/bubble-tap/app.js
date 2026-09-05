@@ -1,4 +1,7 @@
 import { renderGlobalBest } from "../shared/ui/leaderboard.js";
+import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
+import { initHowto, createNote, bindOverlay } from "../shared/ui/shell.js";
+import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 
 (() => {
   "use strict";
@@ -73,14 +76,30 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   const howtoBtn = document.getElementById("howtoBtn");
   const howtoSheet = document.getElementById("howtoSheet");
   const howtoBackdrop = document.getElementById("howtoBackdrop");
+  const shareNote = document.getElementById("shareNote");
+  const themeBtn = document.getElementById("themeBtn");
 
   // ---------- helpers ----------
+  const note = createNote(shareNote);
   const rand = (a, b) => a + Math.random() * (b - a);
   const randInt = (a, b) => Math.floor(rand(a, b + 1));
   const pad = (n, w) => String(n).padStart(w, "0");
+  // Was a bare localStorage.getItem. That call sits in the module's
+  // initialisation path, and localStorage *throws* on property access in
+  // Safari private mode rather than returning null — so the whole game died
+  // before it drew a frame. prefs.js owns the try/catch now.
   const loadFlag = (key, def) => {
-    const v = localStorage.getItem(key);
+    const v = getPref(key, null);
     return v === null ? def : v === "true";
+  };
+
+  // Someone who has asked their OS for less motion has already answered this
+  // question. Reading it as the *default* means calm mode is on before they
+  // find the settings panel, while an explicit toggle still wins and persists.
+  const prefersReducedMotion = () => {
+    try {
+      return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch (e) { return false; }
   };
 
   // ---------- state ----------
@@ -89,8 +108,8 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     taps: 0,
     paused: false,
     gameOver: false,
-    soundOn: loadFlag("twb_sound", true),
-    calmMode: loadFlag("twb_calm", false),
+    soundOn: loadFlag("sound", true),
+    calmMode: loadFlag("calm", prefersReducedMotion()),
     combo: 0,
     lastPopAt: 0,
   };
@@ -516,8 +535,8 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   // ---------- game over / restart ----------
   function showGameOver() {
     finalScoreEl.textContent = pad(state.score, 5);
-    const best = Math.max(state.score, Number(localStorage.getItem("twb_best") || 0));
-    localStorage.setItem("twb_best", String(best));
+    const best = Math.max(state.score, Number(getPref("bubble-tap.best", 0) || 0));
+    setPref("bubble-tap.best", best);
     bestScoreEl.textContent = "BEST " + pad(best, 5);
     gameOverOverlay.classList.remove("hidden");
 
@@ -583,13 +602,13 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     }
     try {
       await navigator.clipboard.writeText(`${text} ${url}`);
-      const original = shareBtn.textContent;
-      shareBtn.textContent = "LINK COPIED";
-      setTimeout(() => {
-        shareBtn.textContent = original;
-      }, 1600);
+      // Was `shareBtn.textContent = "LINK COPIED"`. Relabelling the control
+      // destroys its accessible name for as long as the confirmation shows,
+      // and it announced nothing. Every other game uses a separate line; so
+      // does this one now.
+      note.show("Link copied");
     } catch (e) {
-      // clipboard unavailable — nothing more we can do silently
+      note.show("Press and hold to copy");
     }
   }
   shareBtn.addEventListener("click", handleShare);
@@ -610,37 +629,76 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   // ---------- settings ----------
   function syncToggle(el, on) {
     el.classList.toggle("on", on);
+    // The element declares role="switch"; without aria-checked a screen
+    // reader announces it as a switch whose state is unknown, every time.
+    el.setAttribute("aria-checked", on ? "true" : "false");
   }
   function openSettings() {
+    // The game-over card is modal. Letting settings open on top of it left two
+    // stacked dialogs with one Escape between them and no way back to the
+    // score.
+    if (state.gameOver) return;
     settingsPanel.classList.remove("hidden");
     syncToggle(soundToggle, state.soundOn);
     syncToggle(motionToggle, state.calmMode);
   }
   // ---------- how to play ----------
-  const openHowto = () => {
-    howtoSheet.classList.add("show");
-    howtoBackdrop.classList.add("show");
-  };
+  initHowto({
+    btn: howtoBtn,
+    sheet: howtoSheet,
+    backdrop: howtoBackdrop,
+    // No .stage on this page; .app is the whole thing behind the sheet, and
+    // the sheet itself lives outside it.
+    inertRoot: document.querySelector('.app'),
+  });
+  initThemeToggle(themeBtn);
 
-  const closeHowto = () => {
-    howtoSheet.classList.remove("show");
-    howtoBackdrop.classList.remove("show");
-  };
+  // The overlays sit *inside* .app rather than beside it, so the things to
+  // freeze are named individually instead of one wrapper.
+  const behindOverlay = [
+    document.querySelector(".topbar"),
+    document.querySelector(".hud"),
+    document.getElementById("playfield"),
+    document.querySelector(".legend"),
+    howtoBtn,
+    document.querySelector(".seo-info"),
+  ];
 
-  howtoBtn.addEventListener("click", openHowto);
-  howtoBackdrop.addEventListener("click", closeHowto);
+  bindOverlay(gameOverOverlay, {
+    primary: restartBtn,
+    inertRoot: behindOverlay,
+    label: "Game over",
+    // Shown by *removing* .hidden rather than adding .show.
+    openWhen: () => !gameOverOverlay.classList.contains("hidden"),
+    hide: () => gameOverOverlay.classList.add("hidden"),
+  });
+
+  bindOverlay(pauseOverlay, {
+    primary: resumeBtn,
+    inertRoot: behindOverlay,
+    label: "Paused",
+    openWhen: () => !pauseOverlay.classList.contains("hidden"),
+    hide: () => setPaused(false),
+  });
+
+  // Reflect the loaded preferences immediately. openSettings() used to be the
+  // only caller, so until a player opened the panel the switches advertised
+  // the markup's defaults — including "calm mode off" to someone whose OS had
+  // just told us otherwise.
+  syncToggle(soundToggle, state.soundOn);
+  syncToggle(motionToggle, state.calmMode);
 
   settingsBtn.addEventListener("click", openSettings);
   closeSettingsBtn.addEventListener("click", () => settingsPanel.classList.add("hidden"));
   soundToggle.addEventListener("click", () => {
     state.soundOn = !state.soundOn;
-    localStorage.setItem("twb_sound", String(state.soundOn));
+    setPref("sound", state.soundOn);
     syncToggle(soundToggle, state.soundOn);
     if (state.soundOn) { ensureAudio(); playPop(); }
   });
   motionToggle.addEventListener("click", () => {
     state.calmMode = !state.calmMode;
-    localStorage.setItem("twb_calm", String(state.calmMode));
+    setPref("calm", state.calmMode);
     syncToggle(motionToggle, state.calmMode);
     const mul = state.calmMode ? 0.35 : 1;
     for (const b of bubbles) {

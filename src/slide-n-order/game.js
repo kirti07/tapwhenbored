@@ -1,4 +1,8 @@
 import { renderGlobalBest } from "../shared/ui/leaderboard.js";
+import { initHowto, initShare, createNote, bindOverlay } from "../shared/ui/shell.js";
+import { tone, toggle as toggleSound, onChange as onSoundChange } from "../shared/ui/audio.js";
+import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
+import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
 
 (function () {
   "use strict";
@@ -6,7 +10,7 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   var SIZE = 4;
   var TOTAL = SIZE * SIZE;
   var SHUFFLE_MOVES = 160;
-  var BEST_KEY = "slideNOrderBest";
+  var BEST_KEY = "slide-n-order.best";
 
   // ---------- drag-to-slide tuning ----------
   var DRAG_COMMIT_FRACTION = 0.5;   // past halfway toward the gap commits the slide
@@ -33,6 +37,8 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   var howtoBtn = document.getElementById("howtoBtn");
   var howtoSheet = document.getElementById("howtoSheet");
   var howtoBackdrop = document.getElementById("howtoBackdrop");
+  var soundBtn = document.getElementById("soundBtn");
+  var themeBtn = document.getElementById("themeBtn");
 
   var tiles = [];        // index -> tile number (1..15) or null for the blank
   var blankIndex = TOTAL - 1;
@@ -43,39 +49,17 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 
   function readBest() {
     try {
-      var v = localStorage.getItem(BEST_KEY);
+      var v = getPref(BEST_KEY, null);
       return v ? parseInt(v, 10) : null;
     } catch (e) { return null; }
   }
 
   function writeBest(v) {
     best = v;
-    try { localStorage.setItem(BEST_KEY, String(v)); } catch (e) { /* ignore */ }
+    setPref(BEST_KEY, v);
   }
 
-  // ---------- audio (tiny, procedural, no files) ----------
-  var actx = null;
-  function ctx() {
-    if (!actx) {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      actx = new AC();
-    }
-    return actx;
-  }
-  function tone(freq, dur, type, gain) {
-    try {
-      var c = ctx();
-      var osc = c.createOscillator();
-      var g = c.createGain();
-      osc.type = type;
-      osc.frequency.value = freq;
-      g.gain.value = gain;
-      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
-      osc.connect(g).connect(c.destination);
-      osc.start();
-      osc.stop(c.currentTime + dur);
-    } catch (e) { /* audio not available, ignore */ }
-  }
+  // ---------- audio ----------
   function sndSlide() { tone(900, 0.08, "sine", 0.05); }
   function sndThud() { tone(140, 0.15, "sine", 0.05); }
 
@@ -153,12 +137,26 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     updateMovable();
   }
 
+  /* Where a tile is, asked of the game state rather than of the DOM.
+   *
+   * `tileEls` is already the authoritative index -> element map and is updated
+   * in the same breath as `tiles` on every slide. The old data-index attribute
+   * was a second copy of that fact living on the node, rewritten mid-slide,
+   * and then parsed back out on pointerdown and on keydown — so a missed
+   * attribute write would have produced a tile that moved the wrong way rather
+   * than a visible glitch. Sixteen entries; the scan costs nothing. */
+  function indexOfTileEl(el) {
+    for (var k in tileEls) {
+      if (tileEls[k] === el) return parseInt(k, 10);
+    }
+    return -1;
+  }
+
   function addTileEl(i, value) {
     var btn = document.createElement("button");
     btn.type = "button";
     btn.className = "tile";
     btn.textContent = value;
-    btn.dataset.index = i;
     btn.setAttribute("aria-label", "Tile " + value);
     tileCellEl(i).appendChild(btn);
     tileEls[i] = btn;
@@ -339,7 +337,6 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 
     delete tileEls[i];
     toCell.appendChild(el);
-    el.dataset.index = oldBlank;
     tileEls[oldBlank] = el;
 
     sndSlide();
@@ -365,7 +362,6 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 
     delete tileEls[i];
     toCell.appendChild(el);
-    el.dataset.index = oldBlank;
     tileEls[oldBlank] = el;
     flip(el, fromCell, toCell);
 
@@ -449,7 +445,7 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   }
 
   function showShareNote() {
-    shareNote.classList.add("show");
+    note.show("Link copied");
   }
 
   function checkChallengeLink() {
@@ -476,21 +472,29 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   }
 
   // ---------- how to play ----------
-  function openHowto() {
-    howtoSheet.classList.add("show");
-    howtoBackdrop.classList.add("show");
-  }
-
-  function closeHowto() {
-    howtoSheet.classList.remove("show");
-    howtoBackdrop.classList.remove("show");
-  }
-
-  howtoBtn.addEventListener("click", openHowto);
-  howtoBackdrop.addEventListener("click", closeHowto);
+  initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });
 
   restartBtn.addEventListener("click", restart);
   againBtn.addEventListener("click", restart);
+  var note = createNote(shareNote);
+
+  bindOverlay(overlay, {
+    primary: againBtn,
+    inertRoot: document.querySelector(".stage"),
+    label: "Puzzle solved",
+  });
+
+  initThemeToggle(themeBtn);
+
+  onSoundChange(function (on) {
+    soundBtn.classList.toggle("is-off", !on);
+    soundBtn.setAttribute("aria-pressed", on ? "true" : "false");
+    soundBtn.setAttribute("aria-label", on ? "Sound on" : "Sound off");
+  });
+  soundBtn.addEventListener("click", function () {
+    if (toggleSound()) sndSlide();
+  });
+
   shareBtn.addEventListener("click", shareResult);
 
   tilesGrid.addEventListener("pointerdown", function (e) {
@@ -498,7 +502,7 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     var tileEl = e.target.closest(".tile");
     if (!tileEl) return;
     activePointerId = e.pointerId;
-    var i = parseInt(tileEl.dataset.index, 10);
+    var i = indexOfTileEl(tileEl);
     if (neighborIndices(blankIndex).indexOf(i) !== -1) {
       beginDrag(e, tileEl, i);
     } else {
@@ -532,7 +536,7 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     if (!tileEl) return;
     e.preventDefault(); // stop the browser's own click-on-activate; we handle it here
     if (ended || settling) return;
-    var i = parseInt(tileEl.dataset.index, 10);
+    var i = indexOfTileEl(tileEl);
     if (neighborIndices(blankIndex).indexOf(i) === -1) {
       shakeTile(tileEl);
       return;

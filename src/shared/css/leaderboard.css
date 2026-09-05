@@ -23,3 +23,20 @@
   color: var(--record, var(--accent-dark));
   font-weight: 800;
 }
+
+/* Reserve the line's height.
+ *
+ * The research flagged this line as a layout-shift risk: it starts hidden,
+ * turns into "GLOBAL BEST …", and is then rewritten across a network round
+ * trip — with "Play again" sitting directly underneath it. Nothing may push
+ * the replay button down the screen after the player is already looking at it.
+ *
+ * Measured at 390px, all four states (pending, a score, a record, and
+ * unavailable) render at exactly one line, and every game calls
+ * renderGlobalBest() in the same synchronous block as the overlay show — so
+ * today there is no shift to see. This keeps it that way: the box cannot
+ * collapse or grow between states even if a future label runs longer or a
+ * narrower phone shows up. */
+.overlay-global {
+  min-height: 1.35em;
+}

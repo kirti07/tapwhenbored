@@ -24,6 +24,8 @@
   --teal: #2ee6b8;
   --yellow: #ffd93d;
   --rainbow: linear-gradient(90deg, var(--orange), var(--pink), var(--purple), #4fb8ff, var(--teal), var(--yellow));
+
+  color-scheme: light;
 }
 
 
@@ -44,12 +46,15 @@ html, body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 2.4svh 4vw 2.2svh;
+  padding:
+    max(2.4svh, env(safe-area-inset-top, 0px))
+    max(4vw, env(safe-area-inset-right, 0px))
+    max(2.2svh, env(safe-area-inset-bottom, 0px))
+    max(4vw, env(safe-area-inset-left, 0px));
 }
 
 /* ---- top bar ---- */
 
-.back-link:hover { color: var(--ink); }
 
 .title {
   margin: 0;
@@ -551,6 +556,8 @@ html, body {
   --orange: #ffb84d;
   --teal: #3df0d4;
   --yellow: #ffe066;
+
+  color-scheme: dark;
 }
 
 [data-theme="dark"] .canvas-wrap {
@@ -599,3 +606,30 @@ html, body {
   .done-btn { min-width: 66px; padding: 0.8svh 3vw; }
   .timer { padding: 0.5svh 2vw; min-width: 46px; }
 }
+
+/* Toolbar targets.
+ *
+ * Swatches sat on a 40px pitch and tools on 45px, so widening either to 44
+ * would have made neighbouring targets overlap and steal each other's taps —
+ * worse than the small target it was meant to fix. Height is free here: both
+ * rows are single rows with space above and below.
+ *
+ * So the ink stays exactly as drawn and the reachable area grows downward and
+ * upward instead. Tools get the width too; their pitch allows it. */
+.swatch,
+.tool {
+  position: relative;
+}
+
+.swatch::after,
+.tool::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 44px;
+}
+
+.done-btn { min-height: 44px; }

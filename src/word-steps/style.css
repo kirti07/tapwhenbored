@@ -18,6 +18,8 @@
   --accent-dark: #146b53;
   --mark: #d9822b;
   --error: #d9694f;
+
+  color-scheme: light;
 }
 
 
@@ -40,14 +42,17 @@ html, body {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  padding: 2.4svh 4vw 2.2svh;
+  padding:
+    max(2.4svh, env(safe-area-inset-top, 0px))
+    max(4vw, env(safe-area-inset-right, 0px))
+    max(2.2svh, env(safe-area-inset-bottom, 0px))
+    max(4vw, env(safe-area-inset-left, 0px));
 }
 
 /* ---- top bar ---- */
 
 
 
-.back-link:hover { color: var(--ink); }
 
 .title {
   margin: 0;
@@ -578,6 +583,8 @@ html, body {
   --accent-dark: #10a866;
   --mark: #ffb84d;
   --error: #ff5c72;
+
+  color-scheme: dark;
 }
 
 [data-theme="dark"] .icon-btn:active,
@@ -611,4 +618,35 @@ html, body {
   .subtitle, .seo-info { display: none; }
   .back-link { margin-bottom: 0.3svh; }
   .howto-link { padding-top: 0.4svh; }
+}
+
+/* Key height.
+ *
+ * The letter sheet is a keyboard — ten keys to a row, so the width of a key is
+ * fixed by the viewport and cannot reach 44px without dropping to seven
+ * columns and abandoning the QWERTY layout the player already knows.
+ *
+ * Every phone keyboard solves this the same way and so does this one: keys stay
+ * narrow and get tall. 32x44 is a comfortable, familiar target, and because the
+ * rows are a flex column the extra height also increases the vertical pitch, so
+ * neighbouring keys move further apart rather than closer together.
+ *
+ * The sheet grows by about 36px. liftAboveSheet() measures the sheet at open
+ * time rather than assuming a height, so the active row still clears it. */
+.letter-btn {
+  min-height: 44px;
+}
+
+/* 30x30, and it closes the sheet covering the board. */
+.letter-close {
+  position: relative;
+}
+.letter-close::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
 }

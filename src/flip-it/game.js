@@ -1,4 +1,8 @@
 import { renderGlobalBest } from "../shared/ui/leaderboard.js";
+import { initHowto, initShare, createNote, bindOverlay } from "../shared/ui/shell.js";
+import { tone, toggle as toggleSound, onChange as onSoundChange } from "../shared/ui/audio.js";
+import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
+import { getJSON, setJSON, get as getPref, set as setPref } from "../shared/ui/prefs.js";
 
 (function () {
   "use strict";
@@ -32,10 +36,9 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   var RIPPLE_STEP_MS = 45;
   var TICK_MS = 250;
 
-  var BEST_KEY = "flipIt:v2"; // v1 was keyed by board size, before levels
-  var RECENT_KEY = "flipItRecent";
-  var LEVEL_KEY = "flipItLevel";
-  var SOUND_KEY = "twb_sound"; // shared with bubble-tap: one sound preference
+  var BEST_KEY = "flip-it.best";     // v1 was keyed by board size, before levels
+  var RECENT_KEY = "flip-it.recent";
+  var LEVEL_KEY = "flip-it.level";
 
   var board = document.getElementById("board");
   var movesVal = document.getElementById("movesVal");
@@ -57,6 +60,8 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   var howtoBtn = document.getElementById("howtoBtn");
   var howtoSheet = document.getElementById("howtoSheet");
   var howtoBackdrop = document.getElementById("howtoBackdrop");
+  var soundBtn = document.getElementById("soundBtn");
+  var themeBtn = document.getElementById("themeBtn");
 
   var level = readLevel();
   var size = LEVELS[level].sizes[0]; // the dealt board decides; this is a seed
@@ -71,25 +76,24 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   var tickHandle = null;
   var rippleHandle = null;
   var recent = readRecent();
-  var soundOn = readSound();
   var bests = readBests();
 
   // ---------- storage (all of it optional, none of it load-bearing) ----------
 
   function readLevel() {
     try {
-      var v = localStorage.getItem(LEVEL_KEY);
+      var v = getPref(LEVEL_KEY, null);
       return LEVEL_ORDER.indexOf(v) !== -1 ? v : DEFAULT_LEVEL;
     } catch (e) { return DEFAULT_LEVEL; }
   }
 
   function writeLevel(v) {
-    try { localStorage.setItem(LEVEL_KEY, v); } catch (e) { /* ignore */ }
+    setPref(LEVEL_KEY, v);
   }
 
   function readRecent() {
     try {
-      var v = JSON.parse(localStorage.getItem(RECENT_KEY));
+      var v = getJSON(RECENT_KEY, null);
       return Array.isArray(v) ? v.slice(-RECENT_MAX) : [];
     } catch (e) { return []; }
   }
@@ -97,55 +101,22 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   function pushRecent(sig) {
     recent.push(sig);
     if (recent.length > RECENT_MAX) recent = recent.slice(-RECENT_MAX);
-    try { localStorage.setItem(RECENT_KEY, JSON.stringify(recent)); } catch (e) { /* ignore */ }
+    setJSON(RECENT_KEY, recent);
   }
 
   function readBests() {
     try {
-      var v = JSON.parse(localStorage.getItem(BEST_KEY));
+      var v = getJSON(BEST_KEY, null);
       return v && typeof v === "object" ? v : {};
     } catch (e) { return {}; }
   }
 
   function writeBests() {
-    try { localStorage.setItem(BEST_KEY, JSON.stringify(bests)); } catch (e) { /* ignore */ }
+    setJSON(BEST_KEY, bests);
   }
 
-  function readSound() {
-    try { return localStorage.getItem(SOUND_KEY) !== "false"; } catch (e) { return true; }
-  }
 
-  function writeSound() {
-    try { localStorage.setItem(SOUND_KEY, String(soundOn)); } catch (e) { /* ignore */ }
-  }
-
-  // ---------- audio (tiny, procedural, no files) ----------
-  var actx = null;
-  function ctx() {
-    if (!actx) {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      actx = new AC();
-    }
-    return actx;
-  }
-
-  function tone(freq, dur, type, gain, delay) {
-    if (!soundOn) return;
-    try {
-      var c = ctx();
-      var at = c.currentTime + (delay || 0);
-      var osc = c.createOscillator();
-      var g = c.createGain();
-      osc.type = type;
-      osc.frequency.value = freq;
-      g.gain.setValueAtTime(gain, at);
-      g.gain.exponentialRampToValueAtTime(0.001, at + dur);
-      osc.connect(g).connect(c.destination);
-      osc.start(at);
-      osc.stop(at + dur);
-    } catch (e) { /* audio not available, ignore */ }
-  }
-
+  // ---------- audio ----------
   function sndFlip() { tone(660, 0.07, "sine", 0.05); }
   function sndUi() { tone(420, 0.05, "triangle", 0.04); }
   function sndWin() {
@@ -590,7 +561,7 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   }
 
   function showShareNote() {
-    shareNote.classList.add("show");
+    note.show("Link copied");
   }
 
   /** A shared link carries the friend's score and the level they played. */
@@ -622,25 +593,14 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 
   // ---------- sound toggle ----------
 
-  function syncSound() {
-    soundBtn.classList.toggle("is-off", !soundOn);
-    soundBtn.setAttribute("aria-pressed", soundOn ? "true" : "false");
-    soundBtn.setAttribute("aria-label", soundOn ? "Sound on" : "Sound off");
+  function syncSound(on) {
+    soundBtn.classList.toggle("is-off", !on);
+    soundBtn.setAttribute("aria-pressed", on ? "true" : "false");
+    soundBtn.setAttribute("aria-label", on ? "Sound on" : "Sound off");
   }
 
   // ---------- how to play ----------
-  function openHowto() {
-    howtoSheet.classList.add("show");
-    howtoBackdrop.classList.add("show");
-  }
-
-  function closeHowto() {
-    howtoSheet.classList.remove("show");
-    howtoBackdrop.classList.remove("show");
-  }
-
-  howtoBtn.addEventListener("click", openHowto);
-  howtoBackdrop.addEventListener("click", closeHowto);
+  initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });
 
   board.addEventListener("click", function (e) {
     var el = e.target.closest(".tile");
@@ -664,15 +624,24 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   againBtn.addEventListener("click", function () { sndUi(); deal(); });
   shareBtn.addEventListener("click", shareResult);
 
+  // The preference is site-wide now, so this stays in step with a mute made
+  // in any other game rather than only with flip-it's own button.
+  onSoundChange(syncSound);
   soundBtn.addEventListener("click", function () {
-    soundOn = !soundOn;
-    writeSound();
-    syncSound();
-    if (soundOn) sndUi();
+    if (toggleSound()) sndUi();
+  });
+
+  initThemeToggle(themeBtn);
+
+  var note = createNote(shareNote);
+
+  bindOverlay(overlay, {
+    primary: againBtn,
+    inertRoot: document.querySelector(".stage"),
+    label: "Board cleared",
   });
 
   checkChallengeLink();
-  syncSound();
   syncLevelButtons();
   deal();
 })();

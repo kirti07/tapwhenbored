@@ -1,4 +1,8 @@
 import { renderGlobalBest } from "../shared/ui/leaderboard.js";
+import { initHowto, initShare, createNote, bindOverlay } from "../shared/ui/shell.js";
+import { tone, toggle as toggleSound, onChange as onSoundChange } from "../shared/ui/audio.js";
+import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
+import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
 
 (function () {
   "use strict";
@@ -29,6 +33,8 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   var howtoBtn = document.getElementById("howtoBtn");
   var howtoSheet = document.getElementById("howtoSheet");
   var howtoBackdrop = document.getElementById("howtoBackdrop");
+  var soundBtn = document.getElementById("soundBtn");
+  var themeBtn = document.getElementById("themeBtn");
   var shareBtn = document.getElementById("shareBtn");
   var shareNote = document.getElementById("shareNote");
   var hintBanner = document.getElementById("hintBanner");
@@ -41,35 +47,13 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   var history = [];      // [{from, to, mid}]
   var ended = false;
 
-  var HINT_STORAGE_KEY = "marbleNostalgiaPlayed";
+  var HINT_STORAGE_KEY = "marble-nostalgia.played";
   var hintsActive = false;
   try {
-    hintsActive = !localStorage.getItem(HINT_STORAGE_KEY);
+    hintsActive = !getPref(HINT_STORAGE_KEY, null);
   } catch (e) { hintsActive = false; }
 
-  // ---------- audio (tiny, procedural, no files) ----------
-  var actx = null;
-  function ctx() {
-    if (!actx) {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      actx = new AC();
-    }
-    return actx;
-  }
-  function tone(freq, dur, type, gain) {
-    try {
-      var c = ctx();
-      var osc = c.createOscillator();
-      var g = c.createGain();
-      osc.type = type;
-      osc.frequency.value = freq;
-      g.gain.value = gain;
-      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
-      osc.connect(g).connect(c.destination);
-      osc.start();
-      osc.stop(c.currentTime + dur);
-    } catch (e) { /* audio not available, ignore */ }
-  }
+  // ---------- audio ----------
   function sndClick() { tone(1100, 0.12, "sine", 0.06); tone(700, 0.1, "sine", 0.03); }
   function sndThud() { tone(140, 0.15, "sine", 0.05); }
 
@@ -225,7 +209,7 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     hintsActive = false;
     clearHints();
     hideHintBanner();
-    try { localStorage.setItem(HINT_STORAGE_KEY, "1"); } catch (e) { /* ignore */ }
+    setPref(HINT_STORAGE_KEY, "1");
   }
 
   function marbleCount() {
@@ -420,7 +404,7 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   }
 
   function showShareNote() {
-    shareNote.classList.add("show");
+    note.show("Link copied");
   }
 
   function onMarbleClick(e) {
@@ -457,20 +441,29 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     updateHud();
   }
 
-  function openHowto() {
-    howtoSheet.classList.add("show");
-    howtoBackdrop.classList.add("show");
-  }
-  function closeHowto() {
-    howtoSheet.classList.remove("show");
-    howtoBackdrop.classList.remove("show");
-  }
-
   undoBtn.addEventListener("click", undoMove);
   restartBtn.addEventListener("click", restart);
   againBtn.addEventListener("click", restart);
-  howtoBtn.addEventListener("click", openHowto);
-  howtoBackdrop.addEventListener("click", closeHowto);
+  initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });
+  var note = createNote(shareNote);
+
+  bindOverlay(overlay, {
+    primary: againBtn,
+    inertRoot: document.querySelector(".stage"),
+    label: "Game over",
+  });
+
+  initThemeToggle(themeBtn);
+
+  onSoundChange(function (on) {
+    soundBtn.classList.toggle("is-off", !on);
+    soundBtn.setAttribute("aria-pressed", on ? "true" : "false");
+    soundBtn.setAttribute("aria-label", on ? "Sound on" : "Sound off");
+  });
+  soundBtn.addEventListener("click", function () {
+    if (toggleSound()) sndClick();
+  });
+
   shareBtn.addEventListener("click", shareResult);
   if (hintBannerClose) hintBannerClose.addEventListener("click", stopHinting);
 

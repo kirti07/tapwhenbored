@@ -233,6 +233,102 @@ Do not require mobile and desktop layouts to be identical.
 
 ---
 
+## 10b. Accessibility Testing
+
+The principles in `GAME-UI-PHILOSOPHY.md` §11-§12 are aspirations until a test
+holds them. These live in `tests/smoke/a11y.spec.js` and run against every
+registry page, so a new game inherits them by being in the registry.
+
+Test, through the browser:
+
+### Keyboard
+
+* The core mechanic can be completed with the keyboard alone.
+* Every control shows a visible focus state.
+
+### The end card
+
+* It declares `role="dialog"` and `aria-modal`.
+* Focus lands on the **replay** control when it opens.
+* Enter replays, with no dismissal step first.
+* Escape dismisses it.
+* The page behind it is `inert` while it is open, and reachable again after.
+
+### The rules sheet
+
+* Escape closes it.
+* Focus returns to the control that opened it.
+* The page behind it is `inert`.
+
+### Hit size
+
+* No control is under 44x44. Measure the hit area, including any pseudo-element
+  used to enlarge it — not the visible box.
+* Document the exceptions (a keyboard key, a swatch in a fixed-pitch row) in
+  the test rather than lowering the bar for everything.
+
+---
+
+## 10c. Reduced-Motion Testing
+
+Emulate `prefers-reduced-motion: reduce` and assert, per page:
+
+* Nothing is left with an infinite animation.
+* The page still renders its **end** state. This is the test that catches an
+  animation ending at `opacity: 0` being switched off and leaving its element
+  on screen forever.
+* An overlay or sheet opened under the preference is actually visible.
+
+Do not test this by reading the stylesheet. A reduced-motion override on a less
+specific selector than the rule it overrides is a real and easy bug, and it
+looks correct in the source.
+
+---
+
+## 10d. Orientation Testing
+
+844x390 — a phone on its side — is a first-class size, not an edge case.
+
+Per page:
+
+* No horizontal overflow.
+* The decorative lines the layout drops on short viewports are actually
+  dropped.
+* The board is still comfortably playable.
+
+---
+
+## 10e. Audio Testing
+
+* A game that makes a sound has a mute control.
+* Muting persists across a reload.
+* Muting in one game mutes the others — it is one site-wide preference, not one
+  per game.
+* Audio recovers after a tab switch. A suspended context that is never resumed
+  is silent for the rest of the session and no other test will notice.
+
+---
+
+## 10f. Storage Testing
+
+`localStorage` **throws** on property access in Safari private mode — it does
+not return `null`. A single unguarded call in an initialisation path takes the
+whole game down before it draws a frame, and that is exactly how it shipped
+once.
+
+Test that every page still loads and is interactive with storage blocked:
+
+```js
+await page.addInitScript(() => {
+  Object.defineProperty(window, "localStorage", {
+    configurable: true,
+    get() { throw new DOMException("denied", "SecurityError"); },
+  });
+});
+```
+
+---
+
 ## 11. PWA Testing
 
 When changing PWA functionality, test:
@@ -254,6 +350,11 @@ itself cannot be emulated, because Chromium's `Emulation.setEmulatedMedia`
 ignores the feature.
 
 A PWA change requires PWA tests in addition to the affected game tests.
+
+> These specs assert the *absence* of a worker and of caching. If offline
+> support is ever added back on purpose (ARCHITECTURE.md §19), this whole
+> section inverts and every spec here has to be rewritten rather than
+> extended. Do not patch around it.
 
 ---
 
@@ -328,6 +429,21 @@ Game functional tests
 +
 Game smoke test
 ```
+
+### Shell, accessibility, motion or layout change
+
+Run:
+
+```text
+tests/smoke/a11y.spec.js
++
+All smoke tests
++
+Affected game tests
+```
+
+Anything touching `src/shared/` is a shared code change, below, not a
+game-specific one.
 
 ### Shared code change
 
@@ -437,6 +553,7 @@ A functional change is complete only when:
 * No new runtime errors are introduced
 * Relevant smoke tests pass
 * Mobile/desktop behavior remains valid
+* The game is still operable with the keyboard alone
 * The production build succeeds when required
 
 For a new or substantially changed game, verify the complete core gameplay loop.

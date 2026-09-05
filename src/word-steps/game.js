@@ -1,17 +1,30 @@
 import * as DATA from "./data.js";
 import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
+import { initHowto, initShare, createNote, bindOverlay } from "../shared/ui/shell.js";
+import { tone as playTone, toggle as toggleSound, onChange as onSoundChange } from "../shared/ui/audio.js";
+import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
+import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
 
 (function () {
   "use strict";
 
   var PUZZLES = DATA.PUZZLES;
-  var DICTIONARY = (function () {
-    var set = Object.create(null);
-    for (var i = 0; i < DATA.DICTIONARY.length; i++) set[DATA.DICTIONARY[i]] = true;
-    return set;
-  })();
 
-  var STORAGE_KEY = "wordSteps:v1";
+  /* The word list is fetched as its own chunk, requested here at load rather
+     than on first use. Off the critical path, but not deferred until it is
+     needed: it is in flight while the board renders, so it has effectively
+     always arrived by the time a player has changed a letter.
+     "Effectively" is not "always", so attemptCommit() waits rather than
+     rejecting a real word it simply has not read yet. */
+  var DICTIONARY = null;
+  var dictionaryReady = import("./dictionary.js").then(function (mod) {
+    var set = Object.create(null);
+    for (var i = 0; i < mod.DICTIONARY.length; i++) set[mod.DICTIONARY[i]] = true;
+    DICTIONARY = set;
+    return set;
+  });
+
+  var STORAGE_KEY = "word-steps.state";
 
   // ---------- daily puzzle selection ----------
   function startOfDay(d) {
@@ -45,7 +58,7 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
 
   function loadState() {
     try {
-      var raw = localStorage.getItem(STORAGE_KEY);
+      var raw = getPref(STORAGE_KEY, null);
       if (!raw) return freshState();
       var saved = JSON.parse(raw);
       if (!saved || saved.day !== dayIndex || !Array.isArray(saved.history) || !saved.history.length) {
@@ -58,7 +71,7 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
   }
 
   function persist() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    setPref(STORAGE_KEY, JSON.stringify(state));
   }
 
   // ---------- dom ----------
@@ -73,6 +86,8 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
   var howtoBtn = document.getElementById("howtoBtn");
   var howtoSheet = document.getElementById("howtoSheet");
   var howtoBackdrop = document.getElementById("howtoBackdrop");
+  var soundBtn = document.getElementById("soundBtn");
+  var themeBtn = document.getElementById("themeBtn");
   var letterBackdrop = document.getElementById("letterBackdrop");
   var letterSheet = document.getElementById("letterSheet");
   var letterGrid = document.getElementById("letterGrid");
@@ -100,30 +115,14 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
   }
 
   // ---------- tiny procedural audio, no assets ----------
-  var actx = null;
-  function actxGet() {
-    if (!actx) {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      actx = new AC();
-    }
-    return actx;
-  }
+  // ---------- audio ----------
+  // This game's tone() never took a waveform — every note is a sine — so its
+  // call sites read tone(freq, dur, gain, delay). Adapting here keeps those
+  // call sites untouched rather than rewriting a dozen of them.
   function tone(freq, dur, gain, delay) {
-    try {
-      var c = actxGet();
-      var osc = c.createOscillator();
-      var g = c.createGain();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      g.gain.value = gain;
-      var t0 = c.currentTime + (delay || 0);
-      g.gain.setValueAtTime(gain, t0);
-      g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-      osc.connect(g).connect(c.destination);
-      osc.start(t0);
-      osc.stop(t0 + dur);
-    } catch (e) { /* audio not available, ignore */ }
+    playTone(freq, dur, "sine", gain, delay);
   }
+
   function sndStep() { tone(520, 0.09, 0.04); }
   function sndError() { tone(160, 0.14, 0.05); }
   function sndWin() {
@@ -169,6 +168,23 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
   }
 
   var activeTiles = null;
+  /* The word the player is currently editing.
+   *
+   * This used to exist only as text nodes: attemptCommit() rebuilt it with
+   * tiles.map(t => t.textContent), the picker read the "current" letter back
+   * out of the tile it was about to change, and revert wrote the old letters
+   * back into the DOM. The tiles were the state, and every one of those reads
+   * turned a rendering detail into game logic — a change to how a letter is
+   * displayed would have silently changed which words the game accepts.
+   *
+   * `draft` is now the state; the tiles render it. */
+  var draft = [];
+
+  /* The draft always starts as a copy of the newest committed word — that is
+     what the active row shows before the player touches anything. */
+  function setDraft(word) {
+    draft = String(word).split("");
+  }
   var hasEditedOnce = false;
 
   function render() {
@@ -217,14 +233,15 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
     var row = document.createElement("div");
     row.className = "step-row active-row";
     var prevWord = state.history[state.history.length - 1];
+    setDraft(prevWord);
     var tiles = [];
 
     for (var i = 0; i < 4; i++) {
       var tile = document.createElement("button");
       tile.type = "button";
       tile.className = "tile tile-active";
-      tile.textContent = prevWord[i];
-      tile.setAttribute("aria-label", "Change letter " + (i + 1) + ", currently " + prevWord[i]);
+      tile.textContent = draft[i];
+      tile.setAttribute("aria-label", "Change letter " + (i + 1) + ", currently " + draft[i]);
       if (!hasEditedOnce && state.history.length === 1) {
         tile.classList.add("hint-bounce");
         tile.style.animationDelay = (i * 0.12) + "s";
@@ -239,7 +256,7 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
           hasEditedOnce = true;
           tiles.forEach(function (t) { t.classList.remove("hint-bounce"); });
         }
-        openLetterPicker(tile);
+        openLetterPicker(tile, idx);
       });
     });
 
@@ -249,6 +266,7 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
 
   // ---------- letter picker sheet ----------
   var pickerTile = null;
+  var pickerIndex = -1;
 
   // Laid out as a phone keyboard rather than A-Z: players already know where
   // each letter sits on QWERTY, so the one they want is findable without
@@ -274,11 +292,12 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
     });
   })();
 
-  function openLetterPicker(tile) {
+  function openLetterPicker(tile, index) {
     if (activeTiles) activeTiles.forEach(function (t) { t.classList.remove("picking"); });
     tile.classList.add("picking");
     pickerTile = tile;
-    var current = tile.textContent;
+    pickerIndex = index;
+    var current = draft[index];
     var buttons = letterGrid.querySelectorAll(".letter-btn");
     for (var i = 0; i < buttons.length; i++) {
       buttons[i].classList.toggle("current", buttons[i].textContent === current);
@@ -315,6 +334,7 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
     letterBackdrop.classList.remove("show");
     if (pickerTile) pickerTile.classList.remove("picking");
     pickerTile = null;
+    pickerIndex = -1;
     if (ladder.style.getPropertyValue("--sheet-inset")) {
       // Dropping the reserved strip lets the browser clamp scrollTop back;
       // pinLadder() restores the pinned-to-newest state and the fade class.
@@ -324,9 +344,11 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
   }
 
   function pickLetter(letter) {
-    if (!pickerTile) return;
-    var changed = pickerTile.textContent !== letter;
+    if (!pickerTile || pickerIndex < 0) return;
+    var changed = draft[pickerIndex] !== letter;
+    draft[pickerIndex] = letter;
     pickerTile.textContent = letter;
+    pickerTile.setAttribute("aria-label", "Change letter " + (pickerIndex + 1) + ", currently " + letter);
     closeLetterPicker();
     if (changed) attemptCommit();
   }
@@ -337,15 +359,25 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
   function revertTiles(tiles, prev) {
     if (revertTimer) clearTimeout(revertTimer);
     revertTimer = setTimeout(function () {
-      tiles.forEach(function (t, i) { t.textContent = prev[i]; });
+      setDraft(prev);
+      tiles.forEach(function (t, i) {
+        t.textContent = draft[i];
+        t.setAttribute("aria-label", "Change letter " + (i + 1) + ", currently " + draft[i]);
+      });
       revertTimer = null;
     }, 450);
   }
 
   function attemptCommit() {
     if (state.solved || !activeTiles) return;
+    if (!DICTIONARY) {
+      // Beat the dictionary to the punch. Re-run once it lands rather than
+      // judging the word against an empty list.
+      dictionaryReady.then(attemptCommit);
+      return;
+    }
     var tiles = activeTiles;
-    var word = tiles.map(function (t) { return t.textContent; }).join("");
+    var word = draft.join("");
 
     var prev = state.history[state.history.length - 1];
     if (word === prev) { hideHintNow(); return; }
@@ -473,31 +505,55 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
     }
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(function () {
-        shareNote.textContent = "Copied!";
-        shareNote.classList.add("show");
+        note.show("Link copied");
       }).catch(function () {});
     }
   }
 
   // ---------- how to play ----------
-  function openHowto() {
-    howtoSheet.classList.add("show");
-    howtoBackdrop.classList.add("show");
-  }
-  function closeHowto() {
-    howtoSheet.classList.remove("show");
-    howtoBackdrop.classList.remove("show");
-  }
-
   // ---------- wiring ----------
   undoBtn.addEventListener("click", undo);
   restartBtn.addEventListener("click", restart);
   againBtn.addEventListener("click", tryAgain);
+  var note = createNote(shareNote);
+
+  bindOverlay(overlay, {
+    primary: againBtn,
+    inertRoot: document.querySelector(".stage"),
+    label: "Puzzle solved",
+  });
+
+  initThemeToggle(themeBtn);
+
+  onSoundChange(function (on) {
+    soundBtn.classList.toggle("is-off", !on);
+    soundBtn.setAttribute("aria-pressed", on ? "true" : "false");
+    soundBtn.setAttribute("aria-label", on ? "Sound on" : "Sound off");
+  });
+  soundBtn.addEventListener("click", function () {
+    if (toggleSound()) sndStep();
+  });
+
   shareBtn.addEventListener("click", shareResult);
-  howtoBtn.addEventListener("click", openHowto);
-  howtoBackdrop.addEventListener("click", closeHowto);
+  initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });
   letterBackdrop.addEventListener("click", closeLetterPicker);
   letterCloseBtn.addEventListener("click", closeLetterPicker);
+
+  // The puzzle is chosen once, at load. A tab left open past midnight kept
+  // serving yesterday's word — and because loadState() invalidates on
+  // `saved.day !== dayIndex`, the stale board would then also refuse to load
+  // the state it had just written.
+  //
+  // The solved end card already handles this: its countdown calls
+  // location.reload() when it reaches zero. This is the same fix for the case
+  // that had none — an *unsolved* board, where no countdown is running. A
+  // reload rather than an in-place swap for exactly that reason: one rollover
+  // path, already proven, rather than a second one that has to reassign the
+  // puzzle constants that the rest of the file closes over.
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) return;
+    if (getDayIndex() !== dayIndex) location.reload();
+  });
 
   render();
   if (state.solved) setTimeout(showOverlay, 50);

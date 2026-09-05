@@ -19,6 +19,8 @@
   --node: var(--ink);
   --node-fixed: #4a6fa5;
   --purple: #8b5cf6;
+
+  color-scheme: light;
 }
 
 
@@ -38,14 +40,17 @@ html, body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 2.4svh 4vw 3svh;
+  padding:
+    max(2.4svh, env(safe-area-inset-top, 0px))
+    max(4vw, env(safe-area-inset-right, 0px))
+    max(3svh, env(safe-area-inset-bottom, 0px))
+    max(4vw, env(safe-area-inset-left, 0px));
 }
 
 /* ---- top bar ---- */
 
 
 
-.back-link:hover { color: var(--ink); }
 
 .title {
   margin: 0;
@@ -415,6 +420,8 @@ html, body {
   --node-fixed: #4fd3ff;
   --boundary: #9ec54c;
   --purple: #b967ff;
+
+  color-scheme: dark;
 }
 
 [data-theme="dark"] .icon-btn:active {

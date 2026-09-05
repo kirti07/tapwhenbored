@@ -1,3 +1,8 @@
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import { tone, isOn as soundIsOn, toggle as toggleSound, onChange as onSoundChange } from "../shared/ui/audio.js";
+import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
+import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
+
 (function () {
   "use strict";
 
@@ -10,7 +15,7 @@
   var GEN_ATTEMPTS = 200;
   var HOME_RADIUS = 0.36; // fraction from board center — the puzzle's canonical circle layout
   var MOVE_RADIUS = 0.41; // fraction from board center — the circular area a node can occupy
-  var BEST_KEY = "untangleBestMoves";
+  var BEST_KEY = "untangle.best";
 
   var board = document.getElementById("board");
   var crossingsVal = document.getElementById("crossingsVal");
@@ -24,6 +29,8 @@
   var howtoBtn = document.getElementById("howtoBtn");
   var howtoSheet = document.getElementById("howtoSheet");
   var howtoBackdrop = document.getElementById("howtoBackdrop");
+  var soundBtn = document.getElementById("soundBtn");
+  var themeBtn = document.getElementById("themeBtn");
 
   var nodes = [];       // {x, y} fractions 0..1, index = node id
   var edges = [];       // [a, b] node id pairs
@@ -35,6 +42,7 @@
   var boundaryEl = null;  // always-visible dashed circle marking the valid move area
   var crossingFlags = []; // reusable per-edge crossing state, sized once in buildDom
   var moves = 0;
+  var crossings = 0;   // last rendered count; the HUD is a view of this, never the source
   var startTime = 0;
   var ended = false;
   var best = readBest();
@@ -47,18 +55,6 @@
   var wasOutsideBoundary = false; // desktop drag: pulse once per crossing, not every frame held past it
   var selectedIndex = -1;  // tap-to-move selection (touch only)
   var pendingTap = null;   // touch gesture awaiting release: null = none, -1 = on empty board, >=0 = on that node id
-
-  // Opt-in only, like every other game's "How to play" — never auto-shown, no
-  // localStorage tracking. The full-screen backdrop naturally blocks board
-  // taps while it's open, so no separate interaction guard is needed either.
-  function openHowto() {
-    howtoSheet.classList.add("show");
-    howtoBackdrop.classList.add("show");
-  }
-  function closeHowto() {
-    howtoSheet.classList.remove("show");
-    howtoBackdrop.classList.remove("show");
-  }
 
   // offsetWidth (the usual force-reflow trick) is undefined on SVG shapes —
   // it silently no-ops there, so a fast repeat trigger fails to restart the
@@ -77,40 +73,16 @@
   }
 
   function readBest() {
-    try {
-      var v = localStorage.getItem(BEST_KEY);
-      return v ? parseInt(v, 10) : null;
-    } catch (e) { return null; }
+    var v = getPref(BEST_KEY, null);
+    return v ? parseInt(v, 10) : null;
   }
 
   function writeBest(v) {
     best = v;
-    try { localStorage.setItem(BEST_KEY, String(v)); } catch (e) { /* ignore */ }
+    setPref(BEST_KEY, v);
   }
 
-  // ---------- audio (tiny, procedural, no files) ----------
-  var actx = null;
-  function ctx() {
-    if (!actx) {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      actx = new AC();
-    }
-    return actx;
-  }
-  function tone(freq, dur, type, gain) {
-    try {
-      var c = ctx();
-      var osc = c.createOscillator();
-      var g = c.createGain();
-      osc.type = type;
-      osc.frequency.value = freq;
-      g.gain.value = gain;
-      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
-      osc.connect(g).connect(c.destination);
-      osc.start();
-      osc.stop(c.currentTime + dur);
-    } catch (e) { /* audio not available, ignore */ }
-  }
+  // ---------- audio ----------
   function sndRelease() { tone(720, 0.09, "sine", 0.05); }
   function sndWin() {
     tone(660, 0.12, "sine", 0.06);
@@ -383,14 +355,12 @@
     hitEls = nodes.map(function (_, i) {
       var el = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       el.setAttribute("class", "node-hit");
-      el.dataset.index = i;
       board.appendChild(el);
       return el;
     });
     nodeEls = nodes.map(function (_, i) {
       var el = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       el.setAttribute("class", fixed[i] ? "node fixed" : "node");
-      el.dataset.index = i;
       board.appendChild(el);
       return el;
     });
@@ -459,6 +429,7 @@
       }
     }
 
+    crossings = count;
     crossingsVal.textContent = String(count);
     return count;
   }
@@ -505,34 +476,45 @@
     showOverlay();
   }
 
-  function shareResult() {
-    var url = new URL(location.href);
-    url.search = "";
-    url.hash = "";
-    var seconds = Math.max(0, Math.round((performance.now() - startTime) / 1000));
-    var text = "I untangled it in " + moves + (moves === 1 ? " move" : " moves") +
-      " (" + seconds + "s). Can you untangle yours?";
-
-    if (navigator.share) {
-      navigator.share({ title: "Untangle", text: text, url: url.toString() }).catch(function () {});
-      return;
-    }
-    var payload = text + " " + url.toString();
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(payload).then(function () {
-        shareNote.classList.add("show");
-      }).catch(function () {});
-    }
-  }
-
   updateBestHud();
   generatePuzzle();
 
   resetBtn.addEventListener("click", generatePuzzle);
   againBtn.addEventListener("click", generatePuzzle);
-  shareBtn.addEventListener("click", shareResult);
-  howtoBtn.addEventListener("click", openHowto);
-  howtoBackdrop.addEventListener("click", closeHowto);
+
+  initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });
+
+  initShare({
+    btn: shareBtn,
+    note: shareNote,
+    title: "Untangle",
+    text: function () {
+      var seconds = Math.max(0, Math.round((performance.now() - startTime) / 1000));
+      return "I untangled it in " + moves + (moves === 1 ? " move" : " moves") +
+        " (" + seconds + "s). Can you untangle yours?";
+    },
+  });
+
+  // The end card becomes a real dialog: the board behind it leaves the tab
+  // order, the reset button stops being clickable through it, focus lands on
+  // Again so Enter replays, and Escape dismisses the card to reveal the
+  // solved puzzle underneath.
+  bindOverlay(overlay, {
+    primary: againBtn,
+    inertRoot: document.querySelector(".stage"),
+    label: "Puzzle solved",
+  });
+
+  initThemeToggle(themeBtn);
+
+  onSoundChange(function (on) {
+    soundBtn.classList.toggle("is-off", !on);
+    soundBtn.setAttribute("aria-pressed", on ? "true" : "false");
+    soundBtn.setAttribute("aria-label", on ? "Sound on" : "Sound off");
+  });
+  soundBtn.addEventListener("click", function () {
+    if (toggleSound()) sndRelease();
+  });
   // Coalesced to one render a frame. A resize arrives in bursts — an
   // orientation change, a window drag — and render() measures the board and
   // then rewrites an SVG attribute per node and per edge, which is far too
@@ -579,7 +561,10 @@
     var el = e.target.closest(".node-hit");
 
     if (el) {
-      var idx = parseInt(el.dataset.index, 10);
+      /* hitEls is indexed by node id and is rebuilt whole on every puzzle, so
+         its position *is* the id. Reading it back from a data attribute was a
+         second copy of that with nothing keeping the two in step. */
+      var idx = hitEls.indexOf(el);
       if (fixed[idx]) { triggerShake(nodeEls[idx]); return; }
 
       activePointerId = e.pointerId;
@@ -613,7 +598,11 @@
     nodes[dragIndex].x = p.x;
     nodes[dragIndex].y = p.y;
     dragMoved = true;
-    var before = parseInt(crossingsVal.textContent, 10);
+    /* The previous count used to be re-parsed out of #crossingsVal.textContent
+       on every frame of a drag, which made an audio decision depend on a
+       rendered string — a copy tweak to the HUD would have become a logic bug.
+       render() returns the count, so keep the last one. */
+    var before = crossings;
     var after = render();
     if (after < before) sndRelease();
   }

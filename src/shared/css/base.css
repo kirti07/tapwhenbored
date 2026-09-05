@@ -52,3 +52,24 @@ html, body {
 }
 
 .back-link svg { width: 13px; height: 13px; }
+
+/* Touch behaviour for controls, site-wide.
+ *
+ * `touch-action: manipulation` drops the 300ms wait a browser spends deciding
+ * whether a tap is the start of a double-tap-to-zoom. On a game where taps are
+ * the whole interaction, that delay is the difference between responsive and
+ * sluggish, and it is why rapid tapping felt unreliable.
+ *
+ * The tap highlight is the grey box some mobile browsers paint over a tapped
+ * control. It is removed in favour of each game's own :active state, which is
+ * faster and matches the game's palette rather than the platform's.
+ *
+ * Scoped to controls, not to everything: the play surfaces already declare
+ * their own touch-action, and text still selects normally. */
+a,
+button,
+summary,
+[role="switch"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}

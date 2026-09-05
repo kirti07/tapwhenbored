@@ -8,7 +8,7 @@
 
 import { test, expect } from "@playwright/test";
 import { games } from "../../src/data/games.js";
-import { DICTIONARY } from "../../src/word-steps/data.js";
+import { DICTIONARY } from "../../src/word-steps/dictionary.js";
 
 const RPC = "**/rest/v1/rpc/**";
 const withLeaderboard = games.filter((g) => g.leaderboard);

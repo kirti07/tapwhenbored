@@ -122,6 +122,54 @@ Prefer CSS transitions and transforms where appropriate.
 
 Avoid introducing animation libraries unless absolutely necessary.
 
+### The motion budget
+
+Refine towards these numbers rather than inventing new ones per game:
+
+| Moment | Treatment |
+| --- | --- |
+| End-card entrance | opacity + 8px translateY, 200-240ms ease-out, interruptible |
+| End-card exit | none — leaving is navigation, not an animation |
+| Button press | `transform: scale(.98)`, 80ms, on `:active` |
+| Tab or panel change | 120ms cross-fade, no slide |
+| A value updating in place | opacity, 120ms, and no height change |
+| Celebration | only on a genuine record, under 600ms, CSS-only, transform and opacity only |
+
+Nothing runs forever. An idle screen should be still.
+
+### Reduced motion: gentler, not zero
+
+Under `prefers-reduced-motion: reduce`, the goal is a calm page, not a broken
+one.
+
+* Transitions restricted to `opacity`, colour, `box-shadow` and `filter`, about
+  120ms.
+* **Base CSS is the final state.** Switching an animation off must leave the
+  element where it belongs. An animation ending at `opacity: 0` that is simply
+  disabled leaves its element on screen permanently — check every `forwards`
+  animation for this.
+* When motion was carrying meaning, replace it with a static equivalent rather
+  than deleting it. A pulse that showed valid targets becomes a held highlight.
+* Watch specificity: overriding `.thing:first-child` with `.thing` does
+  nothing, and the stylesheet will look correct while doing nothing.
+* Verify with the preference emulated, never by reading the CSS.
+
+---
+
+## 6b. Refine focus and keyboard order
+
+Part of the refinement pass, not a separate concern.
+
+* Tab through the screen after every change. Is the order still the reading
+  order?
+* Does every control show where focus is? Does the ring draw around the control
+  without changing its shape?
+* When an overlay opens, does focus move into it, land on the replay control,
+  and return to its origin on close?
+* Did a visual change quietly remove a control from the tab order, or add a
+  collapsed one to it? An element hidden with `max-height: 0` and `opacity: 0`
+  is still focusable — use `visibility` so it leaves the tab order too.
+
 ---
 
 ## 7. Refine both themes
@@ -246,11 +294,17 @@ Before considering refinement complete, verify that the game:
 
 * Fits comfortably across common screen sizes
 * Does not have unintended overflow
-* Maintains usable interaction targets
+* Maintains usable interaction targets — measured, and never under 44x44
 * Preserves gameplay proportions
 * Handles browser resizing correctly
 * Works with both touch and mouse input
+* Works in landscape on a phone, which is a third of the height the layout was
+  drawn for
 * Remains lightweight and responsive
+
+Measure hit areas rather than judging them. A control can look generous and be
+13 pixels tall, and the back link — the only way out of a game — is the one
+most likely to be both.
 
 Do not create separate mobile, tablet and desktop applications.
 

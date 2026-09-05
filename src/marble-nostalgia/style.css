@@ -34,6 +34,8 @@
   --marble-shadow: rgba(60, 40, 20, 0.3);
 
   --target-glow: #f2735c;
+
+  color-scheme: light;
 }
 
 
@@ -54,14 +56,17 @@ html, body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 2.4svh 4vw 3svh;
+  padding:
+    max(2.4svh, env(safe-area-inset-top, 0px))
+    max(4vw, env(safe-area-inset-right, 0px))
+    max(3svh, env(safe-area-inset-bottom, 0px))
+    max(4vw, env(safe-area-inset-left, 0px));
 }
 
 /* ---- top bar ---- */
 
 
 
-.back-link:hover { color: var(--ink); }
 
 .title {
   margin: 0;
@@ -539,6 +544,8 @@ html, body {
   --marble-shadow: rgba(0, 0, 0, 0.45);
 
   --target-glow: #ff7a5c;
+
+  color-scheme: dark;
 }
 
 [data-theme="dark"] .board-rim {
@@ -590,3 +597,80 @@ html, body {
 }
 [data-theme="dark"] .marble.win-glow,
 [data-theme="dark"] .overlay-marble { animation-name: glow-dark; }
+
+/* Reduced motion.
+ *
+ * This game had no reduced-motion rule of any kind, and it is the worst
+ * offender in the site: three *infinite* animations run whenever the board is
+ * idle — the valid-target pulse, the hint bounce and the win glow.
+ *
+ * The rule is gentler, not zero, and it has a hard constraint here: two of
+ * those animations are not decoration, they are the affordance. `target-pulse`
+ * is how a player sees which holes they may move to, and `hint-bounce` is how
+ * a first-time player is shown a legal move. Deleting them would take the
+ * game's teaching with them. So each one is replaced by the static state it
+ * pulses between, not removed.
+ *
+ * The disappearing animations (`capture`) are the mirror problem: they end at
+ * opacity 0 with `forwards`, so simply switching them off would leave captured
+ * marbles sitting on the board until the JS removed them. They keep a plain
+ * opacity fade with the scale taken out. */
+@media (prefers-reduced-motion: reduce) {
+  /* Was a 1s pulse. This is its high point, held. */
+  .hole.valid-target {
+    animation: none;
+    box-shadow:
+      inset 0 0.3svh 0.5svh rgba(35, 25, 15, 0.45),
+      0 0 0 0.22svh var(--target-glow),
+      0 0 1.6svh 0.2svh var(--target-glow);
+  }
+
+  /* Was a vertical bounce. A ring reads as "this one" without moving. */
+  .marble.hint-bounce {
+    animation: none;
+    outline: 2px solid var(--target-glow, var(--accent, currentColor));
+    outline-offset: 3px;
+  }
+
+  /* Celebration. The one place where nothing is lost by going quiet.
+     .overlay-marble is the same glow on the end card, and it is a separate
+     selector — a reminder that "the game is quiet" and "the end card is quiet"
+     are two different claims. */
+  .marble.win-glow,
+  .overlay-marble,
+  [data-theme="dark"] .overlay-marble { animation: none; }
+
+  /* Ends at opacity 0 and the JS relies on it. Keep the ending, drop the
+     travel. */
+  .marble.captured {
+    animation: none;
+    opacity: 0;
+    transition: opacity 0.12s linear;
+  }
+
+  /* An error shake says "not that one". A colour change says the same thing
+     without moving the board. */
+  .marble.shake {
+    animation: none;
+    outline: 2px solid var(--danger, #e0788a);
+    outline-offset: 2px;
+  }
+
+  .marble { transition: opacity 0.12s linear, box-shadow 0.12s linear; }
+  .hint-banner { transition: opacity 0.12s linear; }
+}
+
+/* 14x18 — the smallest control in the game, and a dismiss button, so a miss
+   means tapping the board behind a banner the player is trying to get rid of. */
+.hint-banner-close {
+  position: relative;
+}
+.hint-banner-close::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+}

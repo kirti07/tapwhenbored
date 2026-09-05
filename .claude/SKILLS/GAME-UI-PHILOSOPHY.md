@@ -114,6 +114,13 @@ The UI must never temporarily suggest that the wrong game element was selected o
 
 Where practical, update the visual state from a single source of truth so interaction feedback cannot drift from the actual game logic.
 
+**The DOM is a rendering target, never the state.** Do not rebuild a word from
+tile `textContent`, do not parse a counter back out of the element that
+displays it, and do not keep a piece's identity in a `data-` attribute that
+game logic then reads back. The moment display and logic share a variable, a
+copy change becomes a gameplay bug — and it will be a gameplay bug nobody
+thinks to look for, because the commit that caused it only touched text.
+
 ---
 
 ## 5. Touch behaviour is part of the game design
@@ -216,7 +223,36 @@ Avoid animation that exists only to make the page feel more active.
 
 Keep most motion short and responsive.
 
-Respect reduced-motion preferences where practical.
+### Reduced motion means gentler, not zero
+
+`prefers-reduced-motion: reduce` is a request to stop things moving, not a
+request for a broken page. The blanket `transition-duration: 0.001ms` kill that
+gets pasted around is not the answer, and neither is deleting the rule.
+
+* Restrict transitions to `opacity`, colour, `box-shadow` and `filter`, around
+  120ms.
+* **Author every animated element so its base CSS is the final state.** Turning
+  the animation off must leave the page correct — not blank, and not with an
+  element stuck at the animation's first frame. An animation that ends at
+  `opacity: 0` and is simply switched off leaves that element on screen
+  forever.
+* Nothing animates forever. An infinite animation is the first thing to go.
+* When a moving thing was carrying meaning — which tile is a valid target,
+  which piece to try next — replace it with a static equivalent. Removing it
+  takes the game's teaching with it.
+* Beware specificity. A reduced-motion override on `.icon polygon` loses to
+  `.icon polygon:first-child`, so the rule reads correctly and never applies.
+  Match the specificity of what you are overriding, and test with the
+  preference emulated rather than trusting the stylesheet.
+
+### The motion budget
+
+* End-card entrance: opacity plus 8px of travel, 200-240ms, ease-out,
+  interruptible. **No exit animation** — leaving is navigation.
+* Button press: `transform: scale(.98)`, 80ms.
+* Tab or panel change: 120ms cross-fade, no slide.
+* At most one celebration, only for a genuine record, under 600ms, CSS-only,
+  transform and opacity only, and fully off under reduced motion.
 
 ---
 
@@ -235,6 +271,140 @@ Prefer teaching through:
 * Feedback
 
 Instructions should explain only what cannot be understood from the game itself.
+
+---
+
+## 11. A game nobody can operate is not finished
+
+Accessibility is a gameplay property, not a compliance pass at the end.
+
+Every game must be playable with a keyboard alone. If the board can only be
+driven by pointer, the game is unfinished — not "unfinished for some players",
+unfinished.
+
+Roles describe what a thing **is**:
+
+* Never put `role="img"` on an interactive board. It tells a screen reader the
+  board is a picture, and there is then no way to play.
+* Never put `role="status"` on a button. It replaces the control's own role, so
+  the player is told there is a message where there is actually something to
+  press.
+* A `role="switch"` must set `aria-checked`, and keep it in step.
+
+There must be exactly one visible focus style, and it must be visible on every
+control. A focus ring may only draw **around** an element — never change its
+box, radius or size. A ring that reshapes the button it lands on is worse than
+no ring.
+
+A message that appears without moving the pointer (a share confirmation, a
+hint, an error) needs `aria-live`. A visual-only change says nothing.
+
+> Unplug the mouse. Play the game to the end, restart it, open and close the
+> rules. If you cannot, it is not done.
+
+---
+
+## 12. An overlay is a dialog
+
+An end card that the player can click through is not an end card.
+
+When an overlay is up:
+
+* Focus moves into it.
+* Focus cannot leave it by Tab.
+* Everything behind it leaves the tab order, the hit test **and** the
+  accessibility tree. Dimming with `opacity` and `pointer-events` does none of
+  those three — the board stays fully reachable by keyboard and screen reader.
+* Escape dismisses it.
+* Focus returns to where it came from when it closes.
+
+Two rules about **where** focus lands, both learned the hard way:
+
+* It lands on the **replay** control, so finishing and pressing Enter starts
+  another game. That is the single most-valued interaction in the whole
+  product.
+* It never lands on a text field. An absent-minded Enter must not commit
+  anything.
+
+And the rule that constrains all of the above:
+
+> A modal is for reading, not for asking. Never build an end card that must be
+> dismissed before the player can play again.
+
+---
+
+## 13. If it makes a sound, it has a mute
+
+Six of eight games shipped with sound and no way to stop it. That is not a
+missing feature, it is a game that cannot be played in a waiting room.
+
+* Any game that makes a noise has a mute, in reach, on the main screen.
+* The preference is site-wide. Muting in one game mutes the shelf.
+* Audio must survive a tab switch. A context created outside a gesture starts
+  suspended and a backgrounded one is suspended again; resume on the next
+  interaction and when the page becomes visible, or the game goes silent for
+  the rest of the session and never comes back.
+
+---
+
+## 14. The device has a notch, and the player has thumbs
+
+Layout facts, not polish:
+
+* `viewport-fit=cover` plus safe-area padding is part of the layout. Using
+  `env(safe-area-inset-*)` without `viewport-fit=cover` resolves to zero — the
+  padding looks present in the stylesheet and does nothing on the device.
+  Enabling `cover` without padding the top bar moves the problem rather than
+  fixing it; both belong in the same change.
+* **44x44 is the floor for anything tappable.** Expand the hit area rather than
+  the ink: a centred pseudo-element gives 44x44 of target around however much
+  design the control calls for, and changes no layout.
+* Where a grid pitch makes 44 wide impossible — a keyboard, a swatch row —
+  keep the width and take the height. Never let enlarged targets overlap; two
+  controls stealing each other's taps is worse than one small control.
+* Hover is not a touch state. Every `:hover` rule belongs behind
+  `@media (hover: hover) and (pointer: fine)`, or a tap leaves a control
+  looking selected until the player taps elsewhere.
+* Controls get `touch-action: manipulation` and their own `:active` state.
+* Nothing a player is expected to read is under 11px.
+* Landscape is a real orientation. A phone on its side has a third of the
+  height the layout was drawn for.
+
+---
+
+## 15. Nothing moves that the player did not move
+
+Reserve space before you fill it.
+
+An element that is hidden until the network answers, and then appears, pushes
+everything below it down — at exactly the moment the player is reaching for the
+button that moved. Give async content its height up front.
+
+The strictest form of this rule, and the one worth remembering:
+
+> Nothing may push the replay button down the screen.
+
+Buttons do not resize, restyle or move when their state changes. A control that
+changes its own label is worse still: for as long as the confirmation shows,
+the control has no name.
+
+---
+
+## 16. One vocabulary
+
+The same action has the same name in every game.
+
+* Replay is `Play again`. Not "Again", not "Play Again", not "New prompt".
+* Share is `Share`. Its confirmation is `Link copied`.
+* One glyph means one thing.
+
+If a game's visual register needs shouting, `text-transform` does that. The
+string in the markup is what a screen reader reads and what a player recognises
+from the last game they played, so the string stays the same.
+
+A confirmation must be true. A Share button that reports "Link copied" without
+copying anything is worse than no Share button, because it lies.
+
 
 ---
 

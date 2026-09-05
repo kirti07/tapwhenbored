@@ -274,9 +274,14 @@ tap-when-bored/
 │   │   │   ├── howto.css
 │   │   │   └── leaderboard.css
 │   │   └── ui/
-│   │       └── leaderboard.js
-│   │                         this is the whole of shared/ui/ — §9 lists what
-│   │                         else is allowed to live here, not what does
+│   │       ├── leaderboard.js
+│   │       ├── prefs.js      namespaced localStorage, try/catch inside
+│   │       ├── audio.js      one tone() + the site-wide mute
+│   │       ├── theme.js      the in-game theme toggle
+│   │       └── shell.js      initHowto, initShare, createNote, bindOverlay
+│   │                         §9 lists what else is *allowed* to live here.
+│   │                         Every one of these replaced eight hand-maintained
+│   │                         copies; none of them holds game rules.
 │   │
 │   ├── honeycomb/            →  /honeycomb/
 │   │   ├── index.html        mandatory — this file makes it a page
@@ -389,6 +394,24 @@ UniversalGameState
 unless a concrete, repeated requirement across multiple games justifies them.
 
 The default should be to keep logic inside the game.
+
+## What is actually shared, and why each one earned it
+
+| Module | Replaced | Why it is shared, not copied |
+| --- | --- | --- |
+| `ui/leaderboard.js` | — | Score direction lives in the database; the client never compares scores (§27). |
+| `ui/prefs.js` | 3 naming conventions, 7 hand-written try/catch pairs, 1 missing one | `localStorage` *throws* in Safari private mode. It is not enough for most callers to remember — the one that forgets takes the page down. |
+| `ui/audio.js` | 7 copies of `tone()`, in 4 drifted signatures | Only 3 of 8 games resumed a suspended `AudioContext`, so in the other 5 a tab switch killed audio for the session. The mute is one preference for the whole site. |
+| `ui/theme.js` | nothing — the games had no toggle | Landing on a shared link and having to leave the game to change theme. The *initial* theme stays in the inlined bootstrap, which is the only thing that can beat first paint. |
+| `ui/shell.js` | 8 copies each of the how-to sheet, share flow and overlay | The end card was never a dialog in any game. Done per game that is eight edits and drifts within a month. |
+
+`shell.js` is held at four small functions on purpose. The pull is to grow it
+into a game engine with a lifecycle and a spreading options object; if it needs
+to know a game's rules, the change belongs in the game.
+
+`bindOverlay()` watches the class a game already toggles rather than asking
+every game to adopt a new API, which is what keeps each game's diff to one
+import and one call.
 
 ---
 
@@ -1540,6 +1563,13 @@ exist:
 ├── GAME-UI-REVIEW.md        how to evaluate an interface
 └── GAME-UI-REFINEMENT.md    how to improve an interface without changing the game
 ```
+
+All four cover accessibility, motion, touch and copy as first-class concerns
+rather than as a pass at the end. They gained those sections after a platform
+review found defects — an end card that was not a dialog in any game, six games
+with sound and no mute, a 13-pixel-tall back link — that the documents as
+written could not have caught, because they only described how a screen should
+look.
 
 Responsibilities:
 

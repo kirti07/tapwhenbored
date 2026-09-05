@@ -57,7 +57,7 @@ const html = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f6f6fb">
 <!-- theme-bootstrap -->
 <title>${title} — Free Online Game</title>
@@ -99,7 +99,6 @@ const html = `<!doctype html>
 }
 </script>
 <link rel="preload" href="/fonts/nunito-latin-700.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="/fonts/nunito-latin-800.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -116,6 +115,14 @@ const html = `<!doctype html>
       <div class="top-actions">
         <button class="icon-btn" id="restartBtn" title="Restart" aria-label="Restart">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.9-6.16"/><path d="M20 4v5h-5"/></svg>
+        </button>
+        <button class="icon-btn" id="soundBtn" type="button" title="Sound" aria-label="Sound on" aria-pressed="true">
+          <svg class="ico-sound-on" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.2L12 18.5v-13L7.2 9.5H4z"/><path d="M16 9.2a4 4 0 0 1 0 5.6"/><path d="M18.6 6.6a7.6 7.6 0 0 1 0 10.8"/></svg>
+          <svg class="ico-sound-off" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.2L12 18.5v-13L7.2 9.5H4z"/><path d="M16.5 10l5 4"/><path d="M21.5 10l-5 4"/></svg>
+        </button>
+        <button class="icon-btn" id="themeBtn" type="button" title="Dark theme" aria-label="Switch to dark theme">
+          <svg data-theme-icon="dark" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg data-theme-icon="light" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
         </button>
       </div>
     </header>
@@ -158,7 +165,7 @@ const html = `<!doctype html>
            neither. (Spelled out rather than shown, because validation greps
            this file for the literal id.) -->
       <div class="overlay-actions">
-        <button class="again-btn" id="againBtn">Again</button>
+        <button class="again-btn" id="againBtn">Play again</button>
         <button class="share-btn" id="shareBtn">Share</button>
       </div>
       <p class="share-note" id="shareNote">Link copied</p>
@@ -193,35 +200,45 @@ const css = `/* Shared first: game rules below must be able to override them, an
   --ink: #e8e8f0;
   --ink-soft: #9296ad;
   --line: #2a2d42;
+  --accent: #8aa2ff;
+  --accent-dark: #a9baff;
+  color-scheme: dark;
 }
 
 html, body {
   margin: 0;
-  min-height: 100dvh;
+  height: 100%;
   background: var(--bg);
   color: var(--ink);
   font-family: -apple-system, "Segoe UI", sans-serif;
 }
 
 .stage {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
-  padding: 2vh 4vw;
+  /* svh, never vh or dvh (§16). max() with the safe-area insets keeps the top
+     bar clear of a notch — meaningful only because the viewport meta above
+     opts into viewport-fit=cover. */
+  padding:
+    max(2.4svh, env(safe-area-inset-top, 0px))
+    max(4vw, env(safe-area-inset-right, 0px))
+    max(3svh, env(safe-area-inset-bottom, 0px))
+    max(4vw, env(safe-area-inset-left, 0px));
 }
 
 .title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(16px, 2.6vh, 21px);
+  font-size: clamp(16px, 2.6svh, 21px);
   letter-spacing: 0.02em;
 }
 
 .tagline {
   flex-shrink: 0;
-  margin: 1.2vh 0;
+  margin: 1.2svh 0;
   color: var(--ink-soft);
-  font-size: clamp(11px, 1.6vh, 13px);
+  font-size: clamp(11px, 1.6svh, 13px);
   text-align: center;
 }
 
@@ -253,6 +270,11 @@ const js = `// ${title}
 // rather than spread across DOM attributes and CSS classes
 // (ARCHITECTURE.md §13).
 
+import { initHowto, initShare, createNote, bindOverlay } from "../shared/ui/shell.js";
+import { tone, toggle as toggleSound, onChange as onSoundChange } from "../shared/ui/audio.js";
+import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
+import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
+
 (function () {
   "use strict";
 
@@ -263,6 +285,10 @@ const js = `// ${title}
   var howtoBtn = document.getElementById("howtoBtn");
   var howtoSheet = document.getElementById("howtoSheet");
   var howtoBackdrop = document.getElementById("howtoBackdrop");
+  var shareBtn = document.getElementById("shareBtn");
+  var shareNote = document.getElementById("shareNote");
+  var soundBtn = document.getElementById("soundBtn");
+  var themeBtn = document.getElementById("themeBtn");
 
   var state = null;
 
@@ -290,19 +316,41 @@ const js = `// ${title}
     render();
   }
 
-  // ---------- how to play ----------
-  function openHowto() {
-    howtoSheet.classList.add("show");
-    howtoBackdrop.classList.add("show");
-  }
+  // ---------- the page shell ----------
+  // These four come from shared/ui and are not optional: they are what make
+  // the rules sheet and the end card real dialogs (Escape, focus, inert
+  // background), the sound preference site-wide, and localStorage safe in
+  // private mode. See ARCHITECTURE.md §9.
+  initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });
 
-  function closeHowto() {
-    howtoSheet.classList.remove("show");
-    howtoBackdrop.classList.remove("show");
-  }
+  initShare({
+    btn: shareBtn,
+    note: shareNote,
+    title: ${JSON.stringify(title)},
+    // Called at click time, so it sees the finished score.
+    text: function () {
+      return "TODO: what the player wants to tell someone.";
+    },
+  });
 
-  howtoBtn.addEventListener("click", openHowto);
-  howtoBackdrop.addEventListener("click", closeHowto);
+  // Focus lands on Play again, so finishing and pressing Enter replays.
+  bindOverlay(overlayEl, {
+    primary: againBtn,
+    inertRoot: document.querySelector(".stage"),
+    label: "Round over",
+  });
+
+  initThemeToggle(themeBtn);
+
+  onSoundChange(function (on) {
+    soundBtn.classList.toggle("is-off", !on);
+    soundBtn.setAttribute("aria-pressed", on ? "true" : "false");
+    soundBtn.setAttribute("aria-label", on ? "Sound on" : "Sound off");
+  });
+  soundBtn.addEventListener("click", function () {
+    // TODO: play this game's own confirmation note on unmute.
+    if (toggleSound()) tone(660, 0.08, "sine", 0.05);
+  });
 
   restartBtn.addEventListener("click", start);
   againBtn.addEventListener("click", start);
