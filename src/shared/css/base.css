@@ -3,6 +3,15 @@
 
 * { box-sizing: border-box; }
 
+/* Declared once here rather than per game, because this is not a colour: it
+   tells the browser how to paint form controls, scrollbars and the canvas
+   behind the page, and the answer is the same for every game. Three of nine
+   pages used to set it, which is why the other six kept light scrollbars in
+   dark mode. A game that wants to say it again locally is free to; it is the
+   same value. See ARCHITECTURE.md §16. */
+:root { color-scheme: light; }
+[data-theme="dark"] { color-scheme: dark; }
+
 /* Why every game sizes itself in `svh`, and never in `vh` or `dvh`.
  *
  * The three units answer different questions. `lvh` (which is what a bare `vh`

@@ -1,7 +1,15 @@
 /* Shared first: game rules below must be able to override them, and
    @import inlines in source order in both dev and build. */
 @import "../shared/css/base.css";
+@import "../shared/css/shell.css";
 @import "../shared/css/howto.css";
+@import "../shared/css/leaderboard.css";
+
+/* Deliberately no tokens.css. That file carries the Nunito @font-face rules and
+   --font-display, and this game is system-font by design (ARCHITECTURE.md §25).
+   Importing it would make scripts/font-preloads.js see the display family and
+   put a ~16 kB preload on the critical path of a page that never draws a glyph
+   in it. shell.css needs only --ink, --ink-soft and --line, which are below. */
 
 :root {
   --paper: #eaf6fb;
@@ -42,7 +50,7 @@ html, body {
   touch-action: manipulation;
 }
 
-.app {
+.stage {
   position: relative;
   height: 100%;
   display: flex;
@@ -53,10 +61,10 @@ html, body {
     var(--paper);
 }
 
+/* .topbar, .brand, .top-actions, .back-link, .subtitle and .icon-btn come from
+   shared/css/shell.css. Only the padding differs — this game's stage is a
+   fixed-height arcade cabinet rather than a flex column of svh units. */
 .topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 18px 20px 10px;
 }
 
@@ -79,6 +87,8 @@ html, body {
   .back-link:hover { color: var(--ink); }
 }
 
+/* The one piece of the topbar that is this game's identity: a monospace
+   wordmark, not the display face every other game sets here. */
 .title {
   margin: 0;
   font-family: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
@@ -86,8 +96,6 @@ html, body {
   font-weight: 600;
   letter-spacing: 0.32em;
 }
-
-.controls { display: flex; gap: 8px; }
 
 .icon-btn {
   width: 36px;
@@ -429,16 +437,20 @@ html, body {
   justify-content: center;
   z-index: 10;
 }
-.overlay.hidden { display: none; }
+/* Shown by adding `show`, like every other game's end card, so the shared
+   bindOverlay() drives it. It was `.hidden` here alone, which is what every
+   test exception about this game used to be about. */
+.overlay { display: none; }
+.overlay.show { display: flex; }
 
-.overlay-card {
+.overlay-content {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   gap: 4px;
 }
-.overlay-card h2 {
+.overlay-title {
   font-family: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
   letter-spacing: 0.15em;
   margin: 0 0 10px;
@@ -451,18 +463,28 @@ html, body {
   font-weight: 700;
   margin: 2px 0 4px;
 }
+.overlay-sub,
 .go-sub { font-size: 11px; letter-spacing: 0.1em; color: var(--ink-soft); margin: 0 0 4px; }
-/* The gap above PLAY AGAIN belongs to the button, not to the last .go-sub:
-   :last-of-type is structural, so it kept matching #globalBest even when that
-   line was hidden and the card lost its gap in an unconfigured build. */
-#gameOverOverlay .btn:first-of-type { margin-top: 14px; }
-/* This game keeps its own global-best styling rather than importing
-   shared/css/leaderboard.css. Its end card is all-caps and mono-spaced and
-   speaks --ink/--ink-soft, not --accent-dark — the same reason it opts out of
-   tokens.css and shell.css (see shared/css/shell.css). The shared *behaviour*
-   still comes from renderGlobalBest(). */
-.go-global.new-global { color: var(--ink); font-weight: 800; letter-spacing: 0.14em; }
 
+/* The end card's wording stays all-caps and monospaced — that is this game's
+   voice, and it is why the shared leaderboard.css rules are overridden here
+   rather than used as they come. The shared *behaviour* is renderGlobalBest(). */
+.overlay-global {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+  margin: 0 0 4px;
+}
+.overlay-global.new-global { color: var(--ink); font-weight: 800; letter-spacing: 0.14em; }
+
+.overlay-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin-top: 14px;
+}
+
+.again-btn,
 .btn {
   font-family: inherit;
   /* The label in the markup is the site-wide "Play again" / "Share"; the
@@ -481,13 +503,35 @@ html, body {
   cursor: pointer;
   transition: transform 0.1s ease;
 }
+.again-btn:active,
 .btn:active { transform: scale(0.96); }
+
+.share-btn,
 .btn.ghost {
+  font-family: inherit;
+  letter-spacing: 0.1em;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 12px 28px;
+  border-radius: 10px;
   border: 1.5px solid var(--line);
   background: transparent;
   color: var(--ink);
   margin-top: 8px;
+  cursor: pointer;
+  transition: transform 0.1s ease;
 }
+.share-btn:active { transform: scale(0.96); }
+
+.share-note {
+  margin: 8px 0 0;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.share-note.show { opacity: 1; }
 
 .panel {
   position: absolute;
@@ -562,7 +606,7 @@ html, body {
     padding: max(8px, env(safe-area-inset-top)) 14px 6px;
   }
   .title { font-size: 13px; letter-spacing: 0.2em; }
-  .title-group { gap: 8px; }
+  .brand { gap: 8px; }
   .back-link span { display: none; }
   .icon-btn { width: 30px; height: 30px; border-radius: 8px; }
   .icon-btn svg { width: 15px; height: 15px; }
@@ -614,7 +658,7 @@ html, body {
   --bomb-glow: 0 0 16px 4px rgba(255, 77, 61, 0.5);
 }
 
-[data-theme="dark"] .app,
+[data-theme="dark"] .stage,
 [data-theme="dark"] .overlay {
   background:
     radial-gradient(circle at 20% 15%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 40%),

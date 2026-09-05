@@ -36,6 +36,10 @@ const REQUIRED_FIELDS = [
   "title",
   "tagline",
   "description",
+  "seoTitle",
+  "ogDescription",
+  "schemaDescription",
+  "genre",
   "path",
   "ogImage",
   "accent",
@@ -46,10 +50,16 @@ const REQUIRED_FIELDS = [
   "changefreq",
 ];
 
+// The Game JSON-LD's genre. A small closed set, because it is structured data
+// a crawler reads, not free text.
+const GENRES = new Set(["Puzzle", "Casual", "Word"]);
+
+// #rrggbb, lowercase. Both theme and accent colours are compared against CSS
+// literals, and CSS is written lowercase throughout.
+const HEX = /^#[0-9a-f]{6}$/;
+
 const errors = [];
-const warnings = [];
 const err = (m) => errors.push(m);
-const warn = (m) => warnings.push(m);
 
 const pageSlugs = new Set(pages.map((p) => p.slug));
 
@@ -62,9 +72,8 @@ for (const g of games) {
   for (const f of REQUIRED_FIELDS) {
     if (g[f] === undefined || g[f] === "") err(`${where}: missing field "${f}"`);
   }
-  for (const f of ["hasRestart", "hasOverlay"]) {
-    if (typeof g[f] !== "boolean") err(`${where}: "${f}" must be a boolean`);
-  }
+  if (typeof g.hasRestart !== "boolean")
+    err(`${where}: "hasRestart" must be a boolean`);
 
   // leaderboard is either false, or a descriptor recording how the game is
   // scored. The values the database actually enforces live in game_config; the
@@ -96,8 +105,24 @@ for (const g of games) {
   if (g.updated && !/^\d{4}-\d{2}-\d{2}$/.test(g.updated))
     err(`${where}: updated "${g.updated}" must be YYYY-MM-DD`);
 
-  if (g.darkThemeColor && !/^#[0-9a-f]{6}$/.test(g.darkThemeColor))
-    err(`${where}: darkThemeColor "${g.darkThemeColor}" must be #rrggbb`);
+  if (!GENRES.has(g.genre))
+    err(`${where}: genre "${g.genre}" must be one of ${[...GENRES].join(", ")}`);
+
+  // themeColor paints the mobile status bar and accent tints the homepage card,
+  // and both need a value per theme. They are checked here for shape; the
+  // theme-colour pair is checked against the game's own --bg further down,
+  // which is what stops the two drifting apart.
+  for (const field of ["themeColor", "accent"]) {
+    const pair = g[field];
+    if (typeof pair !== "object" || pair === null) {
+      err(`${where}: "${field}" must be a { light, dark } pair`);
+      continue;
+    }
+    for (const theme of ["light", "dark"]) {
+      if (!HEX.test(pair[theme] ?? ""))
+        err(`${where}: ${field}.${theme} "${pair[theme]}" must be #rrggbb`);
+    }
+  }
 
   // og:image must be a raster format — social crawlers render SVG poorly or
   // not at all (ARCHITECTURE.md §25).
@@ -146,6 +171,14 @@ for (const g of games) {
 }
 
 if (!home || home.path !== "/") err("games.js: home.path must be \"/\"");
+
+// The homepage's own colours. Written into its meta tag and its theme toggle by
+// homepageFromRegistry(), and pinned against the manifest further down, so the
+// site has one place to change its ground colour rather than four.
+for (const theme of ["light", "dark"]) {
+  if (!HEX.test(home?.themeColor?.[theme] ?? ""))
+    err(`games.js: home.themeColor.${theme} must be #rrggbb`);
+}
 
 // ---------- registry <-> filesystem, both directions ----------
 
@@ -199,28 +232,89 @@ for (const g of games) {
   if (!g.leaderboard && hasGlobalEl)
     err(`src/${g.slug}/index.html: has #globalBest but leaderboard is false`);
 
-  const canonical = html.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
-  const expected = `${SITE_URL}${g.path}`;
-  if (!canonical) err(`src/${g.slug}/index.html: no canonical link`);
-  else if (canonical !== expected)
-    err(`src/${g.slug}/index.html: canonical "${canonical}" should be "${expected}"`);
+  // The whole <head> is written from the registry by headFromRegistry()
+  // (ARCHITECTURE.md §28). Losing the marker would ship a game page with no
+  // title, no canonical and no social card, and the build would still exit 0.
+  const headMarkers = html.split("<!-- head-meta -->").length - 1;
+  if (headMarkers !== 1)
+    err(
+      `src/${g.slug}/index.html: expected exactly one <!-- head-meta --> marker, ` +
+        `found ${headMarkers}`,
+    );
 
-  const ogUrl = html.match(/<meta property="og:url" content="([^"]+)"/)?.[1];
-  if (ogUrl && ogUrl !== expected)
-    err(`src/${g.slug}/index.html: og:url "${ogUrl}" should be "${expected}"`);
+  // Order matters: the theme bootstrap rewrites the theme-color meta tag that
+  // the head plugin emits, so it has to run after it in document order.
+  if (
+    headMarkers === 1 &&
+    markers === 1 &&
+    html.indexOf("<!-- head-meta -->") > html.indexOf("<!-- theme-bootstrap -->")
+  )
+    err(
+      `src/${g.slug}/index.html: <!-- head-meta --> must come before ` +
+        `<!-- theme-bootstrap -->, which rewrites the tag it emits`,
+    );
 
-  for (const tag of ["<title>", 'name="description"']) {
-    if (!html.includes(tag)) err(`src/${g.slug}/index.html: missing ${tag}`);
+  // A hand-written copy of a tag the plugin owns would ship *alongside* the
+  // generated one, not instead of it — two titles, two canonicals, two social
+  // cards. This is the check that keeps the head in one place.
+  for (const [pattern, what] of [
+    [/<meta property="og:/, "an og: meta tag"],
+    [/<meta name="twitter:/, "a twitter: meta tag"],
+    [/<meta name="theme-color"/, "a theme-color meta tag"],
+    [/<meta name="description"/, "a description meta tag"],
+    [/<meta name="viewport"/, "a viewport meta tag"],
+    [/<link rel="canonical"/, "a canonical link"],
+    [/<title>/, "a <title>"],
+    [/application\/ld\+json/, "a JSON-LD block"],
+    [/rel="preload"[^>]*\/fonts\//, "a font preload"],
+  ]) {
+    if (pattern.test(html))
+      err(
+        `src/${g.slug}/index.html: hand-writes ${what}; headFromRegistry() ` +
+          `emits it from the registry (§28)`,
+      );
   }
 
-  // Every /assets/... reference must resolve, whether written absolute or as a
-  // full production URL.
-  const refs = new Set(
-    [...html.matchAll(/\/assets\/[A-Za-z0-9._-]+/g)].map((m) => m[0]),
-  );
-  for (const ref of refs) {
-    if (!existsSync(path.join(publicDir, ref.slice(1))))
-      err(`src/${g.slug}/index.html: references missing asset ${ref}`);
+  // The status bar has to match the page under it, in both themes. These were
+  // string literals in two different files, and one page shipped a theme colour
+  // one hex digit away from its own background for weeks.
+  const css = readFileSync(path.join(srcDir, g.slug, "style.css"), "utf8");
+  const paletteOf = (re) => css.match(re)?.[1] ?? "";
+  const root = paletteOf(/(?:^|\n):root\s*\{([\s\S]*?)\n\}/);
+  const dark = paletteOf(/:root\[data-theme="dark"\]\s*\{([\s\S]*?)\n\}/) ||
+    paletteOf(/(?:^|\n)\[data-theme="dark"\]\s*\{([\s\S]*?)\n\}/);
+
+  /**
+   * The value of a custom property in one theme, falling back to :root the way
+   * the cascade does, and following one level of var() indirection — bubble-tap
+   * aliases --bg to its own --paper, and redefines only --paper in dark.
+   */
+  const lookup = (name, block) => {
+    const re = new RegExp(`${name}:\\s*([^;]+);`);
+    const raw = (block.match(re)?.[1] ?? root.match(re)?.[1])?.trim();
+    if (!raw || !raw.startsWith("var(")) return raw;
+    const alias = raw.slice(4, -1).trim();
+    const aliasRe = new RegExp(`${alias}:\\s*([^;]+);`);
+    return (block.match(aliasRe)?.[1] ?? root.match(aliasRe)?.[1])?.trim();
+  };
+
+  for (const [theme, block] of [["light", root], ["dark", dark]]) {
+    const declared = g.themeColor?.[theme];
+    if (!declared) continue;
+    if (!block) {
+      err(`src/${g.slug}/style.css: no ${theme} palette block to check --bg against`);
+      continue;
+    }
+    const bg = lookup("--bg", block);
+    if (!bg) {
+      err(`src/${g.slug}/style.css: no --bg reachable from the ${theme} palette`);
+      continue;
+    }
+    if (bg !== declared)
+      err(
+        `games.js[${g.slug}]: themeColor.${theme} is "${declared}" but the ` +
+          `${theme} --bg in src/${g.slug}/style.css is "${bg}"`,
+      );
   }
 }
 
@@ -425,17 +519,19 @@ for (const p of pages) {
       // The homepage's light theme-color. The bootstrap swaps it for the dark
       // one at runtime, but the manifest has no dark variant to match, so the
       // light value is the one that has to agree.
-      const pageColor = existsSync(homepage)
-        ? readFileSync(homepage, "utf8").match(
-            /<meta name="theme-color" content="([^"]+)"/,
-          )?.[1]
-        : null;
+      //
+      // Compared against the registry, not against src/index.html: the page's
+      // meta tag is now written from home.themeColor at build time, so the
+      // registry is the value the manifest actually has to track. The manifest
+      // is plain JSON in public/ and cannot import the registry, which is why
+      // this check exists rather than a shared constant.
+      const pageColor = home.themeColor?.light;
 
       if (pageColor && bg && pageColor !== bg)
         err(
           `public/manifest.webmanifest: background_color "${bg}" but ` +
-            `src/index.html's theme-color is "${pageColor}" — the launch screen ` +
-            "and the page it opens must be the same colour",
+            `home.themeColor.light in games.js is "${pageColor}" — the launch ` +
+            "screen and the page it opens must be the same colour",
         );
     }
   }
@@ -526,14 +622,10 @@ for (const p of pages) {
 
 // ---------- report ----------
 
-for (const w of warnings) console.warn(`warn  ${w}`);
 for (const e of errors) console.error(`error ${e}`);
 
 if (errors.length) {
   console.error(`\nvalidate: ${errors.length} error(s)`);
   process.exit(1);
 }
-console.log(
-  `validate: ${games.length} games ok` +
-    (warnings.length ? `, ${warnings.length} warning(s)` : ""),
-);
+console.log(`validate: ${games.length} games ok`);

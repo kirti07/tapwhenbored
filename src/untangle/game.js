@@ -329,7 +329,7 @@ import { recordPlay } from "../shared/ui/progress.js";
     startTime = performance.now();
     buildDom();
     render();
-    hideOverlay();
+    endCard.hide();
   }
 
   function buildDom() {
@@ -454,14 +454,9 @@ import { recordPlay } from "../shared/ui/progress.js";
   }
 
   function showOverlay() {
-    var seconds = Math.max(0, Math.round((performance.now() - startTime) / 1000));
-    overlaySub.textContent = moves + (moves === 1 ? " move" : " moves") + " · " + seconds + "s";
-    shareNote.classList.remove("show");
-    overlay.classList.add("show");
-  }
-
-  function hideOverlay() {
-    overlay.classList.remove("show");
+    overlaySub.textContent = moves + (moves === 1 ? " move" : " moves") +
+      " · " + elapsedSeconds() + "s";
+    endCard.show();
   }
 
   function checkSolved(count) {

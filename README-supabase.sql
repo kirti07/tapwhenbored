@@ -26,6 +26,11 @@ create table if not exists game_config (
   -- true when everyone plays the same puzzle each day, so the record is
   -- scoped to that day rather than to all time
   is_daily        boolean not null default false,
+  -- Descriptive only: what the number means, for whoever is reading a row in
+  -- the SQL editor. No code reads it, in the client or in the functions below.
+  -- The registry's matching `unit` field was deleted for exactly that reason
+  -- (ARCHITECTURE.md §10); this one stays because dropping a not-null column
+  -- from a live table is a migration with nothing to gain.
   label           text not null
 );
 

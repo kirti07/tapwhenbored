@@ -6,6 +6,9 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
 import { recordPlay } from "../shared/ui/progress.js";
 
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import * as prefs from "../shared/ui/prefs.js";
+
 (function () {
   "use strict";
 
@@ -69,6 +72,7 @@ import { recordPlay } from "../shared/ui/progress.js";
     } catch (e) {
       return freshState();
     }
+    return saved;
   }
 
   function persist() {
@@ -94,14 +98,14 @@ import { recordPlay } from "../shared/ui/progress.js";
   var letterGrid = document.getElementById("letterGrid");
   var letterCloseBtn = document.getElementById("letterCloseBtn");
   var overlay = document.getElementById("overlay");
+
+  var endCard = bindOverlay(overlay);
   var overlayTitle = document.getElementById("overlayTitle");
   var overlaySub = document.getElementById("overlaySub");
   var overlaySteps = document.getElementById("overlaySteps");
   var overlayBest = document.getElementById("overlayBest");
   var globalBest = document.getElementById("globalBest");
   var againBtn = document.getElementById("againBtn");
-  var shareBtn = document.getElementById("shareBtn");
-  var shareNote = document.getElementById("shareNote");
   var countdownEl = document.getElementById("countdown");
 
   startWordEl.textContent = START;
@@ -479,15 +483,14 @@ import { recordPlay } from "../shared/ui/progress.js";
       overlayBest.textContent = "★ Best today: " + stepLabel(state.bestSteps);
     }
     showGlobalBest(steps);
-    shareNote.classList.remove("show");
-    overlay.classList.add("show");
+    endCard.show();
     tickCountdown();
     if (countdownTimer) clearInterval(countdownTimer);
     countdownTimer = setInterval(tickCountdown, 1000);
   }
 
   function hideOverlay() {
-    overlay.classList.remove("show");
+    endCard.hide();
     if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
   }
 

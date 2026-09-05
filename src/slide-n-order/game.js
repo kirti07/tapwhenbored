@@ -5,6 +5,9 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 import { getInt, set as setPref } from "../shared/ui/prefs.js";
 import { recordPlay } from "../shared/ui/progress.js";
 
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import * as prefs from "../shared/ui/prefs.js";
+
 (function () {
   "use strict";
 
@@ -31,8 +34,6 @@ import { recordPlay } from "../shared/ui/progress.js";
   var overlayTitle = document.getElementById("overlayTitle");
   var overlaySub = document.getElementById("overlaySub");
   var againBtn = document.getElementById("againBtn");
-  var shareBtn = document.getElementById("shareBtn");
-  var shareNote = document.getElementById("shareNote");
   var challengeBanner = document.getElementById("challengeBanner");
   var globalBest = document.getElementById("globalBest");
   var howtoBtn = document.getElementById("howtoBtn");
@@ -394,8 +395,7 @@ import { recordPlay } from "../shared/ui/progress.js";
   function showOverlay(title, sub) {
     overlayTitle.textContent = title;
     overlaySub.textContent = sub;
-    shareNote.classList.remove("show");
-    overlay.classList.add("show");
+    endCard.show();
   }
 
   // Fewest moves wins. The end card is already complete before this runs, so a
@@ -412,10 +412,6 @@ import { recordPlay } from "../shared/ui/progress.js";
       pending: "Global best \u2026",
       unavailable: "Global best unavailable",
     });
-  }
-
-  function hideOverlay() {
-    overlay.classList.remove("show");
   }
 
   function shareUrl(moveCount) {
@@ -442,7 +438,7 @@ import { recordPlay } from "../shared/ui/progress.js";
   function restart() {
     ended = false;
     moves = 0;
-    hideOverlay();
+    endCard.hide();
     shuffleBoard();
     renderTiles();
     updateMovesHud();

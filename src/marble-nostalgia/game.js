@@ -5,6 +5,9 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 import { get as getPref, getInt, set as setPref } from "../shared/ui/prefs.js";
 import { recordPlay } from "../shared/ui/progress.js";
 
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import * as prefs from "../shared/ui/prefs.js";
+
 (function () {
   "use strict";
 
@@ -400,8 +403,7 @@ import { recordPlay } from "../shared/ui/progress.js";
   function showOverlay(title, sub) {
     overlayTitle.textContent = title;
     overlaySub.textContent = sub;
-    shareNote.classList.remove("show");
-    overlay.classList.add("show");
+    endCard.show();
   }
 
   function hideOverlay() {
@@ -436,7 +438,7 @@ import { recordPlay } from "../shared/ui/progress.js";
     ended = false;
     history = [];
     selected = null;
-    hideOverlay();
+    endCard.hide();
     buildBoard();
     renderMarbles();
     updateHud();

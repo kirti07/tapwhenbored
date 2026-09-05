@@ -60,13 +60,15 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
   const playIcon = document.getElementById("playIcon");
   const pauseOverlay = document.getElementById("pauseOverlay");
   const resumeBtn = document.getElementById("resumeBtn");
+  const pauseCard = bindOverlay(pauseOverlay);
 
-  const gameOverOverlay = document.getElementById("gameOverOverlay");
+  const overlay = document.getElementById("overlay");
+  const endCard = bindOverlay(overlay);
   const finalScoreEl = document.getElementById("finalScore");
   const bestScoreEl = document.getElementById("bestScore");
   const globalScoreEl = document.getElementById("globalBest");
   const restartBtn = document.getElementById("restartBtn");
-  const shareBtn = document.getElementById("shareBtn");
+  const againBtn = document.getElementById("againBtn");
   const restartFromSettingsBtn = document.getElementById("restartFromSettingsBtn");
 
   const settingsBtn = document.getElementById("settingsBtn");
@@ -521,7 +523,7 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
   // ---------- pause ----------
   function setPaused(p) {
     state.paused = p;
-    pauseOverlay.classList.toggle("hidden", !p);
+    if (p) pauseCard.show(); else pauseCard.hide();
     pauseIcon.style.display = p ? "none" : "";
     playIcon.style.display = p ? "" : "none";
     playfield.style.pointerEvents = p ? "none" : "";
@@ -540,7 +542,7 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     const best = Math.max(state.score, Number(getPref("bubble-tap.best", 0) || 0));
     setPref("bubble-tap.best", best);
     bestScoreEl.textContent = "BEST " + pad(best, 5);
-    gameOverOverlay.classList.remove("hidden");
+    endCard.show();
 
     renderGlobalBest(globalScoreEl, {
       slug: "bubble-tap",
@@ -568,7 +570,7 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     topUpAcc = 0;
     updateStats();
     setPaused(false);
-    gameOverOverlay.classList.add("hidden");
+    endCard.hide();
     measurePlayfield();
     topUpBubbles();
     spawnInitialBombs();
@@ -576,6 +578,7 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
   }
 
   restartBtn.addEventListener("click", resetGame);
+  againBtn.addEventListener("click", resetGame);
   restartFromSettingsBtn.addEventListener("click", () => {
     settingsPanel.classList.add("hidden");
     resetGame();

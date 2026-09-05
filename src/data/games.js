@@ -20,6 +20,12 @@ export const games = [
     tagline: "Think · Move",
     description:
       "A classic peg-solitaire marble board, free to play online. Jump marbles to capture, finish with one — undo anytime, no signup.",
+    seoTitle: "Marble Nostalgia — Free Online Peg Solitaire Game",
+    ogDescription:
+      "A classic peg-solitaire marble board, free to play online. Jump marbles to capture, finish with one.",
+    schemaDescription:
+      "A free online peg-solitaire marble board game. Jump marbles to capture, finish with one.",
+    genre: "Puzzle",
     path: "/marble-nostalgia/",
     ogImage: "/assets/marble-nostalgia-og.jpg",
     accent: "#1684d1",
@@ -31,7 +37,6 @@ export const games = [
     updated: "2026-08-24",
     changefreq: "monthly",
     hasRestart: true,
-    hasOverlay: true,
     leaderboard: {
       // Fewest marbles left. Bottoms out at 1, so the global best saturates
       // quickly — that is inherent to the game, not a bug.
@@ -45,6 +50,12 @@ export const games = [
     tagline: "Tap · Relax",
     description:
       "Bored? Pop endless bubble wrap online — the same satisfying burst as popping a pimple or real bubble wrap, minus the mess. Free, no download, no signup.",
+    seoTitle: "Bubble Tap — Free Online Bubble Wrap Popping Game",
+    ogDescription:
+      "Pop endless bubble wrap online. Some bubbles hide a bomb — tap one and it's game over.",
+    schemaDescription:
+      "A free online bubble wrap popping game. Tap bubbles to score points, but watch out — some hide a bomb.",
+    genre: "Casual",
     path: "/bubble-tap/",
     ogImage: "/assets/bubble-tap-og.jpg",
     accent: "#4fb6e0",
@@ -67,6 +78,12 @@ export const games = [
     tagline: "Tap · Arrange",
     description:
       "A free online 15-puzzle. Slide the numbered tiles back into order 1 to 15 — no timer, no signup, undo-free thinking at your own pace.",
+    seoTitle: "Slide N Order — Free Online 15 Puzzle Game",
+    ogDescription:
+      "A free online 15-puzzle. Slide the numbered tiles back into order 1 to 15 — no timer, just moves.",
+    schemaDescription:
+      "A free online sliding number puzzle (15-puzzle). Arrange tiles 1 to 15 in order around one empty slot.",
+    genre: "Puzzle",
     path: "/slide-n-order/",
     ogImage: "/assets/slide-n-order-og.jpg",
     accent: "#8b7fe0",
@@ -87,6 +104,12 @@ export const games = [
     tagline: "Tap · Clear",
     description:
       "A free online Lights Out puzzle. Tap a tile to flip it and its four neighbours, and turn the whole grid off in as few moves as possible. Easy, medium and hard levels, new board every time, no signup.",
+    seoTitle: "Flip It — Free Online Lights Out Puzzle Game",
+    ogDescription:
+      "Tap a tile and it flips itself and its four neighbours. Turn the whole grid off in as few moves as you can.",
+    schemaDescription:
+      "A free online Lights Out puzzle. Tapping a tile flips it and its four orthogonal neighbours; clear the grid by turning every tile off.",
+    genre: "Puzzle",
     path: "/flip-it/",
     ogImage: "/assets/flip-it-og.jpg",
     accent: "#f0a825",
@@ -101,7 +124,6 @@ export const games = [
     // starting pattern — is a second, different control, and sits beside it in
     // the topbar rather than competing with the level picker under the board.
     hasRestart: true,
-    hasOverlay: true,
     leaderboard: {
       // Boards are random, so "fewest moves" would only ever record whoever
       // drew the easiest one. A run counts only when it matches the board's
@@ -118,6 +140,12 @@ export const games = [
     tagline: "Think · Spell",
     description:
       "A free daily word ladder puzzle. Change one letter at a time to turn the start word into the target word. New puzzle every day, no signup.",
+    seoTitle: "Word Steps — Free Daily Word Ladder Puzzle",
+    ogDescription:
+      "Change one letter at a time to turn the start word into the target word. A new puzzle every day.",
+    schemaDescription:
+      "A free daily word ladder puzzle. Change one letter at a time to turn the start word into the target word.",
+    genre: "Word",
     path: "/word-steps/",
     ogImage: "/assets/word-steps-og.jpg",
     accent: "#1f9974",
@@ -130,7 +158,6 @@ export const games = [
     // The puzzle rotates daily, so this page genuinely changes daily.
     changefreq: "daily",
     hasRestart: true,
-    hasOverlay: true,
     leaderboard: {
       // Everyone gets the same puzzle each day, so the record is scoped to the
       // day. An all-time "fewest steps" would just record the easiest puzzle
@@ -145,6 +172,12 @@ export const games = [
     tagline: "Drag · Solve",
     description:
       "A free online untangle puzzle. Move the dots until no lines cross — a brand-new random puzzle every time, no levels, no signup.",
+    seoTitle: "Untangle — Free Online Puzzle Game",
+    ogDescription:
+      "Move the dots until no lines cross. A new random puzzle every time.",
+    schemaDescription:
+      "A free online untangle puzzle. Move dots connected by lines until none of the lines cross.",
+    genre: "Puzzle",
     path: "/untangle/",
     ogImage: "/assets/untangle-og.jpg",
     accent: "#ef6a55",
@@ -157,7 +190,6 @@ export const games = [
     changefreq: "monthly",
     // Restarts from the overlay's "Again" button; no topbar restart control.
     hasRestart: false,
-    hasOverlay: true,
     // Left out on purpose: the puzzle is 8-13 nodes with a varying number of
     // crossings, so a global "fewest moves" would only ever record whoever drew
     // the smallest layout.
@@ -169,6 +201,12 @@ export const games = [
     tagline: "Tap · Reshape",
     description:
       "A free online hive puzzle. Move edge tiles, watch the clue numbers change, and keep the hive connected — a brand-new random hive every time, no levels, no signup.",
+    seoTitle: "Honeycomb — Free Online Hex Puzzle Game",
+    ogDescription:
+      "Move the edge tiles of a hive without breaking it apart. A new random hive every time.",
+    schemaDescription:
+      "A free online hive puzzle. Move edge tiles, watch the clue numbers change, and keep the hive connected.",
+    genre: "Puzzle",
     path: "/honeycomb/",
     ogImage: "/assets/honeycomb-og.jpg",
     accent: "#8b6fd9",
@@ -180,7 +218,6 @@ export const games = [
     updated: "2026-08-30",
     changefreq: "monthly",
     hasRestart: false,
-    hasOverlay: true,
     leaderboard: {
       // Completion time in milliseconds.
       lowerIsBetter: true,
@@ -193,6 +230,12 @@ export const games = [
     tagline: "Draw · 30s",
     description:
       "A free online drawing game. Get a random shape and a random idea, then turn one into the other in 30 seconds. Draw, fill, share. No score, no signup.",
+    seoTitle: "Doodle On — Free 30-Second Drawing Game, Random Prompts",
+    ogDescription:
+      "A circle and \"something that flies\". You get 30 seconds to turn one into the other.",
+    schemaDescription:
+      "A free online drawing game. Every round gives you a starting shape and a creative direction — turn a circle into something that lives in water, in 30 seconds.",
+    genre: "Casual",
     path: "/doodle-on/",
     ogImage: "/assets/doodle-on-og.jpg",
     accent: "#7c5cff",
@@ -202,7 +245,6 @@ export const games = [
     updated: "2026-09-03",
     changefreq: "monthly",
     hasRestart: true,
-    hasOverlay: true,
     // No score by design — the result is the picture, not a number.
     leaderboard: false,
   },
@@ -247,6 +289,7 @@ export const pages = [
 export const home = {
   path: "/",
   ogImage: "/assets/tapwhenbored-og.jpg",
+  themeColor: { light: "#f6f6fb", dark: "#0d0e1a" },
   updated: "2026-09-03",
   changefreq: "monthly",
   priority: "1.0",

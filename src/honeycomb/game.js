@@ -6,6 +6,9 @@ import { getInt, set as setPref } from "../shared/ui/prefs.js";
 import { recordPlay } from "../shared/ui/progress.js";
 import { formatDuration as formatTime } from "../shared/ui/format.js";
 
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import * as prefs from "../shared/ui/prefs.js";
+
 (function () {
   "use strict";
 
@@ -1076,11 +1079,12 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
     globalScoreEl.hidden = true;
     globalScoreEl.classList.remove("new-global");
     overlaySub.textContent = "Time " + formatTime(finalElapsedMs) + " · Best " + formatTime(best);
-    shareNote.classList.remove("show");
-    overlay.classList.add("show");
+    endCard.show();
   }
   function hideOverlay() {
-    overlay.classList.remove("show", "won");
+    endCard.hide();
+    // `won` recolours this game's card, so it is this game's to clear.
+    overlay.classList.remove("won");
   }
 
   // ---------- interaction (tap only, no drag, no destination choice) ----------

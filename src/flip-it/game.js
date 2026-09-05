@@ -8,6 +8,9 @@ import { recordPlay } from "../shared/ui/progress.js";
    read "00:09". The site now spells a duration one way. */
 import { formatDuration as formatTime } from "../shared/ui/format.js";
 
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import * as prefs from "../shared/ui/prefs.js";
+
 (function () {
   "use strict";
 
@@ -58,8 +61,6 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   var globalBest = document.getElementById("globalBest");
   var lbHint = document.getElementById("lbHint");
   var againBtn = document.getElementById("againBtn");
-  var shareBtn = document.getElementById("shareBtn");
-  var shareNote = document.getElementById("shareNote");
   var challengeBanner = document.getElementById("challengeBanner");
   var howtoBtn = document.getElementById("howtoBtn");
   var howtoSheet = document.getElementById("howtoSheet");
@@ -448,8 +449,6 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
       "Time " + formatTime(finalMs) + " · " +
       (isNewBest ? "New personal best" : "Best " + prev.moves + " moves");
 
-    shareNote.classList.remove("show");
-
     // The end card is complete before the leaderboard is asked anything, so a
     // slow or failed request costs nothing but this one line.
     if (level === LB_LEVEL && perfect) {
@@ -468,11 +467,11 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
       lbHint.hidden = false;
     }
 
-    overlay.classList.add("show");
+    endCard.show();
   }
 
   function hideOverlay() {
-    overlay.classList.remove("show");
+    endCard.hide();
     globalBest.hidden = true;
     globalBest.classList.remove("new-global");
     lbHint.hidden = true;
