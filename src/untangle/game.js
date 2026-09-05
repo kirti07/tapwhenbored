@@ -1,3 +1,6 @@
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import * as prefs from "../shared/ui/prefs.js";
+
 (function () {
   "use strict";
 
@@ -19,11 +22,8 @@
   var overlay = document.getElementById("overlay");
   var overlaySub = document.getElementById("overlaySub");
   var againBtn = document.getElementById("againBtn");
-  var shareBtn = document.getElementById("shareBtn");
-  var shareNote = document.getElementById("shareNote");
-  var howtoBtn = document.getElementById("howtoBtn");
-  var howtoSheet = document.getElementById("howtoSheet");
-  var howtoBackdrop = document.getElementById("howtoBackdrop");
+
+  var endCard = bindOverlay(overlay);
 
   var nodes = [];       // {x, y} fractions 0..1, index = node id
   var edges = [];       // [a, b] node id pairs
@@ -48,18 +48,6 @@
   var selectedIndex = -1;  // tap-to-move selection (touch only)
   var pendingTap = null;   // touch gesture awaiting release: null = none, -1 = on empty board, >=0 = on that node id
 
-  // Opt-in only, like every other game's "How to play" — never auto-shown, no
-  // localStorage tracking. The full-screen backdrop naturally blocks board
-  // taps while it's open, so no separate interaction guard is needed either.
-  function openHowto() {
-    howtoSheet.classList.add("show");
-    howtoBackdrop.classList.add("show");
-  }
-  function closeHowto() {
-    howtoSheet.classList.remove("show");
-    howtoBackdrop.classList.remove("show");
-  }
-
   // offsetWidth (the usual force-reflow trick) is undefined on SVG shapes —
   // it silently no-ops there, so a fast repeat trigger fails to restart the
   // animation. getBoundingClientRect() forces a real synchronous reflow on
@@ -77,15 +65,13 @@
   }
 
   function readBest() {
-    try {
-      var v = localStorage.getItem(BEST_KEY);
-      return v ? parseInt(v, 10) : null;
-    } catch (e) { return null; }
+    var v = prefs.get(BEST_KEY);
+    return typeof v === "number" ? v : null;
   }
 
   function writeBest(v) {
     best = v;
-    try { localStorage.setItem(BEST_KEY, String(v)); } catch (e) { /* ignore */ }
+    prefs.set(BEST_KEY, v);
   }
 
   // ---------- audio (tiny, procedural, no files) ----------
@@ -360,7 +346,7 @@
     startTime = performance.now();
     buildDom();
     render();
-    hideOverlay();
+    endCard.hide();
   }
 
   function buildDom() {
@@ -486,14 +472,9 @@
   }
 
   function showOverlay() {
-    var seconds = Math.max(0, Math.round((performance.now() - startTime) / 1000));
-    overlaySub.textContent = moves + (moves === 1 ? " move" : " moves") + " · " + seconds + "s";
-    shareNote.classList.remove("show");
-    overlay.classList.add("show");
-  }
-
-  function hideOverlay() {
-    overlay.classList.remove("show");
+    overlaySub.textContent = moves + (moves === 1 ? " move" : " moves") +
+      " · " + elapsedSeconds() + "s";
+    endCard.show();
   }
 
   function checkSolved(count) {
@@ -505,24 +486,19 @@
     showOverlay();
   }
 
-  function shareResult() {
+  function elapsedSeconds() {
+    return Math.max(0, Math.round((performance.now() - startTime) / 1000));
+  }
+
+  function shareText() {
     var url = new URL(location.href);
     url.search = "";
     url.hash = "";
-    var seconds = Math.max(0, Math.round((performance.now() - startTime) / 1000));
-    var text = "I untangled it in " + moves + (moves === 1 ? " move" : " moves") +
-      " (" + seconds + "s). Can you untangle yours?";
-
-    if (navigator.share) {
-      navigator.share({ title: "Untangle", text: text, url: url.toString() }).catch(function () {});
-      return;
-    }
-    var payload = text + " " + url.toString();
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(payload).then(function () {
-        shareNote.classList.add("show");
-      }).catch(function () {});
-    }
+    return {
+      text: "I untangled it in " + moves + (moves === 1 ? " move" : " moves") +
+        " (" + elapsedSeconds() + "s). Can you untangle yours?",
+      url: url.toString(),
+    };
   }
 
   updateBestHud();
@@ -530,9 +506,8 @@
 
   resetBtn.addEventListener("click", generatePuzzle);
   againBtn.addEventListener("click", generatePuzzle);
-  shareBtn.addEventListener("click", shareResult);
-  howtoBtn.addEventListener("click", openHowto);
-  howtoBackdrop.addEventListener("click", closeHowto);
+  initShare({ title: "Untangle", payload: shareText });
+  initHowto();
   // Coalesced to one render a frame. A resize arrives in bursts — an
   // orientation change, a window drag — and render() measures the board and
   // then rewrites an SVG attribute per node and per edge, which is far too

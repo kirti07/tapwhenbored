@@ -13,8 +13,9 @@
 // that still cannot beat first paint).
 //
 // __DARK_THEME_COLOR__ is substituted per page from the registry's
-// darkThemeColor, because the mobile status bar has to match that game's dark
-// background rather than a site-wide default.
+// themeColor.dark, because the mobile status bar has to match that game's dark
+// background rather than a site-wide default. The light half of that pair is
+// what headFromRegistry() writes into the tag this rewrites (§28).
 try {
   var s = localStorage.getItem("theme");
   var t =

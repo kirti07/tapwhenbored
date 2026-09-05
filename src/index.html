@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f6f6fb">
+<meta name="theme-color" content="__THEME_LIGHT__">
 <!-- theme-bootstrap -->
 <title>Tap When Bored — Free Online Games, No Download</title>
-<meta name="description" content="Free browser games for a quick break — pop bubble wrap, jump marbles, slide tiles into order, doodle in one line, solve today's word ladder. No download, no signup.">
+<meta name="description" content="Free browser games for a quick break — puzzles, word games, drawing and things to tap at. Single-player, no download, no signup.">
 <link rel="canonical" href="https://www.tapwhenbored.com/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Tap When Bored">
@@ -100,12 +100,14 @@
     </details>
   </section>
 
+  <!-- Deliberately names no games. The shelf above is generated from the
+       registry and is the catalogue; a prose list beside it is a second copy
+       that nothing keeps in step, and it drifted two games behind. -->
   <p class="intro">
-    A small shelf of free online games for whenever you've got a spare minute — work a
-    peg-solitaire board, pop bubble wrap, slide tiles back into order, doodle in one
-    unbroken line, solve today's word ladder, or drag the dots straight in Untangle.
-    Every game is single-player, runs straight in your browser, and needs no download
-    or signup.
+    A small shelf of free online games for whenever you've got a spare minute — puzzles
+    to think through, boards to clear, words to work out, and a few things to just tap
+    at. Every game is single-player, runs straight in your browser, and needs no
+    download or signup.
   </p>
 
   <footer class="hub-footer">More tiny games coming soon.</footer>
@@ -123,7 +125,7 @@
   btn.addEventListener("click", function () {
     var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
     root.setAttribute("data-theme", next);
-    if (metaColor) metaColor.setAttribute("content", next === "dark" ? "#0d0e1a" : "#f6f6fb");
+    if (metaColor) metaColor.setAttribute("content", next === "dark" ? "__THEME_DARK__" : "__THEME_LIGHT__");
     try { localStorage.setItem("theme", next); } catch (e) {}
     sync();
   });

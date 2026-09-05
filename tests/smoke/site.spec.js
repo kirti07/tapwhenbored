@@ -124,10 +124,13 @@ for (const g of games) {
       await expect(page.locator("#shareBtn")).toHaveCount(1);
       await expect(page.locator(".seo-info")).toHaveCount(1);
       await expect(page.locator("#howtoBtn")).toHaveCount(1);
+      // Unconditional since bubble-tap joined the template. It used to be
+      // gated on a `hasOverlay` registry flag that existed only to excuse that
+      // one game from this one line.
+      await expect(page.locator("#overlay")).toHaveCount(1);
 
       // Capability-gated.
       if (g.hasRestart) await expect(page.locator("#restartBtn")).toHaveCount(1);
-      if (g.hasOverlay) await expect(page.locator("#overlay")).toHaveCount(1);
 
       // The game script is a module and must actually have executed. Every game
       // builds its playfield in JS, so a populated body is the proof.
@@ -314,6 +317,132 @@ test("the how-to sheet is laid out identically in every game", async ({ page }) 
     expect(await geometryOf(g), `${g.slug} differs from ${games[0].slug}`).toEqual(
       reference,
     );
+  }
+});
+
+// Every game's <head> is written from src/data/games.js by headFromRegistry()
+// (ARCHITECTURE.md §28). This is the test that makes that worth doing: it is
+// the one place that has to change when a head tag changes, in place of the
+// eight hand-edited pages it replaced.
+//
+// Deliberately checks the *served* document, not the plugin, so it would catch
+// a marker lost from a page's source as readily as a bug in the generator.
+test.describe("the generated head matches the registry", () => {
+  for (const g of games) {
+    test(`${g.slug}`, async ({ page, request }) => {
+      const html = await (await request.get(g.path)).text();
+      const url = `${SITE_URL}${g.path}`;
+      const img = `${SITE_URL}${g.ogImage}`;
+
+      // Attribute values are HTML-escaped on the way out — doodle-on's social
+      // description contains quotation marks — so decode before comparing with
+      // the raw registry string. That escaping working is part of what this
+      // test is checking.
+      const decode = (v) =>
+        v?.replace(/&quot;/g, '"').replace(/&gt;/g, ">")
+          .replace(/&lt;/g, "<").replace(/&amp;/g, "&");
+      const meta = (k, prop) =>
+        decode(
+          html.match(
+            new RegExp(`<meta ${prop ? "property" : "name"}="${k}" content="([^"]*)"`),
+          )?.[1],
+        );
+
+      expect(decode(html.match(/<title>([^<]*)<\/title>/)?.[1])).toBe(g.seoTitle);
+      expect(meta("og:title", true)).toBe(g.seoTitle);
+      expect(meta("twitter:title")).toBe(g.seoTitle);
+
+      // Three descriptions, three jobs: the search snippet, the social card,
+      // and the structured data.
+      expect(meta("description")).toBe(g.description);
+      expect(meta("og:description", true)).toBe(g.ogDescription);
+      expect(meta("twitter:description")).toBe(g.ogDescription);
+
+      expect(meta("og:url", true)).toBe(url);
+      expect(meta("og:image", true)).toBe(img);
+      expect(meta("twitter:image")).toBe(img);
+      expect(html).toContain(`<link rel="canonical" href="${url}">`);
+
+      // The light half of the pair. The bootstrap swaps in the dark one at
+      // runtime, which the theme spec below covers.
+      expect(meta("theme-color")).toBe(g.themeColor.light);
+
+      // Structured data has to parse, not just be present.
+      const blocks = [...html.matchAll(
+        /<script type="application\/ld\+json">([\s\S]*?)<\/script>/g,
+      )].map((m) => JSON.parse(m[1]));
+      const game = blocks.find((b) => b["@type"] === "Game");
+      expect(game, `${g.slug} has a Game JSON-LD block`).toBeTruthy();
+      expect(game.name).toBe(g.title);
+      expect(game.url).toBe(url);
+      expect(game.image).toBe(img);
+      expect(game.description).toBe(g.schemaDescription);
+      expect(game.genre).toBe(g.genre);
+
+      const crumbs = blocks.find((b) => b["@type"] === "BreadcrumbList");
+      expect(crumbs, `${g.slug} has a BreadcrumbList`).toBeTruthy();
+      expect(crumbs.itemListElement.at(-1).item).toBe(url);
+      expect(crumbs.itemListElement.at(-1).name).toBe(g.title);
+
+      // No page may hand-write a tag the plugin owns; a hand-written copy would
+      // ship alongside the generated one rather than instead of it.
+      for (const [re, what] of [
+        [/<title>/g, "<title>"],
+        [/<link rel="canonical"/g, "canonical"],
+        [/<meta name="theme-color"/g, "theme-color"],
+        [/<meta name="viewport"/g, "viewport"],
+      ]) {
+        expect([...html.matchAll(re)].length, `${g.slug} has one ${what}`).toBe(1);
+      }
+    });
+  }
+});
+
+// The theme colour has to match the page it frames, in whichever theme the
+// player is actually in — a status bar one shade off the background reads as a
+// rendering bug. These were literals in two files and drifted by a hex digit.
+test.describe("the theme colour matches the page, in both themes", () => {
+  for (const theme of ["light", "dark"]) {
+    for (const g of games) {
+      test(`${g.slug} @ ${theme}`, async ({ page }) => {
+        await page.addInitScript((t) => {
+          try { localStorage.setItem("theme", t); } catch (e) {}
+        }, theme);
+        await page.goto(g.path);
+
+        expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe(theme);
+        await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
+          "content",
+          g.themeColor[theme],
+        );
+        // ...and that it is genuinely the page's background, not just agreeing
+        // with the registry while both are wrong.
+        const bg = await page.evaluate(() =>
+          getComputedStyle(document.documentElement).getPropertyValue("--bg").trim());
+        expect(bg.toLowerCase()).toBe(g.themeColor[theme]);
+      });
+    }
+  }
+});
+
+// Each card's accent used to be a hand-written .card--<slug> rule that nothing
+// validated, so a new game silently shipped the default purple. It now travels
+// from the registry as an inline custom property.
+test("every homepage card carries its own accent, in both themes", async ({ page }) => {
+  for (const theme of ["light", "dark"]) {
+    await page.addInitScript((t) => {
+      try { localStorage.setItem("theme", t); } catch (e) {}
+    }, theme);
+    await page.goto(home.path);
+    for (const g of games) {
+      const got = await page.evaluate(
+        (p) => getComputedStyle(
+          document.querySelector(`a.card[href="${p}"]`),
+        ).getPropertyValue("--accent").trim(),
+        g.path,
+      );
+      expect(got.toLowerCase(), `${g.slug} accent in ${theme}`).toBe(g.accent[theme]);
+    }
   }
 });
 

@@ -1,5 +1,8 @@
 import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import * as prefs from "../shared/ui/prefs.js";
+
 (function () {
   "use strict";
 
@@ -26,13 +29,10 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   var overlayTitle = document.getElementById("overlayTitle");
   var overlaySub = document.getElementById("overlaySub");
   var againBtn = document.getElementById("againBtn");
-  var shareBtn = document.getElementById("shareBtn");
-  var shareNote = document.getElementById("shareNote");
   var challengeBanner = document.getElementById("challengeBanner");
   var globalBest = document.getElementById("globalBest");
-  var howtoBtn = document.getElementById("howtoBtn");
-  var howtoSheet = document.getElementById("howtoSheet");
-  var howtoBackdrop = document.getElementById("howtoBackdrop");
+
+  var endCard = bindOverlay(overlay);
 
   var tiles = [];        // index -> tile number (1..15) or null for the blank
   var blankIndex = TOTAL - 1;
@@ -42,15 +42,13 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   var best = readBest();
 
   function readBest() {
-    try {
-      var v = localStorage.getItem(BEST_KEY);
-      return v ? parseInt(v, 10) : null;
-    } catch (e) { return null; }
+    var v = prefs.get(BEST_KEY);
+    return typeof v === "number" ? v : null;
   }
 
   function writeBest(v) {
     best = v;
-    try { localStorage.setItem(BEST_KEY, String(v)); } catch (e) { /* ignore */ }
+    prefs.set(BEST_KEY, v);
   }
 
   // ---------- audio (tiny, procedural, no files) ----------
@@ -401,8 +399,7 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   function showOverlay(title, sub) {
     overlayTitle.textContent = title;
     overlaySub.textContent = sub;
-    shareNote.classList.remove("show");
-    overlay.classList.add("show");
+    endCard.show();
   }
 
   // Fewest moves wins. The end card is already complete before this runs, so a
@@ -421,10 +418,6 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     });
   }
 
-  function hideOverlay() {
-    overlay.classList.remove("show");
-  }
-
   function shareUrl(moveCount) {
     var url = new URL(location.href);
     url.search = "";
@@ -433,23 +426,12 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     return url.toString();
   }
 
-  function shareResult() {
-    var url = shareUrl(moves);
-    var text = "I solved Slide N Order in " + moves + (moves === 1 ? " move" : " moves") + ". Can you beat that?";
-
-    if (navigator.share) {
-      navigator.share({ title: "Slide N Order", text: text, url: url }).catch(function () {});
-      return;
-    }
-
-    var payload = text + " " + url;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(payload).then(showShareNote).catch(function () {});
-    }
-  }
-
-  function showShareNote() {
-    shareNote.classList.add("show");
+  function shareText() {
+    return {
+      text: "I solved Slide N Order in " + moves +
+        (moves === 1 ? " move" : " moves") + ". Can you beat that?",
+      url: shareUrl(moves),
+    };
   }
 
   function checkChallengeLink() {
@@ -468,30 +450,18 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   function restart() {
     ended = false;
     moves = 0;
-    hideOverlay();
+    endCard.hide();
     shuffleBoard();
     renderTiles();
     updateMovesHud();
     updateBestHud();
   }
 
-  // ---------- how to play ----------
-  function openHowto() {
-    howtoSheet.classList.add("show");
-    howtoBackdrop.classList.add("show");
-  }
-
-  function closeHowto() {
-    howtoSheet.classList.remove("show");
-    howtoBackdrop.classList.remove("show");
-  }
-
-  howtoBtn.addEventListener("click", openHowto);
-  howtoBackdrop.addEventListener("click", closeHowto);
+  initHowto();
 
   restartBtn.addEventListener("click", restart);
   againBtn.addEventListener("click", restart);
-  shareBtn.addEventListener("click", shareResult);
+  initShare({ title: "Slide N Order", payload: shareText });
 
   tilesGrid.addEventListener("pointerdown", function (e) {
     if (ended || activePointerId !== null || settling) return; // one interaction at a time, and only once the last one has fully committed

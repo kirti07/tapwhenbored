@@ -11,7 +11,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? "list" : [["list"]],
+  reporter: "list",
   use: {
     baseURL,
     // Every game URL is a real document, so always navigate with the trailing

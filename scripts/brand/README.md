@@ -20,7 +20,7 @@ compressed photographic gradient to 33 kB.
 
 | Role | Value | Note |
 | --- | --- | --- |
-| Tile purple | `#c9a4f0` | also `background_color` in the manifest |
+| Tile purple | `#c9a4f0` | the mark's own tile, and the icon canvas |
 | Outline navy | `#1e1b3a` | |
 | Ball | `#ff7a95` → `#f43f5e` → `#c81e42` | radial, lit from the upper left |
 | Ripples, hand | `#ffffff` / `#fdfdff` | |
@@ -48,9 +48,13 @@ Three things about that table are load-bearing.
 **The icons are full-bleed.** The canvas is filled with the same purple the mark
 uses for its own rounded tile, so those corners vanish. That means no
 transparency for iOS to mishandle on the apple-touch-icon, and no
-double-rounding when the OS applies its own mask. It also makes the PWA splash
-seamless: Android draws the icon on `background_color`, and they are the same
-purple.
+double-rounding when the OS applies its own mask.
+
+Note that the icon canvas is *not* the manifest's `background_color`. That is
+`#f6f6fb`, the homepage's ground, because Android holds the launch screen in
+`background_color` and then cross-fades to the page — so it has to match the
+page, not the icon. `npm run validate` pins it to `home.themeColor.light` in
+the registry.
 
 **The maskable inset.** Android may crop a maskable icon to a circle of 80%
 diameter, and the largest square inside that circle has a side of
@@ -81,6 +85,7 @@ Two things to keep in mind if you replace the social card:
   gives `/assets/*` a 24-hour CDN TTL on top of that.
   `scripts/validate-games.js` checks `home.ogImage` in `src/data/games.js`
   against the homepage's `og:image`, so both have to move together.
-- **Keep the icon set and `background_color` in step.** They match today, which
-  is what makes the launch look like a branded splash instead of a flash of the
-  wrong colour.
+- **Keep `background_color` matching the homepage, not the icon.** It is the
+  colour Android holds the launch screen in before cross-fading to the page, so
+  a mismatch reads as a coloured flash. It is pinned to `home.themeColor.light`
+  by `npm run validate`, so change it there.
