@@ -11,8 +11,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { games, home, SITE_URL } from "../src/data/games.js";
-import { preloadsFor } from "./font-preloads.js";
+import { games, home, pages, SITE_URL } from "../src/data/games.js";
 
 const rootDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const srcDir = path.join(rootDir, "src");
@@ -27,6 +26,9 @@ const RESERVED = new Set([
   "shared",
   "api",
   "_vercel",
+  // Non-game pages. A game may not claim one of these slugs.
+  "book",
+  "wall",
 ]);
 
 const REQUIRED_FIELDS = [
@@ -39,9 +41,11 @@ const REQUIRED_FIELDS = [
   "schemaDescription",
   "genre",
   "path",
-  "thumb",
-  "thumbAlt",
   "ogImage",
+  "accent",
+  "accentDark",
+  "sticker",
+  "darkThemeColor",
   "updated",
   "changefreq",
 ];
@@ -56,6 +60,8 @@ const HEX = /^#[0-9a-f]{6}$/;
 
 const errors = [];
 const err = (m) => errors.push(m);
+
+const pageSlugs = new Set(pages.map((p) => p.slug));
 
 // ---------- registry shape ----------
 
@@ -123,8 +129,38 @@ for (const g of games) {
   if (g.ogImage && /\.svg$/i.test(g.ogImage))
     err(`${where}: ogImage "${g.ogImage}" is an SVG; use a raster format`);
 
+  // How this game's score reads: what it counts, and whether the number is a
+  // millisecond duration or a plain count. A property of the game, not of its
+  // leaderboard — untangle keeps a local best and has no public board, and its
+  // "31 moves" is no less a score for that.
+  //
+  // Required wherever a score exists at all. doodle-on is the one game that
+  // genuinely has none: it is a drawing, not a number.
+  if (g.scoreFormat !== undefined && !["int", "time"].includes(g.scoreFormat))
+    err(`${where}: scoreFormat must be "int" or "time"`);
+  if (g.scoreFormat !== undefined && !g.scoreUnit)
+    err(`${where}: scoreFormat is set, so scoreUnit must name what is measured`);
+  if (g.leaderboard !== false && !g.scoreFormat)
+    err(`${where}: a game with a leaderboard must declare scoreFormat/scoreUnit`);
+
+  // The card accents. These used to be sixteen hand-written `.card--<slug>`
+  // rules in src/style.css with nothing checking they existed: a new game got a
+  // cardClass from the scaffold, nobody added the CSS pair, and the card
+  // silently shipped in the fallback purple. Now they are registry data, and a
+  // missing or malformed one fails the build.
+  for (const field of ["accent", "accentDark"]) {
+    const v = g[field];
+    if (v && !/^#[0-9a-f]{6}$/i.test(v))
+      err(`${where}: ${field} "${v}" must be a 6-digit hex colour`);
+  }
+
+  // The sticker is drawn from the sprite inlined in src/index.html, so a typo
+  // here renders an empty box rather than an error.
+  if (g.sticker && !/^st-[a-z-]+$/.test(g.sticker))
+    err(`${where}: sticker "${g.sticker}" must look like "st-<name>"`);
+
   // Public assets are referenced by absolute path and copied verbatim.
-  for (const field of ["thumb", "ogImage"]) {
+  for (const field of ["ogImage"]) {
     const ref = g[field];
     if (!ref) continue;
     if (!ref.startsWith("/"))
@@ -286,10 +322,11 @@ for (const g of games) {
 for (const entry of readdirSync(srcDir, { withFileTypes: true })) {
   if (!entry.isDirectory()) continue;
   if (!existsSync(path.join(srcDir, entry.name, "index.html"))) continue;
-  if (!seen.has(entry.name))
+  if (!seen.has(entry.name) && !pageSlugs.has(entry.name))
     err(
-      `src/${entry.name}/index.html exists but "${entry.name}" is not in games.js ` +
-        `(it would build and deploy with no homepage card and no sitemap entry)`,
+      `src/${entry.name}/index.html exists but "${entry.name}" is in neither ` +
+        `games nor pages in games.js (it would build and deploy with no ` +
+        `sitemap entry and nothing checking it)`,
     );
 }
 
@@ -307,6 +344,8 @@ if (!existsSync(homepage)) {
   // which is why it is checked here rather than trusted.
   for (const [marker, what] of [
     ["<!-- games-shelf -->", "game shelf"],
+    ["<!-- book-slots -->", "your-bests slots"],
+    ["<!-- wall-tiles -->", "wall tiles"],
     ['"hasPart": []', "WebSite hasPart JSON-LD"],
     ["<!-- theme-bootstrap -->", "theme bootstrap"],
   ]) {
@@ -317,13 +356,10 @@ if (!existsSync(homepage)) {
       );
   }
 
-  // The homepage's colours are substituted, not written. Both appear more than
-  // once (the meta tag and the theme toggle), so this checks presence rather
-  // than a count.
-  for (const ph of ["__THEME_LIGHT__", "__THEME_DARK__"]) {
-    if (!html.includes(ph))
-      err(`src/index.html: lost the ${ph} placeholder — its colour would ship literally`);
-  }
+  // The sprite itself lives in scripts/sprite.svg and is substituted into every
+  // page that asks for it, so this only has to check the page asked.
+  if (!html.includes("<!-- sprite -->"))
+    err("src/index.html: missing the <!-- sprite --> marker, so its stickers would not render");
 
   const relAsset = html.match(/(?:src|href)="assets\//);
   if (relAsset)
@@ -379,26 +415,68 @@ if (!existsSync(homepage)) {
   }
 }
 
-// ---------- the shared stylesheets never render the display font ----------
-//
-// scripts/font-preloads.js works out a page's font preloads by reading that
-// page's own stylesheet and nothing else, which is only correct while the
-// shared sheets merely *declare* --font-display rather than rendering with it.
-// The day one of them sets `font-family: var(--font-display)` on a shared
-// component, every page importing it would need the 700 face and none would
-// preload it. So pin the assumption down rather than trusting it.
+// ---------- the shared sprite ----------
+
+/* One file, one check. Both the homepage and the book page used to inline their
+   own copy of the sprite and each was validated separately; they are now
+   substituted from scripts/sprite.svg at build time, so the only thing that can
+   go wrong is a registry entry naming a symbol that file does not define. */
 {
-  const sharedCss = path.join(srcDir, "shared", "css");
-  for (const file of readdirSync(sharedCss)) {
-    if (!file.endsWith(".css")) continue;
-    const css = readFileSync(path.join(sharedCss, file), "utf8");
-    if (preloadsFor(css).length)
-      err(
-        `src/shared/css/${file}: renders var(--font-display). Shared CSS may ` +
-          "declare the token but must not use it — font preloads are derived " +
-          "from each page's own stylesheet (ARCHITECTURE.md §25)",
-      );
+  const spritePath = path.join(rootDir, "scripts/sprite.svg");
+  if (!existsSync(spritePath)) {
+    err("scripts/sprite.svg is missing — no page could render a sticker");
+  } else {
+    const sprite = readFileSync(spritePath, "utf8");
+    for (const g of games) {
+      if (!g.sticker) continue;
+      if (!sprite.includes(`id="${g.sticker}"`))
+        err(
+          `scripts/sprite.svg: no <symbol id="${g.sticker}">, but ` +
+            `games.js[${g.slug}] asks for it`,
+        );
+    }
   }
+}
+
+// ---------- non-game pages ----------
+
+/* Every markup check above lives inside `for (const g of games)`, so a page
+ * that is not a game would otherwise ship with nothing looking at it at all.
+ * These are the checks that matter for one: that it gets a theme (or dark-mode
+ * players see a white flash), that it is addressable, and — the one that
+ * actually bites — that the sprite it draws its stickers from is present. A
+ * missing <symbol> renders eight empty boxes and no error. */
+for (const p of pages) {
+  const file = path.join(srcDir, p.slug, "index.html");
+  const where = `src/${p.slug}/index.html`;
+
+  if (!existsSync(file)) {
+    err(`games.js pages["${p.slug}"]: no page at ${where}`);
+    continue;
+  }
+
+  const html = readFileSync(file, "utf8");
+
+  const markers = html.split("<!-- theme-bootstrap -->").length - 1;
+  if (markers !== 1)
+    err(`${where}: expected exactly one <!-- theme-bootstrap --> marker, found ${markers}`);
+
+  const canonical = html.match(/<link rel="canonical" href="([^"]+)"/);
+  if (!canonical) err(`${where}: missing a canonical link`);
+  else if (canonical[1] !== `${SITE_URL}${p.path}`)
+    err(`${where}: canonical is "${canonical[1]}" but pages says "${SITE_URL}${p.path}"`);
+
+  if (!/<title>[^<]+<\/title>/.test(html)) err(`${where}: missing a <title>`);
+  if (!/<meta name="description" content="[^"]+"/.test(html))
+    err(`${where}: missing a meta description`);
+
+  // A relative asset path breaks the moment the page moves (§4).
+  const relative = html.match(/(?:href|src)="assets\//);
+  if (relative) err(`${where}: relative asset reference — use an absolute /assets/... path`);
+
+  // Any page drawing stickers has to ask for the sprite.
+  if (html.includes("<use ") && !html.includes("<!-- sprite -->"))
+    err(`${where}: draws stickers but has no <!-- sprite --> marker`);
 }
 
 // ---------- the manifest's colours vs. the page they frame ----------

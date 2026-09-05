@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="__THEME_LIGHT__">
+<meta name="theme-color" content="#f3ece0">
 <!-- theme-bootstrap -->
 <title>Tap When Bored — Free Online Games, No Download</title>
 <meta name="description" content="Free browser games for a quick break — puzzles, word games, drawing and things to tap at. Single-player, no download, no signup.">
@@ -60,77 +60,115 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<!-- sprite -->
 
-<div class="hub">
-  <header class="hub-header">
-    <div class="brand">
-      <h1 class="brand-name">Tap <span class="brand-pop brand-pop--warm">When</span> <span class="brand-pop brand-pop--cool">Bored</span></h1>
-      <p class="tagline">Tiny games. Big breaks.</p>
+<div class="wrap page">
+  <header class="top">
+    <div>
+      <h1 class="brand">Tap <span class="w">When</span> <span class="b">Bored</span></h1>
+      <p class="brand-sub">Tiny games. Big breaks.</p>
     </div>
-    <div class="theme-toggle">
-      <span class="theme-toggle-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-      </span>
-      <button class="theme-switch" id="themeSwitch" type="button" role="switch" aria-checked="false" aria-label="Switch to dark theme">
-        <span class="theme-switch-thumb"></span>
-      </button>
-      <span class="theme-toggle-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-      </span>
+    <div class="top-r">
+      <!-- theme-btn:iconbtn -->
     </div>
   </header>
 
-  <main class="shelf" aria-label="Games">
+  <main>
+    <!-- Today's book.
+         A game's sticker lights up when you finish it today, and the book
+         empties at midnight — so there is something to come back for.
+         Rendered empty and honest: with no JavaScript, or before anything has
+         been played today, every slot is an outline and the heading claims no
+         count. Nothing here is a promise the page cannot keep. -->
+    <section class="book" aria-labelledby="bookH">
+      <div class="book-top">
+        <div>
+          <p class="eyebrow">Today</p>
+          <h2 class="book-h" id="bookH">Play a game to start today's book</h2>
+          <p class="book-p">Finish a game and its sticker lights up. The book empties at midnight, and none of it leaves this device.</p>
+        </div>
+        <div class="book-cta"><a class="btn btn--s" href="/book/">Open your book</a></div>
+      </div>
+      <div class="slots" id="bookSlots">
+        <!-- book-slots -->
+      </div>
+      <div class="progress" id="bookProgress" role="img" aria-label="No bests yet"><i style="width:0%"></i></div>
+    </section>
+
+    <section class="sec" aria-labelledby="shelfH">
+      <div class="sec-head">
+        <div>
+          <p class="eyebrow">The shelf</p>
+          <h2 class="sec-t" id="shelfH">Pick one, it opens instantly</h2>
+        </div>
+        <p class="sec-sub">Every game is free, works on a phone, and needs no signup.</p>
+      </div>
+      <div class="shelf">
     <!-- games-shelf -->
+      </div>
+    </section>
+
+    <!-- The wall.
+         Real numbers: one global best per game, read straight from the
+         leaderboard. The signature line is a placeholder for now and holds its
+         height, so when names arrive nothing on this page moves. -->
+    <section class="sec" id="wallSec" aria-labelledby="wallH">
+      <div class="sec-head">
+        <div>
+          <p class="eyebrow">The wall</p>
+          <h2 class="sec-t" id="wallH">Best of everyone, so far</h2>
+        </div>
+        <a class="sec-link" href="/wall/">Full boards &rarr;</a>
+        <div class="sec-tools">
+          <div class="seg" role="group" aria-label="Sort the wall">
+            <button type="button" data-sort="best" aria-pressed="true">Best</button>
+            <button type="button" data-sort="new" aria-pressed="false">Just set</button>
+          </div>
+        </div>
+      </div>
+      <div class="wall" id="wall">
+        <!-- wall-tiles -->
+      </div>
+      <p class="honest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5" stroke-linecap="round"/><circle cx="12" cy="7.6" r="1.15" fill="currentColor" stroke="none"/></svg><span>Boards are for fun — scores aren't verified.</span></p>
+    </section>
+
+    <section class="sec" aria-labelledby="aboutH">
+      <div class="sec-head">
+        <div>
+          <p class="eyebrow">About</p>
+          <h2 class="sec-t" id="aboutH">Questions</h2>
+        </div>
+      </div>
+      <div class="panel">
+        <p class="intro">
+          Tap When Bored is a small shelf of free, single-player browser games for
+          whenever you have a couple of minutes to fill — a queue, a commute, a
+          break between two things. Every game opens straight in the browser with
+          no signup, no download and no account, and each one is built to be
+          understood in a few seconds and played with one thumb.
+        </p>
+        <details class="faq-item">
+          <summary>Are the games on Tap When Bored free?</summary>
+          <p>Yes. Every game is free to play, with no in-app purchases.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Do I need to sign up or download anything?</summary>
+          <p>No. There's no signup and nothing to install — each game opens straight in your browser.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Do the games work on mobile?</summary>
+          <p>Yes. Every game is built for touch and works on phones, tablets, and desktop browsers.</p>
+        </details>
+      </div>
+    </section>
   </main>
 
-  <section class="faq" aria-label="Frequently asked questions">
-    <h2 class="faq-title">Questions</h2>
-    <details class="faq-item">
-      <summary>Are the games on Tap When Bored free?</summary>
-      <p>Yes. Every game is free to play, with no in-app purchases.</p>
-    </details>
-    <details class="faq-item">
-      <summary>Do I need to sign up or download anything?</summary>
-      <p>No. There's no signup and nothing to install — each game opens straight in your browser.</p>
-    </details>
-    <details class="faq-item">
-      <summary>Do the games work on mobile?</summary>
-      <p>Yes. Every game is built for touch and works on phones, tablets, and desktop browsers.</p>
-    </details>
-  </section>
-
-  <!-- Deliberately names no games. The shelf above is generated from the
-       registry and is the catalogue; a prose list beside it is a second copy
-       that nothing keeps in step, and it drifted two games behind. -->
-  <p class="intro">
-    A small shelf of free online games for whenever you've got a spare minute — puzzles
-    to think through, boards to clear, words to work out, and a few things to just tap
-    at. Every game is single-player, runs straight in your browser, and needs no
-    download or signup.
-  </p>
-
-  <footer class="hub-footer">More tiny games coming soon.</footer>
+  <footer class="foot">
+    <span>More tiny games coming soon.</span>
+    <span class="foot-r">No account needed. Ever.</span>
+  </footer>
 </div>
-<script>
-(function () {
-  var root = document.documentElement;
-  var btn = document.getElementById("themeSwitch");
-  var metaColor = document.querySelector('meta[name="theme-color"]');
-  function sync() {
-    var isDark = root.getAttribute("data-theme") === "dark";
-    btn.setAttribute("aria-checked", isDark ? "true" : "false");
-    btn.setAttribute("aria-label", isDark ? "Switch to light theme" : "Switch to dark theme");
-  }
-  btn.addEventListener("click", function () {
-    var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
-    root.setAttribute("data-theme", next);
-    if (metaColor) metaColor.setAttribute("content", next === "dark" ? "__THEME_DARK__" : "__THEME_LIGHT__");
-    try { localStorage.setItem("theme", next); } catch (e) {}
-    sync();
-  });
-  sync();
-})();
-</script>
+
+<script type="module" src="./home.js"></script>
 </body>
 </html>

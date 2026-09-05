@@ -1,5 +1,8 @@
 import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
-import * as prefs from "../shared/ui/prefs.js";
+import { tone, initSoundToggle } from "../shared/ui/audio.js";
+import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
+import { getInt, set as setPref } from "../shared/ui/prefs.js";
+import { recordPlay } from "../shared/ui/progress.js";
 
 (function () {
   "use strict";
@@ -13,7 +16,7 @@ import * as prefs from "../shared/ui/prefs.js";
   var GEN_ATTEMPTS = 200;
   var HOME_RADIUS = 0.36; // fraction from board center — the puzzle's canonical circle layout
   var MOVE_RADIUS = 0.41; // fraction from board center — the circular area a node can occupy
-  var BEST_KEY = "untangleBestMoves";
+  var BEST_KEY = "untangle.best";
 
   var board = document.getElementById("board");
   var crossingsVal = document.getElementById("crossingsVal");
@@ -22,8 +25,13 @@ import * as prefs from "../shared/ui/prefs.js";
   var overlay = document.getElementById("overlay");
   var overlaySub = document.getElementById("overlaySub");
   var againBtn = document.getElementById("againBtn");
-
-  var endCard = bindOverlay(overlay);
+  var shareBtn = document.getElementById("shareBtn");
+  var shareNote = document.getElementById("shareNote");
+  var howtoBtn = document.getElementById("howtoBtn");
+  var howtoSheet = document.getElementById("howtoSheet");
+  var howtoBackdrop = document.getElementById("howtoBackdrop");
+  var soundBtn = document.getElementById("soundBtn");
+  var themeBtn = document.getElementById("themeBtn");
 
   var nodes = [];       // {x, y} fractions 0..1, index = node id
   var edges = [];       // [a, b] node id pairs
@@ -35,9 +43,10 @@ import * as prefs from "../shared/ui/prefs.js";
   var boundaryEl = null;  // always-visible dashed circle marking the valid move area
   var crossingFlags = []; // reusable per-edge crossing state, sized once in buildDom
   var moves = 0;
+  var crossings = 0;   // last rendered count; the HUD is a view of this, never the source
   var startTime = 0;
   var ended = false;
-  var best = readBest();
+  var best = getInt(BEST_KEY);
 
   var activePointerId = null;
   var dragIndex = -1;
@@ -64,39 +73,13 @@ import * as prefs from "../shared/ui/prefs.js";
     boundaryEl.classList.add("pulse");
   }
 
-  function readBest() {
-    var v = prefs.get(BEST_KEY);
-    return typeof v === "number" ? v : null;
-  }
 
   function writeBest(v) {
     best = v;
-    prefs.set(BEST_KEY, v);
+    setPref(BEST_KEY, v);
   }
 
-  // ---------- audio (tiny, procedural, no files) ----------
-  var actx = null;
-  function ctx() {
-    if (!actx) {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      actx = new AC();
-    }
-    return actx;
-  }
-  function tone(freq, dur, type, gain) {
-    try {
-      var c = ctx();
-      var osc = c.createOscillator();
-      var g = c.createGain();
-      osc.type = type;
-      osc.frequency.value = freq;
-      g.gain.value = gain;
-      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
-      osc.connect(g).connect(c.destination);
-      osc.start();
-      osc.stop(c.currentTime + dur);
-    } catch (e) { /* audio not available, ignore */ }
-  }
+  // ---------- audio ----------
   function sndRelease() { tone(720, 0.09, "sine", 0.05); }
   function sndWin() {
     tone(660, 0.12, "sine", 0.06);
@@ -369,14 +352,12 @@ import * as prefs from "../shared/ui/prefs.js";
     hitEls = nodes.map(function (_, i) {
       var el = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       el.setAttribute("class", "node-hit");
-      el.dataset.index = i;
       board.appendChild(el);
       return el;
     });
     nodeEls = nodes.map(function (_, i) {
       var el = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       el.setAttribute("class", fixed[i] ? "node fixed" : "node");
-      el.dataset.index = i;
       board.appendChild(el);
       return el;
     });
@@ -445,6 +426,7 @@ import * as prefs from "../shared/ui/prefs.js";
       }
     }
 
+    crossings = count;
     crossingsVal.textContent = String(count);
     return count;
   }
@@ -480,25 +462,13 @@ import * as prefs from "../shared/ui/prefs.js";
   function checkSolved(count) {
     if (ended || count !== 0) return;
     ended = true;
+    /* Recorded here rather than in showOverlay(), so closing the tab during the
+       win animation still fills today's slot. */
+    recordPlay("untangle", moves, true);
     if (best == null || moves < best) writeBest(moves);
     updateBestHud();
     sndWin();
     showOverlay();
-  }
-
-  function elapsedSeconds() {
-    return Math.max(0, Math.round((performance.now() - startTime) / 1000));
-  }
-
-  function shareText() {
-    var url = new URL(location.href);
-    url.search = "";
-    url.hash = "";
-    return {
-      text: "I untangled it in " + moves + (moves === 1 ? " move" : " moves") +
-        " (" + elapsedSeconds() + "s). Can you untangle yours?",
-      url: url.toString(),
-    };
   }
 
   updateBestHud();
@@ -506,8 +476,32 @@ import * as prefs from "../shared/ui/prefs.js";
 
   resetBtn.addEventListener("click", generatePuzzle);
   againBtn.addEventListener("click", generatePuzzle);
-  initShare({ title: "Untangle", payload: shareText });
-  initHowto();
+
+  initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });
+
+  initShare({
+    btn: shareBtn,
+    note: shareNote,
+    title: "Untangle",
+    text: function () {
+      var seconds = Math.max(0, Math.round((performance.now() - startTime) / 1000));
+      return "I untangled it in " + moves + (moves === 1 ? " move" : " moves") +
+        " (" + seconds + "s). Can you untangle yours?";
+    },
+  });
+
+  // The end card becomes a real dialog: the board behind it leaves the tab
+  // order, the reset button stops being clickable through it, focus lands on
+  // Again so Enter replays, and Escape dismisses the card to reveal the
+  // solved puzzle underneath.
+  bindOverlay(overlay, {
+    primary: againBtn,
+    label: "Game over",
+  });
+
+  initThemeToggle(themeBtn);
+
+  initSoundToggle(soundBtn, sndRelease);
   // Coalesced to one render a frame. A resize arrives in bursts — an
   // orientation change, a window drag — and render() measures the board and
   // then rewrites an SVG attribute per node and per edge, which is far too
@@ -554,7 +548,10 @@ import * as prefs from "../shared/ui/prefs.js";
     var el = e.target.closest(".node-hit");
 
     if (el) {
-      var idx = parseInt(el.dataset.index, 10);
+      /* hitEls is indexed by node id and is rebuilt whole on every puzzle, so
+         its position *is* the id. Reading it back from a data attribute was a
+         second copy of that with nothing keeping the two in step. */
+      var idx = hitEls.indexOf(el);
       if (fixed[idx]) { triggerShake(nodeEls[idx]); return; }
 
       activePointerId = e.pointerId;
@@ -588,7 +585,11 @@ import * as prefs from "../shared/ui/prefs.js";
     nodes[dragIndex].x = p.x;
     nodes[dragIndex].y = p.y;
     dragMoved = true;
-    var before = parseInt(crossingsVal.textContent, 10);
+    /* The previous count used to be re-parsed out of #crossingsVal.textContent
+       on every frame of a drag, which made an audio decision depend on a
+       rendered string — a copy tweak to the HUD would have become a logic bug.
+       render() returns the count, so keep the last one. */
+    var before = crossings;
     var after = render();
     if (after < before) sndRelease();
   }

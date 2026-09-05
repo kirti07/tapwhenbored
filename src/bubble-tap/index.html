@@ -18,10 +18,8 @@
       <h1 class="title">BUBBLE TAP</h1>
       <p class="subtitle">CASUAL</p>
     </div>
-    <div class="top-actions">
-      <button class="icon-btn" id="restartBtn" title="New game" aria-label="New game">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.9-6.16"/><path d="M20 4v5h-5"/></svg>
-      </button>
+    <div class="controls">
+      <!-- theme-btn:icon-btn -->
       <button id="settingsBtn" class="icon-btn" aria-label="Settings">
         <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7zm7.4-3.5c0 .3 0 .6-.05.9l1.9 1.5-1.9 3.3-2.2-.9c-.5.4-1 .7-1.6 1l-.3 2.3H9.75l-.3-2.3c-.6-.3-1.1-.6-1.6-1l-2.2.9-1.9-3.3 1.9-1.5A7 7 0 014.6 12c0-.3 0-.6.05-.9l-1.9-1.5 1.9-3.3 2.2.9c.5-.4 1-.7 1.6-1l.3-2.3h4.5l.3 2.3c.6.3 1.1.6 1.6 1l2.2-.9 1.9 3.3-1.9 1.5c.05.3.05.6.05.9z"/></svg>
       </button>
@@ -97,12 +95,10 @@
       <p class="overlay-title" id="overlayTitle">BOOM.</p>
       <p class="go-line">FINAL SCORE</p>
       <p class="go-score" id="finalScore">0</p>
-      <p class="overlay-sub" id="bestScore">BEST 0</p>
-      <p class="overlay-global" id="globalBest" hidden></p>
-      <div class="overlay-actions">
-        <button class="again-btn" id="againBtn">PLAY AGAIN</button>
-        <button class="share-btn" id="shareBtn">SHARE SCORE</button>
-      </div>
+      <p class="go-sub" id="bestScore">BEST 0</p>
+      <p class="go-sub go-global" id="globalBest" hidden></p>
+      <button class="btn" id="restartBtn">Play again</button>
+      <button class="btn ghost" id="shareBtn">Share</button>
       <p class="share-note" id="shareNote">Link copied</p>
     </div>
   </div>
@@ -118,11 +114,11 @@
       </div>
       <div class="panel-row">
         <span>SOUND</span>
-        <button class="toggle" id="soundToggle" role="switch"><span class="toggle-dot"></span></button>
+        <button class="toggle" id="soundToggle" role="switch" aria-checked="true" aria-label="Sound"><span class="toggle-dot"></span></button>
       </div>
       <div class="panel-row">
         <span>CALM MODE</span>
-        <button class="toggle" id="motionToggle" role="switch"><span class="toggle-dot"></span></button>
+        <button class="toggle" id="motionToggle" role="switch" aria-checked="false" aria-label="Calm mode"><span class="toggle-dot"></span></button>
       </div>
       <button class="btn ghost" id="restartFromSettingsBtn">RESTART GAME</button>
     </div>

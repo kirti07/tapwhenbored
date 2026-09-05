@@ -61,6 +61,11 @@
 
 /* word-steps adds an opacity transition and re-declares this after the import,
    so its own version wins there. */
+/* The glyph size used to be an inline width/height on every icon SVG in every
+   game. The theme button is injected from one file now, so the size belongs
+   here — where a game can still override it, as bubble-tap does. */
+.icon-btn svg { width: 20px; height: 20px; }
+
 .icon-btn {
   width: 44px;
   height: 44px;
@@ -73,4 +78,142 @@
   justify-content: center;
   cursor: pointer;
   transition: background 0.15s ease, transform 0.1s ease;
+}
+
+/* One focus ring for the whole site.
+ *
+ * There was exactly one :focus-visible rule in the repo before this
+ * (word-steps' active tile), and several controls suppress the UA default by
+ * repainting their own background and border — so a keyboard player could tab
+ * through a game with no idea where they were.
+ *
+ * `outline` only. A prototype of this rule set border-radius alongside the
+ * ring and quietly squared off every pill button the moment it took focus:
+ * a focus style may add nothing to an element's box, only draw around it.
+ *
+ * :focus-visible rather than :focus so a mouse click on a button does not
+ * leave a ring behind it. */
+:focus-visible {
+  outline: 2px solid var(--accent-dark, currentColor);
+  outline-offset: 2px;
+}
+
+/* Windows high-contrast mode paints its own focus indicator and ignores
+   `outline-color`; letting it through unchanged is the correct behaviour. */
+@media (forced-colors: active) {
+  :focus-visible { outline-color: Highlight; }
+}
+
+/* Phone landscape.
+ *
+ * 844x390 leaves roughly a third of the vertical room the layout was drawn
+ * for. Three games had each independently discovered the same fix — hide the
+ * two decorative lines that cost the most height — and five had nothing at
+ * all, so the board was squeezed instead. One rule, every game.
+ *
+ * The subtitle and the SEO disclosure are the right things to drop: neither is
+ * needed to play, and the disclosure is indexable content that a crawler reads
+ * from the markup regardless of whether it is displayed. */
+@media (max-height: 480px) {
+  .subtitle,
+  .seo-info { display: none; }
+
+  .back-link { margin-bottom: 0.4svh; }
+  .howto-link { padding-top: 0.4svh; }
+}
+
+/* Two-state icon buttons: sound and theme.
+ *
+ * Both swap one glyph for another rather than tinting a single one, because a
+ * crossed-out speaker and a speaker are distinguishable at a glance and in
+ * greyscale, where "slightly dimmer" is not.
+ *
+ * The theme pair is driven entirely by the data-theme attribute rather than by
+ * JavaScript. The attribute is set by the parser-blocking bootstrap, so the
+ * correct icon is painted on the first frame; toggling display from JS would
+ * show both glyphs until the module loaded. */
+.icon-btn .ico-sound-off { display: none; }
+.icon-btn.is-off .ico-sound-on { display: none; }
+.icon-btn.is-off .ico-sound-off { display: block; }
+.icon-btn.is-off { color: var(--ink-soft); }
+
+.icon-btn [data-theme-icon="light"] { display: none; }
+.icon-btn [data-theme-icon="dark"] { display: block; }
+:root[data-theme="dark"] .icon-btn [data-theme-icon="light"] { display: block; }
+:root[data-theme="dark"] .icon-btn [data-theme-icon="dark"] { display: none; }
+
+/* Four 44px targets plus the game title is the widest the bar ever gets. The
+   gap is the only thing that may give; the targets themselves are a floor. */
+@media (max-width: 400px) {
+  .top-actions { gap: 6px; }
+}
+
+/* Minimum 44x44 tap targets.
+ *
+ * Measured at 390x844, every game shipped controls well under that: the back
+ * link — the only way out of a game — was 62x13, the "How to play" opener
+ * 90x24, and the end-card buttons 41 tall. On a phone held one-handed those
+ * are misses, and the person most likely to miss is the one least able to
+ * afford a stray tap on a game board.
+ *
+ * The hit area is expanded with a centred pseudo-element rather than by adding
+ * padding, so nothing about the layout, spacing or visual weight changes:
+ * 44x44 of target around however much ink the design calls for. The elements
+ * this is applied to are isolated controls with non-interactive neighbours, so
+ * the enlarged areas cannot overlap and steal each other's taps.
+ *
+ * Applied here rather than to a shared `.tap-target` class because the point
+ * is that a control cannot opt out by forgetting to add one. */
+.back-link,
+.howto-link {
+  position: relative;
+}
+
+.back-link::after,
+.howto-link::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: max(100%, 44px);
+  height: 44px;
+}
+
+/* The end-card pair came in at 41 tall — three pixels short, which is the
+   easiest kind of miss to ship because it looks fine. */
+.pill-btn,
+.again-btn,
+.share-btn {
+  min-height: 44px;
+}
+
+/* The disclosure summary is both a control and, at 9px, the smallest text on
+   the page. Both are fixed here: 11px is the floor for anything a player is
+   expected to read. */
+.seo-info summary {
+  position: relative;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+
+.seo-info {
+  font-size: 11px;
+}
+
+/* Hover is not a touch state.
+ *
+ * A touch screen synthesises a hover on tap and then leaves it applied until
+ * the player taps something else, so an ungated :hover rule shows a control as
+ * hovered long after the finger is gone — most confusingly on the back link,
+ * where it reads as "this is selected".
+ *
+ * Six games each carried their own copy of this same rule, all ungated. One
+ * rule, gated, for all of them. bubble-tap keeps its own; it does not import
+ * this file. */
+@media (hover: hover) and (pointer: fine) {
+  .back-link:hover { color: var(--ink); }
 }

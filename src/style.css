@@ -1,331 +1,1118 @@
-/* Warm "paper shelf" palette — a kraft-paper backdrop with cream cards, so
-   each game thumbnail sits like a photo in a mat rather than a screenshot
-   pasted on stark white. Deliberately neutral/warm so it doesn't compete
-   with either game's own colors (cool glass for Bubble Tap, wood + blue
-   marbles for Marble Nostalgia) — it just gives them a common, cozy shelf
-   to sit on. */
+/* The homepage: a sticker wall on warm paper.
+ *
+ * The visual system is research/ux-versions/v2-sticker/home.html, which won
+ * second place in the persona study and is the reference this file follows
+ * rather than reinterprets. What changed from the old homepage, and why:
+ *
+ * The ground went from a cool lavender to warm paper. The old page put a
+ * photo-realistic wooden marble board on a lavender field — the exact clash
+ * GAME-UI-PHILOSOPHY.md uses as its worked example of what not to ship. Flat
+ * sticker glyphs tinted from each game's own accent belong to one visual world;
+ * eight pieces of unrelated artwork never did.
+ *
+ * Card colour is now data. It used to be sixteen hand-written `.card--<slug>`
+ * rules that nothing validated, so a new game whose CSS pair was forgotten
+ * shipped in the fallback purple. Both accents now come from the registry as
+ * inline custom properties, and the validator checks them.
+ *
+ * The one shared file the homepage takes is still tokens.css — the self-hosted
+ * Nunito faces and the token that names them. Body copy stays on the system
+ * stack: only weight 700 is on the homepage's critical path, and headings are
+ * the only place a display face earns it.
+ */
 
-/* The one shared file the homepage takes: the self-hosted Nunito faces and the
-   token that names them. It shares none of the game shell (no base, no shell,
-   no howto) — but the webfont is platform, not identity, and a second copy of
-   the @font-face rules would be two things to keep in step. */
 @import "shared/css/tokens.css";
 
+/* ---------------------------------------------------------------- tokens --
+ * Three states, in this order, deliberately: the bare :root is the complete
+ * light palette; the media block re-declares only what dark changes and is
+ * guarded so an explicit light choice wins over the OS; the attribute block
+ * repeats it so the in-page toggle wins in both directions. A colour defined
+ * only inside a media query has no value when neither branch matches.
+ */
 :root {
-  --bg: #f6f6fb;
-  --surface: #ffffff;
-  --text: #262b3d;
-  --text-secondary: #767a8c;
-  --border: #e6e4f2;
-  --accent: #8b7fe0;
   color-scheme: light;
+
+  --paper: #f3ece0;
+  --card: #fffdf8;
+  --card-2: #faf4e7;
+  --ink: #282218;
+  --ink-soft: #776d5d;
+  --ink-dim: #9d9382;
+  --line: #e3d8c4;
+  --line-2: #d4c6ab;
+  --brand: #c9432f;
+  --cool: #17805f;
+
+  /* The paper grain. One radial-gradient tile, not an image. */
+  --dot: rgba(40, 34, 24, 0.06);
+  --slot: rgba(40, 34, 24, 0.16);
+
+  --shadow-s: 0 1px 0 rgba(40, 34, 24, 0.05), 0 4px 10px -6px rgba(40, 34, 24, 0.32);
+  --shadow-m: 0 1px 0 rgba(40, 34, 24, 0.05), 0 10px 22px -14px rgba(40, 34, 24, 0.5);
+
+  --r-m: 14px;
+  --r-l: 20px;
+  --r-x: 26px;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #0f0e18;
+    --card: #1a1928;
+    --card-2: #211f31;
+    --ink: #f1ecdf;
+    --ink-soft: #a79eb8;
+    --ink-dim: #867d99;
+    --line: #2c2942;
+    --line-2: #3b3757;
+    --brand: #ff8a72;
+    --cool: #34e19a;
+    --dot: rgba(255, 252, 240, 0.05);
+    --slot: rgba(241, 236, 223, 0.18);
+    --shadow-s: 0 1px 0 rgba(0, 0, 0, 0.4), 0 4px 12px -6px rgba(0, 0, 0, 0.7);
+    --shadow-m: 0 1px 0 rgba(0, 0, 0, 0.4), 0 12px 26px -16px rgba(0, 0, 0, 0.9);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #0f0e18;
+  --card: #1a1928;
+  --card-2: #211f31;
+  --ink: #f1ecdf;
+  --ink-soft: #a79eb8;
+  --ink-dim: #867d99;
+  --line: #2c2942;
+  --line-2: #3b3757;
+  --brand: #ff8a72;
+  --cool: #34e19a;
+  --dot: rgba(255, 252, 240, 0.05);
+  --slot: rgba(241, 236, 223, 0.18);
+  --shadow-s: 0 1px 0 rgba(0, 0, 0, 0.4), 0 4px 12px -6px rgba(0, 0, 0, 0.7);
+  --shadow-m: 0 1px 0 rgba(0, 0, 0, 0.4), 0 12px 26px -16px rgba(0, 0, 0, 0.9);
+}
+
+/* ----------------------------------------------------------------- base -- */
 
 * { box-sizing: border-box; }
 
-html, body {
+html { -webkit-text-size-adjust: 100%; }
+
+body {
   margin: 0;
   min-height: 100%;
-  background: var(--bg);
-  color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--paper);
+  background-image: radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 0);
+  background-size: 22px 22px;
+  color: var(--ink);
+  font-family: -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
   -webkit-tap-highlight-color: transparent;
 }
 
-.hub {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: max(28px, env(safe-area-inset-top)) 24px 40px;
+h1, h2, p { margin: 0; }
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+
+/* Holds the <symbol> definitions. Markup, not a request. */
+.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+/* One focus ring, drawn around the control and never reshaping it. */
+:focus-visible {
+  outline: 2.5px solid var(--brand);
+  outline-offset: 2px;
 }
 
-.hub-header {
+@media (forced-colors: active) {
+  :focus-visible { outline-color: Highlight; }
+}
+
+.num { font-variant-numeric: tabular-nums; }
+
+/* `hidden` must actually hide.
+ *
+ * The attribute is only a UA rule of `display: none`, so any class that sets
+ * its own `display` silently outranks it — and this stylesheet sets `display`
+ * on `.btn` (inline-flex) and `.nameedit` (flex), both of which script hides
+ * with `el.hidden`. The result was a book showing its name-edit form and a
+ * "Play" button on stickers already earned. */
+[hidden] { display: none !important; }
+
+.wrap { max-width: 1060px; margin: 0 auto; padding: 0 16px; }
+
+.page {
+  padding-top: max(18px, env(safe-area-inset-top));
+  padding-bottom: calc(40px + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 900px) {
+  .wrap { padding: 0 28px; }
+}
+
+/* ------------------------------------------------------------------ top -- */
+
+.top {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
+  padding: 0 0 8px;
   flex-wrap: wrap;
-  margin-bottom: 40px;
 }
 
-/* ---- theme toggle ---- */
-
-.theme-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.theme-toggle-icon {
-  display: flex;
-  color: var(--text-secondary);
-}
-
-.theme-switch {
-  position: relative;
-  width: 44px;
-  height: 24px;
-  flex-shrink: 0;
-  border-radius: 999px;
-  border: 1.5px solid var(--border);
-  background: var(--surface);
-  padding: 0;
-  cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
-}
-
-.theme-switch-thumb {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 17px;
-  height: 17px;
-  border-radius: 50%;
-  background: var(--accent);
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease;
-}
-
-/* Driven by data-theme, not by aria-checked. The theme bootstrap sets
-   data-theme in the <head>, before the first paint; aria-checked can only be
-   set once the button exists, at the end of <body>. Keying the visual on the
-   attribute that lands first is what stops a dark-mode reload from painting
-   the knob in the off position and then flipping it. */
-[data-theme="dark"] .theme-switch {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-[data-theme="dark"] .theme-switch .theme-switch-thumb {
-  transform: translateX(20px);
-  background: #ffffff;
-}
-
-.brand-name {
-  margin: 0;
+.brand {
   font-family: var(--font-display);
-  font-size: 32px;
+  font-size: clamp(23px, 6vw, 30px);
   font-weight: 700;
-  letter-spacing: -0.01em;
-  line-height: 1.05;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
 }
 
-.brand-pop--warm { color: #ff6f5e; }
-.brand-pop--cool { color: #1f9974; }
+.brand .w { color: var(--brand); }
+.brand .b { color: var(--cool); }
 
-.tagline {
-  margin: 4px 0 0;
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-.intro {
-  max-width: 640px;
-  margin: 40px 0 0;
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--text-secondary);
+.brand-sub {
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  margin-top: 2px;
 }
 
-.shelf {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 18px;
-}
+.top-r { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 
-.faq {
-  max-width: 640px;
-  margin: 40px 0 0;
-}
-
-.faq-title {
-  margin: 0 0 12px;
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.faq-item {
-  border-top: 1px solid var(--border);
-  padding: 12px 0;
-}
-.faq-item:last-child {
-  border-bottom: 1px solid var(--border);
-}
-
-.faq-item summary {
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  list-style: none;
-}
-.faq-item summary::-webkit-details-marker { display: none; }
-.faq-item summary::before {
-  content: "+";
-  display: inline-block;
-  width: 16px;
-  color: var(--accent);
-  font-weight: 700;
-}
-.faq-item[open] summary::before { content: "–"; }
-
-.faq-item p {
-  margin: 8px 0 0 16px;
+/* The way back to the shelf. Only the book page has one — the homepage is the
+   shelf — but it lives here so the two pages share one definition, as the game
+   top bars already do. The pseudo-element gives it a 44px target without
+   changing how much ink is on the page. */
+.back-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 2px;
+  color: var(--ink-soft);
   font-size: 13px;
-  line-height: 1.6;
-  color: var(--text-secondary);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-decoration: none;
 }
+
+.back-link::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: max(100%, 44px);
+  height: 44px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .back-link:hover { color: var(--ink); }
+}
+
+/* The same 44px circular control the game top bars use, so the theme toggle is
+   one object across the whole site rather than a homepage one-off. */
+.iconbtn {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1.5px solid var(--line);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  flex: none;
+  touch-action: manipulation;
+}
+
+.iconbtn svg { width: 19px; height: 19px; }
+
+@media (hover: hover) and (pointer: fine) {
+  .iconbtn:hover { border-color: var(--line-2); color: var(--ink); }
+}
+
+/* Which glyph shows is decided by the attribute the parser-blocking bootstrap
+   already set, so the right icon is painted on the first frame rather than
+   after home.js loads. */
+.iconbtn [data-theme-icon="light"] { display: none; }
+.iconbtn [data-theme-icon="dark"] { display: block; }
+:root[data-theme="dark"] .iconbtn [data-theme-icon="light"] { display: block; }
+:root[data-theme="dark"] .iconbtn [data-theme-icon="dark"] { display: none; }
+
+/* -------------------------------------------------------------- sections -- */
+
+.sec { margin-top: 30px; }
+
+.sec-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.sec-t {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.sec-sub { color: var(--ink-soft); font-size: 13.5px; width: 100%; }
+
+.sec-tools { margin-left: auto; }
+
+/* On a phone the segmented control does not fit beside the heading without
+   squeezing it, so it takes its own line and starts at the left margin like
+   everything else in the section. */
+@media (max-width: 559px) {
+  .sec-tools { margin-left: 0; width: 100%; }
+}
+
+/* --------------------------------------------------------------- sticker --
+ * One glyph on a tinted rounded square, ringed twice: once in the card colour
+ * so it reads as a die-cut sticker, once in the surface colour so the ring
+ * itself has a paper edge. --accent and --accent-d come from the registry.
+ */
+.sb {
+  --sz: 56px;
+  width: var(--sz);
+  height: var(--sz);
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 32%;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 13%, var(--card));
+  box-shadow:
+    0 0 0 2.5px var(--card),
+    0 0 0 3.9px color-mix(in srgb, var(--accent) 34%, transparent),
+    var(--shadow-s);
+  transform: rotate(var(--rot, 0deg));
+}
+
+.sb svg { width: 64%; height: 64%; display: block; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .sb {
+    color: var(--accent-d, var(--accent));
+    background: color-mix(in srgb, var(--accent-d, var(--accent)) 17%, var(--card));
+    box-shadow:
+      0 0 0 2.5px color-mix(in srgb, var(--accent-d, var(--accent)) 12%, var(--card)),
+      0 0 0 3.9px color-mix(in srgb, var(--accent-d, var(--accent)) 42%, transparent),
+      var(--shadow-s);
+  }
+}
+
+:root[data-theme="dark"] .sb {
+  color: var(--accent-d, var(--accent));
+  background: color-mix(in srgb, var(--accent-d, var(--accent)) 17%, var(--card));
+  box-shadow:
+    0 0 0 2.5px color-mix(in srgb, var(--accent-d, var(--accent)) 12%, var(--card)),
+    0 0 0 3.9px color-mix(in srgb, var(--accent-d, var(--accent)) 42%, transparent),
+    var(--shadow-s);
+}
+
+/* ------------------------------------------------------------ your bests -- */
+
+.book {
+  position: relative;
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-x);
+  padding: 18px 18px 16px;
+  box-shadow: var(--shadow-m);
+  background-image: radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 0);
+  background-size: 20px 20px;
+}
+
+.book-top { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+
+.book-h {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  /* Two lines' worth, reserved. The heading is rewritten by home.js once the
+     local bests are read; without this the strip grows after first paint and
+     takes the shelf down the page with it. */
+  min-height: 1.35em;
+}
+
+.book-p { font-size: 13.5px; color: var(--ink-soft); margin-top: 3px; max-width: 44ch; }
+
+.slots { display: flex; gap: 8px; margin-top: 16px; }
+
+.slot {
+  flex: 1;
+  max-width: 56px;
+  aspect-ratio: 1;
+  border-radius: 32%;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+/* Empty is the default, so a first-time visitor and a no-JavaScript visitor
+   see the same honest thing. */
+.slot--e { border: 2px dashed var(--slot); color: var(--ink-dim); }
+.slot--e > svg { width: 52%; height: 52%; opacity: 0.34; }
+
+.slot-fill { display: none; }
+.slot .sb { width: 100%; height: 100%; }
+
+.slot.is-earned { border: 0; }
+.slot.is-earned > svg { display: none; }
+.slot.is-earned .slot-fill { display: block; width: 100%; height: 100%; }
+
+.progress {
+  margin-top: 14px;
+  max-width: 504px;
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+  overflow: hidden;
+}
+
+.progress i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: var(--brand);
+  transition: width 0.24s var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress i { transition: none; }
+}
+
+/* ---------------------------------------------------------------- shelf -- */
+
+.shelf { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+
+@media (min-width: 640px) { .shelf { grid-template-columns: repeat(3, 1fr); gap: 14px; } }
+@media (min-width: 900px) { .shelf { grid-template-columns: repeat(4, 1fr); gap: 16px; } }
 
 .card {
   display: flex;
   flex-direction: column;
-  padding: 10px 10px 0;
-  border-radius: 18px;
-  border: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-l);
   text-decoration: none;
-  color: inherit;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-  /* Cards below the fold skip layout and paint entirely until they scroll into
-     view. The shelf is a uniform grid of square-thumbnail cards, so the
-     placeholder size is a good guess and the scrollbar does not jump. */
-  content-visibility: auto;
-  contain-intrinsic-size: auto 240px;
+  overflow: hidden;
+  box-shadow: var(--shadow-s);
+  transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
 }
 
-/* Hover is a pointer affordance, and on a touchscreen it is worse than
-   useless: Android leaves the hovered state stuck on the last card tapped,
-   which keeps a lifted transform and a blurred glow shadow live and repainting
-   for the rest of the scroll. :active still gives touch its feedback. */
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(38,43,61,0.12);
-    border-color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+    box-shadow: var(--shadow-m);
   }
-  .card:hover .card-desc { color: var(--accent); }
 }
 
-.card:active { transform: scale(0.98); }
+.card:active { transform: translateY(0); }
 
-/* The accent arrives per card as two inline custom properties, written from the
-   registry by homepageFromRegistry(). This pair is what selects between them;
-   it replaced sixteen hand-maintained .card--<slug> rules that nothing
-   validated, and that a new game silently never got. */
-.card { --accent: var(--accent-light); }
-
-.thumb {
-  display: block;
-  width: 100%;
-  height: auto;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  border-radius: 11px;
-  background: var(--border);
+@media (prefers-reduced-motion: reduce) {
+  .card { transition: border-color 0.14s ease; }
+  .card:hover { transform: none; }
 }
 
-.card-body {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px 4px 14px;
+.card-art {
+  height: 96px;
+  display: grid;
+  place-items: center;
+  background-color: color-mix(in srgb, var(--accent) 11%, var(--card-2));
+  border-bottom: 1.5px solid color-mix(in srgb, var(--accent) 18%, var(--line));
+  background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--accent) 22%, transparent) 1px, transparent 0);
+  background-size: 16px 16px;
 }
 
-.card-text {
-  min-width: 0;
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .card-art {
+    background-color: color-mix(in srgb, var(--accent-d) 10%, var(--card-2));
+    border-bottom-color: color-mix(in srgb, var(--accent-d) 26%, var(--line));
+    background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--accent-d) 26%, transparent) 1px, transparent 0);
+  }
 }
 
-.card-name {
-  margin: 0;
+:root[data-theme="dark"] .card-art {
+  background-color: color-mix(in srgb, var(--accent-d) 10%, var(--card-2));
+  border-bottom-color: color-mix(in srgb, var(--accent-d) 26%, var(--line));
+  background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--accent-d) 26%, transparent) 1px, transparent 0);
+}
+
+.card-b { padding: 11px 12px 12px; display: flex; flex-direction: column; gap: 1px; flex: 1; }
+
+.card-n {
   font-family: var(--font-display);
   font-size: 15px;
   font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
 }
 
-.card-desc {
-  margin: 2px 0 0;
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  color: var(--text-secondary);
-  transition: color 0.15s ease;
-}
+.card-t { font-size: 12.5px; color: var(--ink-soft); }
 
-.play-btn {
-  flex-shrink: 0;
-  width: 34px;
-  height: 34px;
+/* Always present, always this tall. The best line is filled in after the local
+   store is read, and the row must not appear from nowhere and push the card. */
+.card-f { margin-top: 9px; display: flex; align-items: center; gap: 8px; min-height: 26px; }
+
+.card-best { font-size: 11.5px; font-weight: 700; color: var(--ink-soft); }
+.card-best em { font-style: normal; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.card-go {
+  margin-left: auto;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex: none;
   background: var(--accent);
   color: #fff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .card-go { background: var(--accent-d); color: #0f0e18; }
+}
+
+:root[data-theme="dark"] .card-go { background: var(--accent-d); color: #0f0e18; }
+
+/* ----------------------------------------------------------------- wall -- */
+
+.seg {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--card-2);
+  border: 1.5px solid var(--line);
+}
+
+.seg button {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 0.14s ease, color 0.14s ease;
+}
+
+.seg button[aria-pressed="true"] {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow-s);
+}
+
+.wall {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px 12px;
+  padding: 6px 4px;
+}
+
+@media (min-width: 560px) { .wall { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 900px) { .wall { grid-template-columns: repeat(6, 1fr); gap: 20px 16px; } }
+
+.stk {
+  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  transition: transform 0.15s ease;
-}
-
-@media (hover: hover) {
-  .card:hover .play-btn { transform: scale(1.08); }
-}
-.card:active .play-btn { transform: scale(0.94); }
-
-.hub-footer {
-  margin-top: 32px;
+  gap: 2px;
+  margin: 0;
+  padding: 12px 10px 10px;
+  border-radius: var(--r-l);
   text-align: center;
-  font-size: 12px;
-  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--accent) 10%, var(--card));
+  border: 2.5px solid var(--card);
+  box-shadow: 0 0 0 1.4px color-mix(in srgb, var(--accent) 32%, transparent), var(--shadow-m);
+  transform: rotate(var(--rot, 0deg));
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .card { transition: none; }
-}
-
-@media (max-width: 480px) {
-  .hub { padding: max(20px, env(safe-area-inset-top)) 16px 32px; }
-  .hub-header { margin-bottom: 28px; }
-  .brand-name { font-size: 26px; }
-  .shelf { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-  .card { padding: 8px 8px 0; }
-  .card-body { padding: 8px 2px 10px; }
-  .card-name { font-size: 14px; }
-  .play-btn { width: 28px; height: 28px; }
-  .play-btn svg { width: 11px; height: 11px; }
-}
-
-/* ==== Neon Arcade (dark theme) ====
-   Same tokens, dark values — every rule above that reads var(--bg)/var(--text)/
-   var(--accent)/etc already re-themes on its own. This block only needs to
-   (a) redefine the tokens and (b) fix the handful of rules that hardcode a
-   colour instead of reading a variable (card shadow, thumbnail art). */
-
-:root[data-theme="dark"] {
-  --bg: #0d0e1a;
-  --surface: #14132a;
-  --text: #f0eefa;
-  --text-secondary: #9b96c4;
-  --border: #2c2850;
-  --accent: #a855f7;
-  color-scheme: dark;
-}
-
-[data-theme="dark"] .brand-pop--warm { color: #ff5c8a; }
-[data-theme="dark"] .brand-pop--cool { color: #34e19a; }
-
-[data-theme="dark"] .card { --accent: var(--accent-dark); }
-
-[data-theme="dark"] .card {
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent), 0 0 22px color-mix(in srgb, var(--accent) 14%, transparent);
-}
-@media (hover: hover) {
-  [data-theme="dark"] .card:hover {
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent), 0 0 30px color-mix(in srgb, var(--accent) 26%, transparent);
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .stk {
+    background: color-mix(in srgb, var(--accent-d, var(--accent)) 13%, var(--card));
+    border-color: color-mix(in srgb, var(--accent-d, var(--accent)) 10%, var(--card));
+    box-shadow: 0 0 0 1.4px color-mix(in srgb, var(--accent-d, var(--accent)) 42%, transparent), var(--shadow-m);
   }
 }
 
-/* the thumbnails are static light-mode art; re-tone rather than ship a second
-   set of image assets — cheap, no new requests, no new dependency */
-[data-theme="dark"] .thumb {
-  filter: brightness(0.82) contrast(1.12) saturate(1.3);
+:root[data-theme="dark"] .stk {
+  background: color-mix(in srgb, var(--accent-d, var(--accent)) 13%, var(--card));
+  border-color: color-mix(in srgb, var(--accent-d, var(--accent)) 10%, var(--card));
+  box-shadow: 0 0 0 1.4px color-mix(in srgb, var(--accent-d, var(--accent)) 42%, transparent), var(--shadow-m);
+}
+
+.stk .ico { width: 34px; height: 34px; color: var(--accent); margin-bottom: 2px; }
+.stk .ico svg { width: 100%; height: 100%; display: block; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .stk .ico { color: var(--accent-d, var(--accent)); }
+}
+
+:root[data-theme="dark"] .stk .ico { color: var(--accent-d, var(--accent)); }
+
+.stk .g {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+/* The score arrives from the network. Its height is reserved here so a tile
+   that resolves late does not grow and shuffle the grid. */
+.stk .s {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  min-height: 1.15em;
+}
+
+.stk .u { font-size: 11px; font-weight: 700; color: var(--ink-soft); line-height: 1.2; }
+
+/* The signature.
+ *
+ * There are no player names yet — the leaderboard stores one number per game
+ * and nothing else. Rather than leave the line out and have every tile grow
+ * when identity ships, the line is here now with a placeholder and its final
+ * height. Adding a name later is a text change, not a layout change. */
+.stk .sig {
+  margin-top: 8px;
+  padding-top: 6px;
+  width: 100%;
+  border-top: 1.5px dashed color-mix(in srgb, var(--ink) 22%, transparent);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  min-height: 1.3em;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.honest {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--ink-dim);
+  margin-top: 14px;
+  line-height: 1.4;
+}
+
+.honest svg { width: 14px; height: 14px; flex: none; }
+
+/* ---------------------------------------------------------------- about -- */
+
+.panel {
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-x);
+  padding: 18px;
+  box-shadow: var(--shadow-s);
+}
+
+.intro { font-size: 13.5px; line-height: 1.6; color: var(--ink-soft); max-width: 68ch; }
+
+.faq-item { border-top: 1.5px solid var(--line); margin-top: 14px; }
+
+.faq-item summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  list-style: none;
+}
+
+.faq-item summary::-webkit-details-marker { display: none; }
+
+.faq-item summary::before {
+  content: "+";
+  width: 16px;
+  flex: none;
+  color: var(--brand);
+  font-weight: 700;
+}
+
+.faq-item[open] summary::before { content: "–"; }
+
+.faq-item p { margin: 0 0 12px 24px; font-size: 13px; line-height: 1.6; color: var(--ink-soft); }
+
+/* --------------------------------------------------------------- footer -- */
+
+.foot {
+  margin-top: 36px;
+  padding-top: 18px;
+  border-top: 1.5px dashed var(--line-2);
+  color: var(--ink-dim);
+  font-size: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  align-items: center;
+}
+
+.foot-r { margin-left: auto; }
+
+/* The footer had no links until the wall added one, so nothing here sized them.
+   Same 44px floor as everywhere else, and the same trick: the target grows,
+   the ink does not. */
+.foot a {
+  position: relative;
+  color: var(--ink-soft);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.foot a::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: max(100%, 44px);
+  height: 44px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .foot a:hover { color: var(--ink); text-decoration: underline; }
+}
+
+/* ============================================================ the book page ==
+ *
+ * /book/ shares this stylesheet with the homepage on purpose — same tokens,
+ * same sticker, same card treatment — so the two read as one product rather
+ * than two designs that happen to be adjacent.
+ *
+ * Ported from research/ux-versions/v2-sticker/account.html with one deliberate
+ * omission: every Caveat rule. The reference sets signatures and the big name
+ * in a handwriting face, which is a webfont on the critical path of a page
+ * whose whole job is to show eight glyphs. Names use the display face here.
+ */
+
+.hero { margin-top: 10px; }
+
+/* Reserved: script rewrites this once it has read the day's records, and the
+   slots sit directly underneath. */
+.hero-h {
+  font-family: var(--font-display);
+  font-size: clamp(22px, 6vw, 27px);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  min-height: 1.15em;
+  margin-top: 2px;
+}
+
+.hero-p { color: var(--ink-soft); font-size: 13.5px; margin-top: 5px; max-width: 48ch; }
+
+/* ---- the name ---- */
+
+.namecard {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-x);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-s);
+}
+
+.namecard .av {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border-radius: 32%;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--brand) 18%, var(--card));
+  color: var(--brand);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 24px;
+  border: 2px solid color-mix(in srgb, var(--brand) 38%, transparent);
+  transform: rotate(-4deg);
+}
+
+.namecard .who { min-width: 0; flex: 1 1 140px; }
+
+/* The name as it appears on a sticker. Reserved height so switching between
+   "Unsigned" and a name moves nothing. */
+.sig-big {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.15;
+  min-height: 1.15em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nameedit { width: 100%; display: flex; gap: 9px; flex-wrap: wrap; align-items: flex-end; }
+.nameedit .field { flex: 1; min-width: 190px; }
+
+.field { display: block; }
+
+.lbl {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+
+/* 16px is not a style choice: anything smaller makes iOS Safari zoom the page
+   when the field takes focus, and it does not zoom back out. */
+.inp {
+  width: 100%;
+  min-height: 48px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  padding: 10px 14px;
+  border-radius: var(--r-m);
+  background: var(--card);
+  border: 2px solid var(--line-2);
+  color: var(--ink);
+}
+
+.inp::placeholder { color: var(--ink-dim); font-weight: 600; }
+
+.inp:focus {
+  outline: none;
+  border-color: var(--ink-soft);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 26%, transparent);
+}
+
+.hint { width: 100%; font-size: 12px; color: var(--ink-dim); line-height: 1.45; }
+
+/* ---- buttons ---- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 14px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  touch-action: manipulation;
+  transition: transform 0.12s var(--ease-out), box-shadow 0.12s var(--ease-out),
+    border-color 0.14s ease, color 0.14s ease;
+}
+
+/* The paper button pressed onto its ink edge. */
+.btn--p {
+  background: var(--ink);
+  color: var(--card);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--ink) 42%, var(--paper));
+}
+
+.btn--p:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 42%, var(--paper));
+}
+
+.btn--s {
+  background: var(--card);
+  color: var(--ink);
+  border-color: var(--line-2);
+  box-shadow: var(--shadow-s);
+}
+
+.btn--s:active { transform: translateY(1px); }
+
+@media (hover: hover) and (pointer: fine) {
+  .btn--p:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 0 color-mix(in srgb, var(--ink) 42%, var(--paper));
+  }
+  .btn--s:hover { border-color: var(--ink-soft); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .theme-switch, .theme-switch-thumb { transition: none; }
+  .btn { transition: border-color 0.14s ease, color 0.14s ease; }
+  .btn--p:hover, .btn--s:hover, .btn--p:active, .btn--s:active { transform: none; }
+}
+
+.sec-link {
+  margin-left: auto;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--brand);
+  text-decoration: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .sec-link:hover { text-decoration: underline; }
+}
+
+/* ---- the slot grid ----
+ *
+ * Bigger than the homepage's chip row: these carry a name, a number and a
+ * signature. Every slot is the same height in both states so the grid does not
+ * reflow as the day fills up.
+ */
+.book-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px 12px;
+  padding: 6px 4px;
+}
+
+@media (min-width: 560px) { .book-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 900px) { .book-grid { grid-template-columns: repeat(4, 1fr); gap: 20px 16px; } }
+
+.book-grid .slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 3px;
+  min-height: 186px;
+  max-width: none;
+  aspect-ratio: auto;
+  padding: 13px 10px 11px;
+  border-radius: var(--r-l);
+  transform: rotate(var(--rot, 0deg));
+}
+
+.book-grid .slot--f {
+  justify-content: flex-start;
+  border: 2.5px solid var(--card);
+  background: color-mix(in srgb, var(--accent) 10%, var(--card));
+  box-shadow: 0 0 0 1.4px color-mix(in srgb, var(--accent) 32%, transparent), var(--shadow-m);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .book-grid .slot--f {
+    background: color-mix(in srgb, var(--accent-d) 13%, var(--card));
+    border-color: color-mix(in srgb, var(--accent-d) 10%, var(--card));
+    box-shadow: 0 0 0 1.4px color-mix(in srgb, var(--accent-d) 42%, transparent), var(--shadow-m);
+  }
+}
+
+:root[data-theme="dark"] .book-grid .slot--f {
+  background: color-mix(in srgb, var(--accent-d) 13%, var(--card));
+  border-color: color-mix(in srgb, var(--accent-d) 10%, var(--card));
+  box-shadow: 0 0 0 1.4px color-mix(in srgb, var(--accent-d) 42%, transparent), var(--shadow-m);
+}
+
+.book-grid .slot--e {
+  border: 2px dashed var(--slot);
+  background: transparent;
+  gap: 7px;
+}
+
+.book-grid .ico { width: 36px; height: 36px; color: var(--accent); margin-bottom: 3px; }
+.book-grid .ico svg { width: 100%; height: 100%; display: block; }
+.book-grid .slot--e .ico { opacity: 0.3; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .book-grid .ico { color: var(--accent-d); }
+}
+
+:root[data-theme="dark"] .book-grid .ico { color: var(--accent-d); }
+
+.book-grid .g {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.book-grid .s {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.book-grid .u { font-size: 11px; font-weight: 700; color: var(--ink-soft); }
+.book-grid .lab { font-size: 12.5px; font-weight: 700; color: var(--ink-dim); }
+
+/* The signature. Not a handwriting face — see the note at the top of this
+   section — but still set apart from the rest of the card by the dashed rule
+   above it, the way a signed sticker is. */
+.book-grid .sig {
+  margin-top: 8px;
+  padding-top: 6px;
+  width: 100%;
+  border-top: 1.5px dashed color-mix(in srgb, var(--ink) 22%, transparent);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  min-height: 1.25em;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.book-grid .btn { min-height: 44px; padding: 0 14px; font-size: 13px; margin-top: 4px; }
+
+/* The other half of the card's footer row.
+ *
+ * That row has a fixed height so a best arriving from storage cannot shift the
+ * card. It used to hold nothing at all until you had a best, which meant every
+ * card on a first visit reserved 26px for empty space. It now always holds one
+ * of the two: your best, or an invitation to make one. */
+.card-new {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  border: 1.5px dashed var(--line-2);
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+
+/* ============================================================== the wall ==
+ *
+ * One row per game, showing the best anyone has managed.
+ *
+ * The row body is the sticker card from the homepage wall — `.stk` and its
+ * `.ico` / `.g` / `.s` / `.u` children — turned on its side. That is the whole
+ * trick, and it is why this section is short: the reference's `.strip` is a
+ * near-copy of `.stk` with a different flex-direction, so it does not need to
+ * exist as its own component.
+ *
+ * Not ported from the reference, because the data does not exist: rank
+ * numerals and their gold/silver/bronze seals, the "YOU" pill, the "N more"
+ * gap, the game-picker strip and the Today/This week tabs. The leaderboard
+ * stores one anonymous number per game, so all of those would be furniture
+ * around nothing.
+ */
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+  max-width: 760px;
+}
+
+.wrow { display: flex; }
+
+/* The sticker card, on its side. */
+.rows .stk {
+  flex: 1;
+  min-width: 0;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px 10px 10px;
+  border-radius: 16px;
+  text-align: left;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .rows .stk:hover { transform: translateY(-1px); box-shadow: 0 0 0 1.6px var(--accent), var(--shadow-m); }
+}
+
+.rows .stk:active { transform: translateY(0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .rows .stk { transition: none; }
+  .rows .stk:hover { transform: none; }
+}
+
+.rows .ico { width: 30px; height: 30px; flex: none; margin-bottom: 0; }
+
+/* Game name over the scoring direction. */
+.wg { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.rows .g { text-align: left; }
+.wrule { font-size: 11px; font-weight: 700; color: var(--ink-dim); }
+
+/* Who holds it.
+ *
+ * "Unsigned" until names exist. It is a column of its own, at its final width
+ * and height, so that adding a name later is a text change rather than a
+ * layout change — the same reservation the homepage tiles already make. */
+.wn {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  /* Wide enough for "Unsigned" at every size — truncating the placeholder to
+     "Unsign…" would be a worse thing to look at than the name it stands in
+     for. Real names are capped at 16 characters and may still ellipsis. */
+  max-width: 12ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* When it was set. The least important column, so it is the one that goes
+   when there is no room for it. */
+.wt { display: none; flex: none; font-size: 11.5px; font-weight: 700; color: var(--ink-dim); }
+
+@media (min-width: 720px) {
+  .wt { display: inline; }
+}
+
+.wv { flex: none; display: flex; flex-direction: column; align-items: flex-end; min-width: 4.5em; }
+.rows .s { font-size: 18px; line-height: 1.15; }
+.rows .u { font-size: 10.5px; }
+
+@media (max-width: 420px) {
+  .rows .stk { gap: 9px; padding: 10px 11px 10px 9px; }
+  .wrule { font-size: 10.5px; }
 }

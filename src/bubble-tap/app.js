@@ -1,6 +1,8 @@
 import { renderGlobalBest } from "../shared/ui/leaderboard.js";
+import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
+import { recordPlay } from "../shared/ui/progress.js";
 import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
-import * as prefs from "../shared/ui/prefs.js";
+import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 
 (() => {
   "use strict";
@@ -74,14 +76,32 @@ import * as prefs from "../shared/ui/prefs.js";
   const closeSettingsBtn = document.getElementById("closeSettingsBtn");
   const soundToggle = document.getElementById("soundToggle");
   const motionToggle = document.getElementById("motionToggle");
+  const howtoBtn = document.getElementById("howtoBtn");
+  const howtoSheet = document.getElementById("howtoSheet");
+  const howtoBackdrop = document.getElementById("howtoBackdrop");
+  const shareNote = document.getElementById("shareNote");
+  const themeBtn = document.getElementById("themeBtn");
 
   // ---------- helpers ----------
   const rand = (a, b) => a + Math.random() * (b - a);
   const randInt = (a, b) => Math.floor(rand(a, b + 1));
   const pad = (n, w) => String(n).padStart(w, "0");
+  // Was a bare localStorage.getItem. That call sits in the module's
+  // initialisation path, and localStorage *throws* on property access in
+  // Safari private mode rather than returning null — so the whole game died
+  // before it drew a frame. prefs.js owns the try/catch now.
   const loadFlag = (key, def) => {
-    const v = prefs.get(key);
-    return typeof v === "boolean" ? v : def;
+    const v = getPref(key, null);
+    return v === null ? def : v === "true";
+  };
+
+  // Someone who has asked their OS for less motion has already answered this
+  // question. Reading it as the *default* means calm mode is on before they
+  // find the settings panel, while an explicit toggle still wins and persists.
+  const prefersReducedMotion = () => {
+    try {
+      return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch (e) { return false; }
   };
 
   // ---------- state ----------
@@ -90,8 +110,8 @@ import * as prefs from "../shared/ui/prefs.js";
     taps: 0,
     paused: false,
     gameOver: false,
-    soundOn: loadFlag("twb_sound", true),
-    calmMode: loadFlag("twb_calm", false),
+    soundOn: loadFlag("sound", true),
+    calmMode: loadFlag("calm", prefersReducedMotion()),
     combo: 0,
     lastPopAt: 0,
   };
@@ -516,9 +536,11 @@ import * as prefs from "../shared/ui/prefs.js";
 
   // ---------- game over / restart ----------
   function showGameOver() {
+    // Higher is better here, unlike every other game on the shelf.
+    recordPlay("bubble-tap", state.score, false);
     finalScoreEl.textContent = pad(state.score, 5);
-    const best = Math.max(state.score, Number(prefs.get("twb_best") || 0));
-    prefs.set("twb_best", best);
+    const best = Math.max(state.score, Number(getPref("bubble-tap.best", 0) || 0));
+    setPref("bubble-tap.best", best);
     bestScoreEl.textContent = "BEST " + pad(best, 5);
     endCard.show();
 
@@ -572,11 +594,13 @@ import * as prefs from "../shared/ui/prefs.js";
   }
 
   initShare({
+    btn: shareBtn,
+    note: shareNote,
     title: "Tap When Bored",
-    payload: () => ({
-      text: `I scored ${state.score} popping bubbles in Tap When Bored — dodge the hidden bombs and beat me:`,
-      url: shareUrl(state.score),
-    }),
+    text: () =>
+      `I scored ${state.score} popping bubbles in Tap When Bored — ` +
+      "dodge the hidden bombs and beat me:",
+    url: () => shareUrl(state.score),
   });
 
   // ---------- challenge banner ----------
@@ -595,26 +619,76 @@ import * as prefs from "../shared/ui/prefs.js";
   // ---------- settings ----------
   function syncToggle(el, on) {
     el.classList.toggle("on", on);
+    // The element declares role="switch"; without aria-checked a screen
+    // reader announces it as a switch whose state is unknown, every time.
+    el.setAttribute("aria-checked", on ? "true" : "false");
   }
   function openSettings() {
+    // The game-over card is modal. Letting settings open on top of it left two
+    // stacked dialogs with one Escape between them and no way back to the
+    // score.
+    if (state.gameOver) return;
     settingsPanel.classList.remove("hidden");
     syncToggle(soundToggle, state.soundOn);
     syncToggle(motionToggle, state.calmMode);
   }
   // ---------- how to play ----------
-  initHowto();
+  initHowto({
+    btn: howtoBtn,
+    sheet: howtoSheet,
+    backdrop: howtoBackdrop,
+    // No .stage on this page; .app is the whole thing behind the sheet, and
+    // the sheet itself lives outside it.
+    inertRoot: document.querySelector('.app'),
+  });
+  initThemeToggle(themeBtn);
+
+  // The overlays sit *inside* .app rather than beside it, so the things to
+  // freeze are named individually instead of one wrapper.
+  const behindOverlay = [
+    document.querySelector(".topbar"),
+    document.querySelector(".hud"),
+    document.getElementById("playfield"),
+    document.querySelector(".legend"),
+    howtoBtn,
+    document.querySelector(".seo-info"),
+  ];
+
+  bindOverlay(gameOverOverlay, {
+    primary: restartBtn,
+    inertRoot: behindOverlay,
+    label: "Game over",
+    // Shown by *removing* .hidden rather than adding .show.
+    openWhen: () => !gameOverOverlay.classList.contains("hidden"),
+    hide: () => gameOverOverlay.classList.add("hidden"),
+  });
+
+  bindOverlay(pauseOverlay, {
+    primary: resumeBtn,
+    inertRoot: behindOverlay,
+    label: "Paused",
+    openWhen: () => !pauseOverlay.classList.contains("hidden"),
+    hide: () => setPaused(false),
+  });
+
+  // Reflect the loaded preferences immediately. openSettings() used to be the
+  // only caller, so until a player opened the panel the switches advertised
+  // the markup's defaults — including "calm mode off" to someone whose OS had
+  // just told us otherwise.
+  syncToggle(soundToggle, state.soundOn);
+  syncToggle(motionToggle, state.calmMode);
 
   settingsBtn.addEventListener("click", openSettings);
   closeSettingsBtn.addEventListener("click", () => settingsPanel.classList.add("hidden"));
   soundToggle.addEventListener("click", () => {
     state.soundOn = !state.soundOn;
-    prefs.set("twb_sound", state.soundOn);
+    setPref("sound", state.soundOn);
     syncToggle(soundToggle, state.soundOn);
     if (state.soundOn) { ensureAudio(); playPop(); }
   });
   motionToggle.addEventListener("click", () => {
     state.calmMode = !state.calmMode;
-    prefs.set("twb_calm", state.calmMode);
+    setPref("calm", state.calmMode);
     syncToggle(motionToggle, state.calmMode);
     const mul = state.calmMode ? 0.35 : 1;
     for (const b of bubbles) {

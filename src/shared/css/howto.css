@@ -106,3 +106,35 @@
   color: var(--ink);
   font-weight: 700;
 }
+
+/* Reduced motion.
+ *
+ * The sheet slides up 100% of its own height, which is the largest single
+ * movement on any game page and the one most likely to provoke someone who
+ * asked the OS for less of it. This file had no reduced-motion variant at all,
+ * in any game, because it is shared and nobody owned it.
+ *
+ * Gentler, not zero. The blanket `transition-duration: 0.001ms` kill that gets
+ * pasted around is a trap here: the sheet's resting state is
+ * translateY(100%) — off screen — so removing the transition without also
+ * removing the transform would be fine, but removing the transform without
+ * thinking would leave it permanently open. Cross-fading in place is the
+ * honest translation: the sheet still arrives, it just does not travel. */
+@media (prefers-reduced-motion: reduce) {
+  .howto-sheet {
+    transition: opacity 0.12s linear;
+    transform: none;
+    opacity: 0;
+    /* Without this the sheet is invisible but still on top of the board,
+       swallowing every tap. `.show` puts it back. */
+    pointer-events: none;
+  }
+
+  .howto-sheet.show {
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .howto-backdrop { transition: opacity 0.12s linear; }
+}

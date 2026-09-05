@@ -164,6 +164,111 @@ Colour and depth should support interaction without turning the UI into a card-h
 
 ---
 
+## Review accessibility
+
+A review that only looks at the screen cannot find the defects that actually
+shipped. Put the mouse down.
+
+### Keyboard
+
+* Tab through the whole game. Can you reach the board, the controls, the rules?
+* Can you play a full round and restart without a pointer?
+* Can you always see where you are? A control with no visible focus state is a
+  dead end, and a custom background or border often suppresses the browser's
+  own ring without replacing it.
+* Does the focus ring only draw *around* things, or does it reshape them?
+
+### Screen reader semantics
+
+* Does every role describe what the thing **is**? Look specifically for
+  `role="img"` on a board and `role="status"` on a button — both replace the
+  real role and both are easy to add with good intentions.
+* Do switches and toggles set `aria-checked`, and keep it current?
+* Does every message that appears on its own — a share confirmation, a hint, an
+  error — live in an `aria-live` region? If it only changes visually, it does
+  not exist for some players.
+* Does anything announce a stale state, or a name that has been temporarily
+  overwritten by a confirmation?
+
+---
+
+## Review the end card
+
+This is the surface most likely to be wrong, because it looks finished.
+
+* Can you click the board, the restart button or the rules link **through** it?
+* Is the board behind it still in the tab order? Still in the accessibility
+  tree? `opacity` and `pointer-events` leave both intact.
+* Where does focus go when it opens? It should be the replay control.
+* Does Enter replay immediately?
+* Does Escape dismiss it, and does the page become usable again afterwards?
+* Does focus return where it came from?
+* Does anything on it move after it appears — a line that arrives from the
+  network, a label that grows? Watch the replay button specifically: it must
+  not shift under the player's thumb.
+
+And the design question underneath all of those:
+
+> Is this modal asking the player for something? It should not be. Modals are
+> for reading. If there is an ask, it goes inline, and it never blocks replay.
+
+---
+
+## Review sound
+
+* Does the game make a noise? Then: is there a mute, is it reachable on the
+  main screen, and does it persist?
+* Switch tabs, come back, play. Is there still sound? An audio context that was
+  suspended and never resumed is silent for the rest of the session, and this
+  is invisible unless you test for it.
+* Does muting here mute the rest of the site?
+
+---
+
+## Review motion under a reduced-motion preference
+
+Emulate `prefers-reduced-motion: reduce` — do not read the stylesheet and
+assume.
+
+* Is anything still animating forever?
+* Is the page still **correct**? Look for elements stuck visible that should
+  have faded out, and elements missing that should be there. An animation that
+  ends at `opacity: 0` and gets switched off leaves its element on screen.
+* Did an affordance disappear with the motion? If a pulse showed which targets
+  were valid, something static has to say so instead.
+* Check specificity: an override on a less specific selector than the rule it
+  is overriding reads correctly and does nothing.
+
+---
+
+## Review the device, not just the window
+
+* Is `viewport-fit=cover` set? If the CSS uses `env(safe-area-inset-*)` without
+  it, that padding is silently zero.
+* Measure the controls. Anything under 44x44 is a defect — including back
+  links, disclosure summaries, difficulty pills and icon buttons, which are the
+  ones that get missed. Measure the *hit area*, not the ink.
+* Do any enlarged hit areas overlap each other?
+* Is every `:hover` rule gated behind `(hover: hover) and (pointer: fine)`?
+  Tap a control on a touch screen: does it stay looking hovered?
+* Turn the phone sideways. 844x390 is a real size and the layout was not drawn
+  for it.
+* Is any text a player is meant to read under 11px?
+
+---
+
+## Review the copy
+
+* Does the replay button say the same thing as every other game? Does the share
+  confirmation?
+* Does one glyph carry more than one meaning across the site?
+* Does any confirmation claim something that did not happen?
+* Does a control relabel itself, losing its own name while the message shows?
+* Does a static default in the markup say something wrong before the JavaScript
+  corrects it — a loss title on a card that has not been lost yet?
+
+---
+
 ## Required Review Output
 
 Before making changes, provide a concise internal assessment with:
@@ -175,6 +280,8 @@ Before making changes, provide a concise internal assessment with:
 5. What could hurt performance
 6. What should change for Neon Arcade
 7. What should change for Soft Pop
+8. What cannot be operated without a mouse
+9. What moves, or can move, that the player did not move
 
 Then make only the changes that materially improve the result.
 

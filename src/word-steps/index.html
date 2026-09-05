@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<!-- head-meta -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fdf3d9">
 <!-- theme-bootstrap -->
 <link rel="stylesheet" href="style.css">
 </head>
@@ -24,6 +25,11 @@
         <button class="icon-btn" id="restartBtn" title="Start over" aria-label="Start over">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.9-6.16"/><path d="M20 4v5h-5"/></svg>
         </button>
+        <button class="icon-btn" id="soundBtn" type="button" title="Sound" aria-label="Sound on" aria-pressed="true">
+          <svg class="ico-sound-on" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.2L12 18.5v-13L7.2 9.5H4z"/><path d="M16 9.2a4 4 0 0 1 0 5.6"/><path d="M18.6 6.6a7.6 7.6 0 0 1 0 10.8"/></svg>
+          <svg class="ico-sound-off" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.2L12 18.5v-13L7.2 9.5H4z"/><path d="M16.5 10l5 4"/><path d="M21.5 10l-5 4"/></svg>
+        </button>
+        <!-- theme-btn:icon-btn -->
       </div>
     </header>
 
@@ -71,7 +77,7 @@
       <div class="overlay-actions">
         <button class="again-btn" id="againBtn">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.9-6.16"/><path d="M20 4v5h-5"/></svg>
-          Try for fewer steps
+          Play again
         </button>
         <button class="share-btn" id="shareBtn">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.7 15.7 6.6M8.3 13.3l7.4 4.1"/></svg>

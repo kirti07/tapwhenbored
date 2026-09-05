@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f3ece0">
+<!-- theme-bootstrap -->
+<title>The Wall — Every Game's Best Score — Tap When Bored</title>
+<meta name="description" content="The global best score on every Tap When Bored game, and when it was set. Free browser games, no signup, no account.">
+<link rel="canonical" href="https://www.tapwhenbored.com/wall/">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preload" href="/fonts/nunito-latin-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<!-- sprite -->
+
+<div class="wrap page">
+  <header class="top">
+    <div>
+      <a class="back-link" href="/">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+        <span>Games</span>
+      </a>
+      <h1 class="brand">The wall</h1>
+    </div>
+    <div class="top-r">
+      <!-- theme-btn:iconbtn -->
+    </div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <p class="eyebrow">Every game</p>
+      <h2 class="hero-h">The best anyone has managed</h2>
+      <p class="hero-p">One record per game, shared by everyone who plays. Beat one and this page changes for the next person who opens it.</p>
+    </div>
+
+    <!-- The board.
+         One row per game that keeps a record. The score and the date arrive
+         from the leaderboard; both are rendered here at their final size, so a
+         slow or unreachable network leaves the page exactly as it is rather
+         than growing under the reader.
+
+         The holder reads "Unsigned" because the leaderboard stores a number and
+         nothing else — there is no name to show. The line is here, at its final
+         height, so that when names do exist nothing on this page moves. -->
+    <ul class="rows" id="board">
+        <!-- wall-rows -->
+    </ul>
+
+    <p class="honest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5" stroke-linecap="round"/><circle cx="12" cy="7.6" r="1.15" fill="currentColor" stroke="none"/></svg><span>Boards are for fun — scores aren't verified.</span></p>
+  </main>
+
+  <footer class="foot">
+    <span>More tiny games coming soon.</span>
+    <span class="foot-r"><a href="/book/">Your book</a></span>
+  </footer>
+</div>
+
+<script type="module" src="./wall.js"></script>
+</body>
+</html>

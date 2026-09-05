@@ -1,64 +1,151 @@
-// localStorage, with the try/catch already around it.
-//
-// Seven games carried a byte-identical copy of this pair. The eighth carried
-// none, and read localStorage at module scope — so in Safari private mode, or
-// any browser set to block site data, bubble-tap threw before the game
-// initialised while the other seven degraded silently.
-//
-// Storage can throw on *read* as well as write, and it can be present but
-// empty. Every path here answers with the fallback instead.
-//
-// KEYS ARE NOT RENAMED. This takes the full key and passes it straight through.
-// The names it inherited are inconsistent — untangleBestMoves, flipIt:v2,
-// twb_sound — and normalising them was tempting and wrong: a rename resets
-// every player's best score, saved level, sound preference and in-progress
-// Word Steps puzzle, silently, on deploy. New keys should be spelled
-// `twb:<scope>:<name>`; the old ones keep the names they have.
-//
-// One key deliberately stays outside this module: `theme`. It is read and
-// written by scripts/theme-bootstrap.js and by the homepage's theme toggle,
-// both of which are inline parser-blocking scripts that cannot import a module.
-// Routing half of that pair through here would be worse than leaving both.
-//
-// See ARCHITECTURE.md §9.
+/* Namespaced, crash-proof access to localStorage.
+ *
+ * Two problems this exists to solve.
+ *
+ * The first is that `localStorage` throws. Not "returns null" — throws, on the
+ * property access itself, in Safari private mode and anywhere a browser is set
+ * to block site data. Seven of the eight games already wrapped every call in a
+ * try/catch; bubble-tap did not, and its unguarded read sat inside a function
+ * called during module init, so the whole game died before it drew a frame.
+ * That is the entire class of bug: it is not enough for most callers to
+ * remember, because the one that forgets takes the page down with it.
+ *
+ * The second is naming. The repo grew three conventions — `untangleBestMoves`,
+ * `wordSteps:v1`, `twb_sound` — and nothing stopped a future key colliding with
+ * one of them. Everything written through here gets a `twb:` prefix, so the
+ * site's keys are greppable in devtools and can never collide with a key some
+ * embedded script sets.
+ *
+ * LEGACY_KEYS migrates the old names forward on first read. It copies rather
+ * than moves: a player who somehow loads an older build still finds their best
+ * score where that build expects it. The cost is a handful of duplicated
+ * strings in storage, which is the right price for not deleting somebody's
+ * 40-day streak on a deploy.
+ *
+ * Values are strings, exactly as localStorage has them, with getJSON/setJSON
+ * for the three games that store objects. Deliberately not a generic
+ * serialising store: a `get` that sometimes returns a string and sometimes an
+ * object is the kind of API that produces `"[object Object]"` in a HUD.
+ */
+
+var PREFIX = "twb:";
+
+/* new short name -> the unprefixed key that build shipped before this file. */
+var LEGACY_KEYS = {
+  "untangle.best": "untangleBestMoves",
+  "slide-n-order.best": "slideNOrderBest",
+  "honeycomb.best": "honeycombBestTimeMs",
+  "marble-nostalgia.played": "marbleNostalgiaPlayed",
+  "flip-it.best": "flipIt:v2",
+  "flip-it.recent": "flipItRecent",
+  "flip-it.level": "flipItLevel",
+  "word-steps.state": "wordSteps:v1",
+  "bubble-tap.best": "twb_best",
+  sound: "twb_sound",
+  calm: "twb_calm",
+};
+
+/* One probe, cached. Every read and write still has its own try/catch — a
+   browser can revoke storage mid-session — but this keeps the common blocked
+   case from throwing and being caught once per call. */
+var available = null;
+
+function usable() {
+  if (available !== null) return available;
+  try {
+    var probe = PREFIX + "_probe";
+    window.localStorage.setItem(probe, "1");
+    window.localStorage.removeItem(probe);
+    available = true;
+  } catch (e) {
+    available = false;
+  }
+  return available;
+}
 
 /**
- * The stored value for `key`, or `fallback` if there is nothing usable there.
- *
- * Values are JSON where a game stored JSON and a bare string where it stored a
- * string — `String(42)` and `JSON.stringify(42)` agree, but `String("dark")`
- * and `JSON.stringify("dark")` do not, and the keys predate this module. So
- * parse is attempted and a parse failure means the value was always a plain
- * string. That is what lets every existing key keep its existing name.
+ * Read a preference. Returns `fallback` when the key is unset, when storage is
+ * blocked, or when reading throws.
  */
-export function get(key, fallback = null) {
-  let raw;
+export function get(key, fallback) {
+  if (!usable()) return fallback === undefined ? null : fallback;
   try {
-    raw = localStorage.getItem(key);
-  } catch (e) {
-    return fallback;
-  }
-  if (raw === null) return fallback;
+    var v = window.localStorage.getItem(PREFIX + key);
+    if (v !== null) return v;
 
-  try {
-    return JSON.parse(raw);
+    /* Not found under the new name. Look for the pre-namespace key and, if it
+       is there, copy it forward so this is the last time we look. */
+    var legacy = LEGACY_KEYS[key];
+    if (legacy) {
+      var old = window.localStorage.getItem(legacy);
+      if (old !== null) {
+        try { window.localStorage.setItem(PREFIX + key, old); } catch (e) { /* full or blocked */ }
+        return old;
+      }
+    }
+    return fallback === undefined ? null : fallback;
   } catch (e) {
-    return raw;
+    return fallback === undefined ? null : fallback;
   }
 }
 
 /**
- * Stores `value` under `key`. Never throws.
- *
- * Strings are written as-is and everything else as JSON, which is what the
- * per-game helpers this replaced did: `String(v)` for numbers and booleans,
- * `JSON.stringify` for objects. Failure is silent by design — a player with
- * storage blocked should lose their best score, not their game.
+ * Write a preference. Silent no-op when storage is unavailable or full —
+ * a preference failing to persist must never interrupt play.
  */
 export function set(key, value) {
+  if (!usable()) return false;
   try {
-    localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
+    window.localStorage.setItem(PREFIX + key, String(value));
+    return true;
   } catch (e) {
-    /* storage unavailable or full — the game carries on without it */
+    return false;
   }
+}
+
+/** Read and parse a JSON preference. Malformed stored JSON reads as `fallback`. */
+export function getJSON(key, fallback) {
+  var raw = get(key, null);
+  if (raw === null) return fallback === undefined ? null : fallback;
+  try {
+    var parsed = JSON.parse(raw);
+    return parsed === null || parsed === undefined ? fallback : parsed;
+  } catch (e) {
+    return fallback === undefined ? null : fallback;
+  }
+}
+
+/** Serialise and write a JSON preference. */
+export function setJSON(key, value) {
+  try {
+    return set(key, JSON.stringify(value));
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * A whole-number preference, or `fallback`.
+ *
+ * Four games had their own `readBest`, all the same three lines, and two of
+ * them wrapped it in a try/catch — dead code, since nothing in this file
+ * throws. That is the trouble with a helper each game writes for itself: the
+ * defensiveness gets copied along with the logic, and then outlives the reason
+ * for it.
+ */
+export function getInt(key, fallback = null) {
+  var raw = get(key, null);
+  if (raw === null) return fallback;
+  var n = parseInt(raw, 10);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+/** Remove a preference, and the legacy key it may have been migrated from. */
+export function remove(key) {
+  if (!usable()) return;
+  try {
+    window.localStorage.removeItem(PREFIX + key);
+    var legacy = LEGACY_KEYS[key];
+    if (legacy) window.localStorage.removeItem(legacy);
+  } catch (e) { /* ignore */ }
 }

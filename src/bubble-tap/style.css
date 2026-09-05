@@ -68,9 +68,24 @@ html, body {
   padding: 18px 20px 10px;
 }
 
-.brand { flex-direction: row; align-items: center; gap: 12px; }
-.back-link { margin-bottom: 0; white-space: nowrap; }
-.back-link:hover { color: var(--ink); }
+.title-group { display: flex; align-items: center; gap: 12px; }
+
+.back-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+/* Gated: on a touch screen a tap leaves a false hover behind that sticks
+   until the next tap somewhere else. */
+@media (hover: hover) and (pointer: fine) {
+  .back-link:hover { color: var(--ink); }
+}
 
 /* The one piece of the topbar that is this game's identity: a monospace
    wordmark, not the display face every other game sets here. */
@@ -101,7 +116,9 @@ html, body {
   color: var(--accent-dark);
   transform: scale(0.92);
 }
-.icon-btn:hover { background: rgba(255,255,255,0.6); }
+@media (hover: hover) and (pointer: fine) {
+  .icon-btn:hover { background: rgba(255,255,255,0.6); }
+}
 .icon-btn.round { border-radius: 999px; }
 
 .hud {
@@ -470,6 +487,11 @@ html, body {
 .again-btn,
 .btn {
   font-family: inherit;
+  /* The label in the markup is the site-wide "Play again" / "Share"; the
+     shouting is this game's visual register, so it belongs here rather than
+     in the copy. Keeps bubble-tap looking like itself while the string a
+     screen reader announces matches every other game. */
+  text-transform: uppercase;
   letter-spacing: 0.1em;
   font-size: 12px;
   font-weight: 700;
@@ -660,4 +682,123 @@ html, body {
 
 [data-theme="dark"] .panel {
   background: rgba(0, 0, 0, 0.55);
+}
+
+/* Reduced motion.
+ *
+ * This game had no reduced-motion rule either, and it shipped something worse
+ * than an omission: a manual CALM MODE toggle buried in a settings panel,
+ * defaulting to off and never seeded from the OS preference. Someone who had
+ * already told their device they want less motion still got full-speed
+ * drifting bubbles until they went looking for a switch. app.js now reads the
+ * preference as the default; this block covers the CSS half.
+ *
+ * The pop and explode animations end at `opacity: 0` with `forwards`, and the
+ * JS removes the node on their timing — so they cannot simply be switched off
+ * or the popped bubbles would stay on screen. They keep the fade and lose the
+ * scaling. `screen-flash` goes entirely: a full-viewport black flash is the
+ * single most likely thing on this page to hurt somebody. */
+@media (prefers-reduced-motion: reduce) {
+  .bubble.spawning {
+    animation: none;
+    /* Base state is the animation's 100%, so it just appears. */
+    opacity: 1;
+  }
+
+  .bubble.popping {
+    animation: none;
+    opacity: 0;
+    transition: opacity 0.12s linear;
+  }
+
+  .bubble.exploding {
+    animation: none;
+    opacity: 0;
+    transition: opacity 0.12s linear;
+  }
+
+  /* The score that floats up off a popped bubble. Still readable, held in
+     place, then gone. */
+  .float-pop {
+    animation: none;
+    opacity: 1;
+    transition: opacity 0.2s linear 0.35s;
+  }
+
+  .pop-ring { display: none; }
+
+  /* Deliberately removed rather than softened. */
+  .screen-flash { display: none; }
+
+  .bubble { transition: opacity 0.12s linear, box-shadow 0.12s linear; }
+}
+
+/* Share confirmation.
+ *
+ * This game used to relabel the Share button itself to "LINK COPIED", which
+ * destroys the control's accessible name for as long as the message shows and
+ * announces nothing. It now uses the same separate line as every other game —
+ * styled to bubble-tap's own uppercase, mono-ish register rather than dropped
+ * in from the shared sheet. */
+.share-note {
+  margin: 6px 0 0;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--ink-soft, #7a736a);
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.share-note.show { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .share-note { transition: opacity 0.12s linear; }
+}
+
+/* Tap targets.
+ *
+ * bubble-tap does not import shell.css, so the site-wide 44x44 floor does not
+ * reach it. Its three topbar icon buttons measured 30x30 and its back link
+ * 13x13 — the smallest controls anywhere on the site, on the game most likely
+ * to be played one-handed at speed.
+ *
+ * Same technique as the shared sheet: a centred pseudo-element, so the compact
+ * look of the bar is untouched and only the reachable area grows. */
+.icon-btn,
+.back-link,
+.howto-link {
+  position: relative;
+}
+
+.icon-btn::after,
+.back-link::after,
+.howto-link::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: max(100%, 44px);
+  height: 44px;
+}
+
+.seo-info summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+}
+
+.seo-info { font-size: 11px; }
+
+/* Phone landscape.
+ *
+ * bubble-tap does not import shell.css, so the site-wide short-viewport rule
+ * does not reach it — the one page on the site where the playfield is the
+ * whole point and vertical space is scarcest. */
+@media (max-height: 480px) {
+  .subtitle,
+  .seo-info { display: none; }
+
+  .legend { display: none; }
 }

@@ -1,4 +1,12 @@
 import { renderGlobalBest } from "../shared/ui/leaderboard.js";
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import { tone, initSoundToggle } from "../shared/ui/audio.js";
+import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
+import { getJSON, setJSON, get as getPref, set as setPref } from "../shared/ui/prefs.js";
+import { recordPlay } from "../shared/ui/progress.js";
+/* Was a local formatter that zero-padded the minutes, so a nine-second solve
+   read "00:09". The site now spells a duration one way. */
+import { formatDuration as formatTime } from "../shared/ui/format.js";
 
 import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
 import * as prefs from "../shared/ui/prefs.js";
@@ -35,10 +43,9 @@ import * as prefs from "../shared/ui/prefs.js";
   var RIPPLE_STEP_MS = 45;
   var TICK_MS = 250;
 
-  var BEST_KEY = "flipIt:v2"; // v1 was keyed by board size, before levels
-  var RECENT_KEY = "flipItRecent";
-  var LEVEL_KEY = "flipItLevel";
-  var SOUND_KEY = "twb_sound"; // shared with bubble-tap: one sound preference
+  var BEST_KEY = "flip-it.best";     // v1 was keyed by board size, before levels
+  var RECENT_KEY = "flip-it.recent";
+  var LEVEL_KEY = "flip-it.level";
 
   var board = document.getElementById("board");
   var movesVal = document.getElementById("movesVal");
@@ -55,8 +62,10 @@ import * as prefs from "../shared/ui/prefs.js";
   var lbHint = document.getElementById("lbHint");
   var againBtn = document.getElementById("againBtn");
   var challengeBanner = document.getElementById("challengeBanner");
-
-  var endCard = bindOverlay(overlay);
+  var howtoBtn = document.getElementById("howtoBtn");
+  var howtoSheet = document.getElementById("howtoSheet");
+  var howtoBackdrop = document.getElementById("howtoBackdrop");
+  var themeBtn = document.getElementById("themeBtn");
 
   var level = readLevel();
   var size = LEVELS[level].sizes[0]; // the dealt board decides; this is a seed
@@ -71,75 +80,47 @@ import * as prefs from "../shared/ui/prefs.js";
   var tickHandle = null;
   var rippleHandle = null;
   var recent = readRecent();
-  var soundOn = readSound();
   var bests = readBests();
 
   // ---------- storage (all of it optional, none of it load-bearing) ----------
 
   function readLevel() {
-    var v = prefs.get(LEVEL_KEY);
-    return LEVEL_ORDER.indexOf(v) !== -1 ? v : DEFAULT_LEVEL;
+    try {
+      var v = getPref(LEVEL_KEY, null);
+      return LEVEL_ORDER.indexOf(v) !== -1 ? v : DEFAULT_LEVEL;
+    } catch (e) { return DEFAULT_LEVEL; }
   }
 
   function writeLevel(v) {
-    prefs.set(LEVEL_KEY, v);
+    setPref(LEVEL_KEY, v);
   }
 
   function readRecent() {
-    var v = prefs.get(RECENT_KEY);
-    return Array.isArray(v) ? v.slice(-RECENT_MAX) : [];
+    try {
+      var v = getJSON(RECENT_KEY, null);
+      return Array.isArray(v) ? v.slice(-RECENT_MAX) : [];
+    } catch (e) { return []; }
   }
 
   function pushRecent(sig) {
     recent.push(sig);
     if (recent.length > RECENT_MAX) recent = recent.slice(-RECENT_MAX);
-    prefs.set(RECENT_KEY, recent);
+    setJSON(RECENT_KEY, recent);
   }
 
   function readBests() {
-    var v = prefs.get(BEST_KEY);
-    return v && typeof v === "object" ? v : {};
+    try {
+      var v = getJSON(BEST_KEY, null);
+      return v && typeof v === "object" ? v : {};
+    } catch (e) { return {}; }
   }
 
   function writeBests() {
-    prefs.set(BEST_KEY, bests);
+    setJSON(BEST_KEY, bests);
   }
 
-  function readSound() {
-    return prefs.get(SOUND_KEY) !== false;
-  }
 
-  function writeSound() {
-    prefs.set(SOUND_KEY, soundOn);
-  }
-
-  // ---------- audio (tiny, procedural, no files) ----------
-  var actx = null;
-  function ctx() {
-    if (!actx) {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      actx = new AC();
-    }
-    return actx;
-  }
-
-  function tone(freq, dur, type, gain, delay) {
-    if (!soundOn) return;
-    try {
-      var c = ctx();
-      var at = c.currentTime + (delay || 0);
-      var osc = c.createOscillator();
-      var g = c.createGain();
-      osc.type = type;
-      osc.frequency.value = freq;
-      g.gain.setValueAtTime(gain, at);
-      g.gain.exponentialRampToValueAtTime(0.001, at + dur);
-      osc.connect(g).connect(c.destination);
-      osc.start(at);
-      osc.stop(at + dur);
-    } catch (e) { /* audio not available, ignore */ }
-  }
-
+  // ---------- audio ----------
   function sndFlip() { tone(660, 0.07, "sine", 0.05); }
   function sndUi() { tone(420, 0.05, "triangle", 0.04); }
   function sndWin() {
@@ -396,6 +377,11 @@ import * as prefs from "../shared/ui/prefs.js";
   function win(lastIndex) {
     ended = true;
     stopClock();
+    /* Here rather than in showResult(), whose renderGlobalBest call is behind
+       `level === LB_LEVEL && perfect` — most finished boards never reach it,
+       and every finished board earns the sticker. stopClock() has just stamped
+       finalMs. */
+    recordPlay("flip-it", Math.round(finalMs), true);
     board.classList.add("is-locked");
     sndWin();
 
@@ -422,12 +408,6 @@ import * as prefs from "../shared/ui/prefs.js";
     return performance.now() - startedAt;
   }
 
-  function formatTime(ms) {
-    var total = Math.floor(ms / 1000);
-    var m = Math.floor(total / 60);
-    var s = total % 60;
-    return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
-  }
 
   function startClock() {
     startedAt = performance.now();
@@ -563,15 +543,6 @@ import * as prefs from "../shared/ui/prefs.js";
     return url.toString();
   }
 
-  function shareText() {
-    return {
-      text: "I cleared FLIP IT on " + LEVELS[level].label + " (" + size + "×" + size +
-        ") in " + moves + (moves === 1 ? " move" : " moves") +
-        " (optimal " + optimal + "). Can you beat that?",
-      url: shareUrl(),
-    };
-  }
-
   /** A shared link carries the friend's score and the level they played. */
   function checkChallengeLink() {
     if (!challengeBanner) return;
@@ -601,13 +572,9 @@ import * as prefs from "../shared/ui/prefs.js";
 
   // ---------- sound toggle ----------
 
-  function syncSound() {
-    soundBtn.classList.toggle("is-off", !soundOn);
-    soundBtn.setAttribute("aria-pressed", soundOn ? "true" : "false");
-    soundBtn.setAttribute("aria-label", soundOn ? "Sound on" : "Sound off");
-  }
 
-  initHowto();
+  // ---------- how to play ----------
+  initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });
 
   board.addEventListener("click", function (e) {
     var el = e.target.closest(".tile");
@@ -629,17 +596,28 @@ import * as prefs from "../shared/ui/prefs.js";
   resetBtn.addEventListener("click", function () { sndUi(); resetBoard(); });
   restartBtn.addEventListener("click", function () { sndUi(); deal(); });
   againBtn.addEventListener("click", function () { sndUi(); deal(); });
-  initShare({ title: "Flip It", payload: shareText });
+  initShare({
+    btn: shareBtn,
+    note: shareNote,
+    title: "Flip It",
+    text: function () {
+      return "I cleared FLIP IT on " + LEVELS[level].label + " (" + size + "×" + size +
+        ") in " + moves + (moves === 1 ? " move" : " moves") +
+        " (optimal " + optimal + "). Can you beat that?";
+    },
+    url: shareUrl,
+  });
 
-  soundBtn.addEventListener("click", function () {
-    soundOn = !soundOn;
-    writeSound();
-    syncSound();
-    if (soundOn) sndUi();
+  initSoundToggle(soundBtn, sndUi);
+
+  initThemeToggle(themeBtn);
+
+  bindOverlay(overlay, {
+    primary: againBtn,
+    label: "Game over",
   });
 
   checkChallengeLink();
-  syncSound();
   syncLevelButtons();
   deal();
 })();

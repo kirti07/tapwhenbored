@@ -2,8 +2,7 @@ import { defineConfig, loadEnv } from "vite";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { games, home, SITE_URL } from "./src/data/games.js";
-import { preloadsFor } from "./scripts/font-preloads.js";
+import { games, home, pages, SITE_URL } from "./src/data/games.js";
 
 // Absolute, derived from this file's own location. A relative `root: "src"`
 // would be resolved against process.cwd(), which is not necessarily the repo.
@@ -112,6 +111,8 @@ function vercelInsights() {
 const MARKER = "<!-- head-meta -->";
 
 const isHomepage = (ctx) => ctx.path === "/index.html" || ctx.path === "/";
+const isBook = (ctx) => ctx.path === "/book/index.html" || ctx.path === "/book/";
+const isWall = (ctx) => ctx.path === "/wall/index.html" || ctx.path === "/wall/";
 
 const escapeHtml = (v) =>
   String(v).replace(
@@ -119,15 +120,8 @@ const escapeHtml = (v) =>
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
   );
 
-/**
- * How many shelf cards are at or near the fold. The shelf is two columns on a
- * phone, so roughly the first four: those are fetched eagerly (the first as the
- * LCP candidate) and everything below waits until it is scrolled towards.
- *
- * A fixed four whether the catalogue holds seven games or fifty — the point is
- * that the launch cost does not grow with the shelf (ARCHITECTURE.md §19).
- */
-const EAGER_CARDS = 4;
+// The homepage's dark theme-color. Games carry their own in the registry.
+const HOME_DARK_THEME_COLOR = "#0f0e18";
 
 /**
  * Inlines the theme bootstrap into every page in place of its
@@ -174,112 +168,49 @@ function themeBootstrap() {
 }
 
 /**
- * Writes every game page's <head> from the registry, in place of its
- * `<!-- head-meta -->` marker.
+ * Markup that every page draws the same way, kept in one file each.
  *
- * This is the change that made a platform edit cost one edit instead of eight.
- * Each game used to paste ~45 lines of head by hand — viewport, theme colour,
- * title, description, the Open Graph and Twitter sets, two JSON-LD blocks and
- * the font preloads — and the copies drifted. Only the canonical and og:url
- * were ever validated; a theme colour was already one hex digit out from the
- * stylesheet it was supposed to match, and nothing could see it.
+ * The sprite was 50 identical lines in two documents and the theme button four
+ * lines in eleven, which had already drifted into three variants — the games'
+ * copy was missing the `aria-hidden` the others had. Neither is a runtime
+ * concern, so neither belongs in a module: they are substituted into the HTML
+ * at build time, exactly like the shelf and the slots.
  *
- * Build-time substitution, not a runtime render: transformIndexHtml with
- * order: "pre", the same mechanism as homepageFromRegistry(). Every tag is
- * static in the shipped HTML, so ARCHITECTURE.md §28's rule that essential SEO
- * never depends on runtime JS still holds, and §41's ban on runtime-generated
- * SEO is untouched. It runs in dev too, so local matches production.
- *
- * The homepage is deliberately not run through this. Its head is a different
- * shape — summary_large_image at 1200x630, og:site_name, og:locale,
- * og:image:alt, a WebSite JSON-LD and a FAQPage JSON-LD — and there is exactly
- * one of it, so the duplication this exists to remove does not apply. Growing
- * this into a branch per field to cover one page would cost more than it saves.
- *
- * Preloads are derived from the page's own stylesheet rather than declared in
- * the registry, so no field can claim a weight the page does not render. See
- * scripts/font-preloads.js.
+ * The button's class differs by page family (`.iconbtn` on the homepage and the
+ * book, `.icon-btn` in the game shells), so that one bit is a parameter.
  */
-function headFromRegistry() {
-  const bySlug = new Map(games.map((g) => [g.slug, g]));
+function sharedMarkup() {
+  let sprite = "";
+  let themeBtn = "";
 
-  // Identical on every game page, so they are constants here rather than
-  // fields nothing would ever vary (ARCHITECTURE.md §10).
-  const VIEWPORT = "width=device-width, initial-scale=1";
-  const OG_IMAGE_SIZE = "640";
-
-  const head = (g, css) => {
-    const url = SITE_URL + g.path;
-    const img = SITE_URL + g.ogImage;
-    const meta = (k, v, prop) =>
-      `<meta ${prop ? "property" : "name"}="${k}" content="${escapeHtml(v)}">`;
-
-    return [
-      `<meta name="viewport" content="${VIEWPORT}">`,
-      meta("theme-color", g.themeColor.light),
-      `<title>${escapeHtml(g.seoTitle)}</title>`,
-      meta("description", g.description),
-      `<link rel="canonical" href="${url}">`,
-      meta("og:type", "website", true),
-      meta("og:title", g.seoTitle, true),
-      meta("og:description", g.ogDescription, true),
-      meta("og:url", url, true),
-      meta("og:image", img, true),
-      meta("og:image:width", OG_IMAGE_SIZE, true),
-      meta("og:image:height", OG_IMAGE_SIZE, true),
-      meta("twitter:card", "summary"),
-      meta("twitter:title", g.seoTitle),
-      meta("twitter:description", g.ogDescription),
-      meta("twitter:image", img),
-      `<link rel="icon" type="image/svg+xml" href="/favicon.svg">`,
-      `<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "Game",
-  "name": ${JSON.stringify(g.title)},
-  "url": ${JSON.stringify(url)},
-  "description": ${JSON.stringify(g.schemaDescription)},
-  "image": ${JSON.stringify(img)},
-  "genre": ${JSON.stringify(g.genre)},
-  "playMode": "SinglePlayer",
-  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-}
-</script>`,
-      `<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    { "@type": "ListItem", "position": 1, "name": "Tap When Bored", "item": ${JSON.stringify(SITE_URL + home.path)} },
-    { "@type": "ListItem", "position": 2, "name": ${JSON.stringify(g.title)}, "item": ${JSON.stringify(url)} }
-  ]
-}
-</script>`,
-      ...preloadsFor(css).map(
-        (f) => `<link rel="preload" href="${f}" as="font" type="font/woff2" crossorigin>`,
-      ),
-    ].join("\n");
+  const read = () => {
+    sprite = readFileSync(path.join(rootDir, "scripts/sprite.svg"), "utf8").trim();
+    themeBtn = readFileSync(path.join(rootDir, "scripts/theme-button.html"), "utf8").trim();
   };
 
   return {
-    name: "twb:head-from-registry",
-    // "pre" so Vite still sees a plain <head> when it injects preloads, and so
-    // the stylesheet link this reads is still the source one.
+    name: "twb:shared-markup",
+    buildStart() {
+      read();
+      this.addWatchFile?.(path.join(rootDir, "scripts/sprite.svg"));
+      this.addWatchFile?.(path.join(rootDir, "scripts/theme-button.html"));
+    },
+    configureServer() {
+      read();
+    },
     transformIndexHtml: {
       order: "pre",
-      handler(html, ctx) {
-        if (!html.includes(MARKER)) return html;
-
-        const slug = ctx.path.replace(/^\//, "").split("/")[0];
-        const g = bySlug.get(slug);
-        if (!g) return html;
-
-        const stylesheet = path.join(srcDir, slug, "style.css");
-        // So `vite dev` re-runs this when a game restyles itself into or out of
-        // needing a font weight.
-        this.addWatchFile?.(stylesheet);
-
-        return html.replace(MARKER, head(g, readFileSync(stylesheet, "utf8")));
+      handler(html) {
+        if (html.includes("<!-- sprite -->")) {
+          html = html.replace("<!-- sprite -->", sprite);
+        }
+        return html.replace(/([ \t]*)<!-- theme-btn(?::([\w-]+))? -->/g, (_m, indent, cls) =>
+          indent +
+          themeBtn
+            .replace("{cls}", cls || "iconbtn")
+            .split("\n")
+            .join("\n" + indent),
+        );
       },
     },
   };
@@ -302,28 +233,111 @@ function headFromRegistry() {
  * is what ships.
  */
 function homepageFromRegistry() {
-  const card = (g, i) => `    <a class="card" style="--accent-light:${g.accent.light};--accent-dark:${g.accent.dark}" href="${g.path}">
-      <img class="thumb" src="${g.thumb}" width="640" height="640" decoding="async"${
-        i === 0 ? ' fetchpriority="high"' : ""
-      }${i < EAGER_CARDS ? "" : ' loading="lazy"'} alt="${escapeHtml(g.thumbAlt)}">
-      <div class="card-body">
-        <div class="card-text">
-          <h2 class="card-name">${escapeHtml(g.title)}</h2>
-          <p class="card-desc">${escapeHtml(g.tagline)}</p>
-        </div>
-        <span class="play-btn" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>
-      </div>
-    </a>`;
+  /* A small deterministic tilt per card. Decoration, so it is derived from
+     position rather than stored in the registry — a field nothing but a
+     rotation reads would be a field nobody maintains. */
+  const TILT = [2.6, -3, 1.2, -1.8, 2.2, -2.6, 1.5, -0.9];
+  const tilt = (i) => TILT[i % TILT.length];
+
+  const vars = (g) => `--accent:${g.accent};--accent-d:${g.accentDark}`;
+
+  const sticker = (g, size, rot) =>
+    `<span class="sb" style="${vars(g)};--sz:${size};--rot:${rot}deg" aria-hidden="true">` +
+    `<svg viewBox="0 0 48 48"><use href="#${g.sticker}"/></svg></span>`;
+
+  const card = (g, i) => `        <a class="card" href="${g.path}" style="${vars(g)}">
+          <span class="card-art">${sticker(g, "64px", tilt(i))}</span>
+          <span class="card-b">
+            <h2 class="card-n">${escapeHtml(g.title)}</h2>
+            <span class="card-t">${escapeHtml(g.tagline)}</span>
+            <span class="card-f">
+              <span class="card-best" data-best="${g.slug}" hidden></span>
+              <span class="card-new" data-new="${g.slug}">New sticker</span>
+              <span class="card-go" aria-hidden="true"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M8.5 5.6 18 12l-9.5 6.4z"/></svg></span>
+            </span>
+          </span>
+        </a>`;
+
+  /* One outline per game, in shelf order. home.js swaps a slot to its filled
+     sticker when that game has a local best. Rendered here rather than in JS so
+     the strip has its final height on the first frame. */
+  const slot = (g) => `        <span class="slot slot--e" data-slot="${g.slug}" title="${escapeHtml(g.title)}">` +
+    `<svg viewBox="0 0 48 48" aria-hidden="true"><use href="#${g.sticker}"/></svg>` +
+    `<span class="slot-fill">${sticker(g, "100%", 0)}</span></span>`;
+
+  /* The wall, one tile per game that actually has a board. The number and the
+     signature arrive from the network; both are rendered as placeholders that
+     already occupy their final height, so the tile never grows under the
+     reader. `unit` finally has a consumer. */
+  const tile = (g, i) => `        <figure class="stk" data-slug="${g.slug}" style="${vars(g)};--rot:${tilt(i)}deg">
+          <span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#${g.sticker}"/></svg></span>
+          <figcaption class="g">${escapeHtml(g.title)}</figcaption>
+          <p class="s num" data-score>&mdash;</p>
+          <p class="u">${escapeHtml(g.scoreUnit)}</p>
+          <p class="sig" data-sig>Unsigned</p>
+        </figure>`;
+
+  /* The book page's full-size slots. Same registry, same sprite, but a card
+     rather than a chip: each one carries the game's name and has room for
+     today's score. Rendered at build time so the grid has its final height on
+     the first frame — the counts arrive from script a moment later, and nothing
+     may move underneath the reader when they do. */
+  const bookSlot = (g, i) => `        <div class="slot slot--e" data-slot="${g.slug}" style="${vars(g)};--rot:${tilt(i)}deg">
+          <span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#${g.sticker}"/></svg></span>
+          <p class="g">${escapeHtml(g.title)}</p>
+          <p class="lab" data-lab>Not played today</p>
+          <p class="s num" data-score hidden></p>
+          <p class="u" data-unit hidden>${escapeHtml(g.scoreUnit || "")}</p>
+          <p class="sig" data-sig hidden></p>
+          <a class="btn btn--s" href="${g.path}">Play</a>
+        </div>`;
+
+  /* The wall, one row per game that has a board.
+     Same read as the homepage tiles, laid out as a list so each record has room
+     for the things a tile has no space for: which way round the game scores,
+     and when the record was set. Rendered here rather than in script so the
+     list has its final height on the first frame — the numbers arrive from the
+     network a moment later and must not push anything down. */
+  const wallRow = (g) => `        <li class="wrow" data-slug="${g.slug}">
+          <a class="stk" href="${g.path}" style="${vars(g)}">
+            <span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#${g.sticker}"/></svg></span>
+            <span class="wg">
+              <span class="g">${escapeHtml(g.title)}</span>
+              <span class="wrule">${g.leaderboard.lowerIsBetter ? "fewer is better" : "higher is better"}</span>
+            </span>
+            <span class="wn" data-holder>Unsigned</span>
+            <span class="wt" data-when></span>
+            <span class="wv">
+              <span class="s num" data-score>&mdash;</span>
+              <span class="u">${escapeHtml(g.scoreUnit)}</span>
+            </span>
+          </a>
+        </li>`;
 
   return {
     name: "twb:homepage-from-registry",
     transformIndexHtml: {
       order: "pre",
       handler(html, ctx) {
+        if (isBook(ctx)) {
+          return html.replace(
+            "        <!-- book-slots -->",
+            games.map(bookSlot).join("\n"),
+          );
+        }
+        if (isWall(ctx)) {
+          return html.replace(
+            "        <!-- wall-rows -->",
+            games.filter((g) => g.leaderboard !== false).map(wallRow).join("\n"),
+          );
+        }
         // Homepage only; every other page is served untouched.
         if (!isHomepage(ctx)) return html;
 
-        const shelf = games.map(card).join("\n\n");
+        const shelf = games.map(card).join("\n");
+        const slots = games.map(slot).join("\n");
+        const boarded = games.filter((g) => g.leaderboard !== false);
+        const tiles = boarded.map(tile).join("\n");
         const hasPart = games
           .map(
             (g) =>
@@ -334,14 +348,9 @@ function homepageFromRegistry() {
 
         return html
           .replace("    <!-- games-shelf -->", shelf)
-          .replace('  "hasPart": []', `  "hasPart": [\n${hasPart}\n  ]`)
-          // The homepage's two theme colours, from the registry. They used to be
-          // literals in four files — here, the meta tag, the toggle below it and
-          // style.css — which is how the manifest once shipped a purple launch
-          // screen in front of a near-white page. Both placeholders appear more
-          // than once, hence the global replace.
-          .replaceAll("__THEME_LIGHT__", home.themeColor.light)
-          .replaceAll("__THEME_DARK__", home.themeColor.dark);
+          .replace("        <!-- book-slots -->", slots)
+          .replace("        <!-- wall-tiles -->", tiles)
+          .replace('  "hasPart": []', `  "hasPart": [\n${hasPart}\n  ]`);
       },
     },
   };
@@ -361,7 +370,7 @@ function homepageFromRegistry() {
  */
 function sitemap() {
   const render = () => {
-    const entries = [home, ...games];
+    const entries = [home, ...pages, ...games];
     const urls = entries
       .map(
         (e) =>
@@ -518,6 +527,7 @@ export default defineConfig(({ mode }) => {
     trailingSlashParity(),
     headFromRegistry(),
     themeBootstrap(),
+    sharedMarkup(),
     homepageFromRegistry(),
     vercelInsights(),
     sitemap(),

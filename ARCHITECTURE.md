@@ -274,11 +274,14 @@ tap-when-bored/
 │   │   │   ├── howto.css
 │   │   │   └── leaderboard.css
 │   │   └── ui/
-│   │       ├── leaderboard.js one global best per game (§27)
-│   │       ├── shell.js       howto, share, overlay — three functions (§9)
-│   │       └── prefs.js       localStorage get/set with the try/catch (§9)
-│   │                         this is the whole of shared/ui/ — §9 lists what
-│   │                         else is allowed to live here, not what does
+│   │       ├── leaderboard.js
+│   │       ├── prefs.js      namespaced localStorage, try/catch inside
+│   │       ├── audio.js      one tone() + the site-wide mute
+│   │       ├── theme.js      the in-game theme toggle
+│   │       └── shell.js      initHowto, initShare, createNote, bindOverlay
+│   │                         §9 lists what else is *allowed* to live here.
+│   │                         Every one of these replaced eight hand-maintained
+│   │                         copies; none of them holds game rules.
 │   │
 │   ├── honeycomb/            →  /honeycomb/
 │   │   ├── index.html        mandatory — this file makes it a page
@@ -397,39 +400,32 @@ unless a concrete, repeated requirement across multiple games justifies them.
 
 The default should be to keep logic inside the game.
 
-## What actually lives in `shared/ui/`
+## What is actually shared, and why each one earned it
 
-Three modules. Each exists because the same code was pasted into every game and
-drifted, which is the only justification this section accepts.
-
-| Module | Exports | Why it is shared |
+| Module | Replaced | Why it is shared, not copied |
 | --- | --- | --- |
-| `leaderboard.js` | `submitScore`, `localDay`, `renderGlobalBest` | The five-state global-best line, and the one write path to Supabase (§27). |
-| `shell.js` | `initHowto`, `initShare`, `bindOverlay` | The how-to sheet, the share button and the end-card overlay: platform surfaces every game has, not game rules. |
-| `prefs.js` | `get`, `set` | `localStorage` with the `try`/`catch` around it. Seven games had a byte-identical copy; the eighth had none and threw on load in private mode. |
+| `ui/leaderboard.js` | — | Score direction lives in the database; the client never compares scores (§27). |
+| `ui/prefs.js` | 3 naming conventions, 7 hand-written try/catch pairs, 1 missing one | `localStorage` *throws* in Safari private mode. It is not enough for most callers to remember — the one that forgets takes the page down. |
+| `ui/audio.js` | 7 copies of `tone()` in 4 drifted signatures, and 7 of the mute-button wiring | Only 3 of 8 games resumed a suspended `AudioContext`, so in the other 5 a tab switch killed audio for the session. The mute is one preference for the whole site. |
+| `ui/theme.js` | nothing — the games had no toggle | Landing on a shared link and having to leave the game to change theme. The *initial* theme stays in the inlined bootstrap, which is the only thing that can beat first paint. |
+| `ui/shell.js` | 8 copies each of the how-to sheet and the overlay, 7 of the share flow | The end card was never a dialog in any game. Done per game that is eight edits and drifts within a month — and it had: three games swallowed a failed clipboard write silently, telling the player nothing. |
 
-**`shell.js` is held at three functions.** The temptation is to let it grow into
-a game engine, which §9 forbids above. Concretely, that means:
+Two things that are *markup* rather than code are shared the same way, but
+through the build instead of a module: `scripts/sprite.svg` (the sticker
+`<symbol>` definitions) and `scripts/theme-button.html` (the light/dark toggle).
+Both were hand-copied — the sprite into two documents at 50 identical lines
+each, the button into eleven, where it had already drifted into three variants
+and the games' copy had lost its `aria-hidden`. They are substituted into the
+HTML by `sharedMarkup()` in `vite.config.js`, so they cost no runtime bytes and
+cannot drift again.
 
-* No state, no lifecycle, no growing options object. Each function wires DOM the
-  validator already guarantees exists (§29) and returns immediately.
-* A fourth candidate is a signal to leave the code in the game. The challenge
-  banner (3 games, three different parameters) and the `AudioContext` helper
-  (7 games, four signatures) both stayed put for this reason.
-* A game may opt out of any one of them. `doodle-on` keeps its own share,
-  because it shares a rendered PNG with a download fallback rather than a link,
-  and folding that in would cost a `files` branch plus a fallback hook. The
-  opt-out is documented in `shell.js`'s header — that is the price of taking it.
+`shell.js` is held at four small functions on purpose. The pull is to grow it
+into a game engine with a lifecycle and a spreading options object; if it needs
+to know a game's rules, the change belongs in the game.
 
-**`prefs.js` does not rename keys.** It takes the full key and adds the
-`try`/`catch` and the JSON handling. Existing key names were kept exactly as
-they were, because renaming them would have silently reset every player's best
-score, level and in-progress puzzle. New keys should be spelled
-`twb:<scope>:<name>`.
-
-The one key `prefs.js` does not own is `theme`. It is read and written by
-`scripts/theme-bootstrap.js` and by the homepage's toggle, both of which are
-inline parser-blocking scripts that cannot import a module (§17).
+`bindOverlay()` watches the class a game already toggles rather than asking
+every game to adopt a new API, which is what keeps each game's diff to one
+import and one call.
 
 ---
 
@@ -454,17 +450,13 @@ export const games = [
     schemaDescription: "...",       // the Game JSON-LD's description
     genre: "Puzzle",                // the Game JSON-LD's genre
     path: "/honeycomb/",            // flat (§5) — must equal "/" + slug + "/"
-    thumb: "/assets/honeycomb-thumb.svg",
-    thumbAlt: "...",                // the homepage card's img alt
     ogImage: "/assets/honeycomb-og.jpg",
-    accent: {                       // the homepage card's --accent, per theme
-      light: "#8b6fd9",
-      dark: "#b48cff"
-    },
-    themeColor: {                   // must match this game's --bg, per theme
-      light: "#fdf8e9",
-      dark: "#14101f"
-    },
+    accent: "#8b6fd9",              // the homepage card's colour, light
+    accentDark: "#b48cff",          //   and dark; both inlined as custom props
+    sticker: "st-honey",            // a <symbol> in the sprite in src/index.html
+    scoreUnit: "time",              // what this game's number counts
+    scoreFormat: "time",            //   "time" = milliseconds, "int" = a count
+    darkThemeColor: "#14101f",      // must match this game's dark --bg
     updated: "2026-08-24",          // sitemap lastmod; bump on real change only
     changefreq: "monthly",          // sitemap changefreq
     hasRestart: false,              // restarts via the overlay, not a topbar button
@@ -473,6 +465,11 @@ export const games = [
       daily: false
     }
   }
+];
+
+// Pages that are neither the homepage nor a game.
+export const pages = [
+  { slug: "book", title: "Your sticker book", path: "/book/", ... },
 ];
 
 // The homepage is not a game, but it has metadata of its own.
@@ -507,6 +504,20 @@ theme colour in each page's `<head>`, the dark one in the registry, and the two
 accents in sixteen hand-maintained CSS rules. Validation pins `themeColor`
 against the game's own `--bg` in both themes (§29), which is what stops the pair
 drifting apart the way honeycomb's did.
+
+Three fields went the same way when the homepage moved to the sticker design.
+`thumb` and `thumbAlt` named per-game artwork the shelf no longer draws — the
+cards use a tinted glyph from one inline sprite instead, so the homepage now
+requests no images at all. `cardClass` named a CSS modifier whose sixteen
+`.card--<slug>` rules nothing validated: a new game whose pair was forgotten
+shipped in the fallback purple, silently. Colour is data now, and
+`scripts/validate-games.js` fails the build on a malformed accent or a `sticker`
+with no matching `<symbol>`.
+
+`scoreUnit` and `scoreFormat` sit on the game rather than inside `leaderboard`
+on purpose. A score's unit is a property of the game, not of whether anyone else
+can see the number — untangle keeps a local best and has no public board, and
+its "31 moves" is no less a score for that.
 
 ## Registry constraints
 
@@ -894,13 +905,18 @@ after the tombstone is eventually deleted.
 Both are temporary in principle. Once no device in the field can still be
 carrying a worker, `public/sw.js` and the snippet with its injection can go.
 
-### What the fold rule is now for
+### The fold rule, and why it is gone
 
-`EAGER_CARDS` in `vite.config.js` decides how many shelf cards are fetched
-eagerly — a fixed four, whether the catalogue holds seven games or fifty. It
-used to feed the precache list too; it is now purely a first-paint bound, and
-the point is unchanged: the launch cost must not grow with the shelf. The cards
-below the fold are `loading="lazy"`, and a smoke test asserts both directions.
+There used to be an `EAGER_CARDS` bound in `vite.config.js`: a fixed four shelf
+cards fetched eagerly whether the catalogue held seven games or fifty, with
+everything below `loading="lazy"` and a smoke test asserting both directions.
+It first existed to bound the precache and stayed on as a first-paint bound.
+
+It has been deleted along with the images it scheduled. The shelf now draws
+each game as a glyph from a single inlined SVG sprite, so the homepage requests
+no images at all and there is nothing left to schedule — the launch cost cannot
+grow with the shelf because the shelf costs nothing to fetch. Adding game #50
+adds a `<symbol>` and one card of markup.
 
 ### Network-dependent APIs
 
@@ -1074,9 +1090,14 @@ Preferred formats:
 
 **Tier 1 — `public/assets/`, stable URLs, never hashed.**
 Anything a crawler or social network fetches by absolute URL: `og:image`,
-`twitter:image`, JSON-LD `image`, homepage thumbnails. These URLs are already
-indexed and cached by third parties and must never change (§5). Reference them
-with an absolute path; a relative reference fails the build (§4).
+`twitter:image`, JSON-LD `image`. These URLs are already indexed and cached by
+third parties and must never change (§5). Reference them with an absolute path;
+a relative reference fails the build (§4).
+
+The homepage's thumbnails used to live here too. They are gone: the shelf draws
+each game as a glyph from one sprite inlined in `src/index.html`, so the
+homepage requests no images at all. The `og:` images are untouched — those are
+fetched by other people's servers and are the reason this tier exists.
 
 **Tier 2 — `src/<slug>/assets/` and `src/assets/`, content-hashed.**
 Gameplay assets referenced only from HTML, CSS, or JS. Vite hashes them and
@@ -1709,6 +1730,13 @@ exist:
 ├── GAME-UI-REVIEW.md        how to evaluate an interface
 └── GAME-UI-REFINEMENT.md    how to improve an interface without changing the game
 ```
+
+All four cover accessibility, motion, touch and copy as first-class concerns
+rather than as a pass at the end. They gained those sections after a platform
+review found defects — an end card that was not a dialog in any game, six games
+with sound and no mute, a 13-pixel-tall back link — that the documents as
+written could not have caught, because they only described how a screen should
+look.
 
 Responsibilities:
 

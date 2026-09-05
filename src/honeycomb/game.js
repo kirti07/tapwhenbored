@@ -1,4 +1,10 @@
 import { renderGlobalBest } from "../shared/ui/leaderboard.js";
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import { isOn as soundIsOn, initSoundToggle } from "../shared/ui/audio.js";
+import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
+import { getInt, set as setPref } from "../shared/ui/prefs.js";
+import { recordPlay } from "../shared/ui/progress.js";
+import { formatDuration as formatTime } from "../shared/ui/format.js";
 
 import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
 import * as prefs from "../shared/ui/prefs.js";
@@ -57,7 +63,7 @@ import * as prefs from "../shared/ui/prefs.js";
   // 1.5% of the largest hives still overran the cap, at 8 none do, for 0.1ms
   // per hive.
   var SHAPE_ATTEMPTS = 8;
-  var BEST_KEY = "honeycombBestTimeMs";
+  var BEST_KEY = "honeycomb.best";
   // Flat-top axial neighbour offsets.
   var NEIGHBORS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
   // The ONE cell a safe tile ever tries: 12 o'clock. It does not scan the
@@ -93,8 +99,13 @@ import * as prefs from "../shared/ui/prefs.js";
   var overlaySub = document.getElementById("overlaySub");
   var globalScoreEl = document.getElementById("globalBest");
   var againBtn = document.getElementById("againBtn");
-
-  var endCard = bindOverlay(overlay);
+  var shareBtn = document.getElementById("shareBtn");
+  var shareNote = document.getElementById("shareNote");
+  var howtoBtn = document.getElementById("howtoBtn");
+  var howtoSheet = document.getElementById("howtoSheet");
+  var howtoBackdrop = document.getElementById("howtoBackdrop");
+  var soundBtn = document.getElementById("soundBtn");
+  var themeBtn = document.getElementById("themeBtn");
 
   var tiles = [];         // [{id, q, r, revealed, bomb, removed}]
   var posMap = new Map(); // "q,r" -> tile id
@@ -103,7 +114,7 @@ import * as prefs from "../shared/ui/prefs.js";
   var ended = false;
   var moving = false;     // guards against a second tap landing mid-flash/blast
   var bombsRemaining = 0;
-  var best = readBest();  // fastest completed run, in ms — null if none yet
+  var best = getInt(BEST_KEY);  // fastest completed run, in ms — null if none yet
   var runStartTime = 0;
   var finalElapsedMs = 0;
   var timerHandle = null;
@@ -117,23 +128,12 @@ import * as prefs from "../shared/ui/prefs.js";
   var endTimer = null;
 
   // ---------- persistence ----------
-  function readBest() {
-    var v = prefs.get(BEST_KEY);
-    return typeof v === "number" ? v : null;
-  }
   function writeBest(v) {
     best = v;
-    prefs.set(BEST_KEY, v);
+    setPref(BEST_KEY, v);
   }
 
   // ---------- timer ----------
-  function formatTime(ms) {
-    if (ms == null) return "--:--";
-    var totalSec = Math.floor(ms / 1000);
-    var m = Math.floor(totalSec / 60);
-    var s = totalSec % 60;
-    return m + ":" + (s < 10 ? "0" : "") + s;
-  }
   function liveElapsed() {
     return ended ? finalElapsedMs : (Date.now() - runStartTime);
   }
@@ -797,6 +797,10 @@ import * as prefs from "../shared/ui/prefs.js";
   // directly inside the click handler, so the AudioContext starts as a
   // direct result of the user gesture per browser autoplay rules.
   function playBombSound() {
+    // Honeycomb synthesises its blast from an oscillator plus a filtered noise
+    // buffer, which is not something the shared tone() helper does. It keeps
+    // its own synthesis and takes only the site-wide mute from there.
+    if (!soundIsOn()) return;
     try {
       var Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return;
@@ -980,6 +984,12 @@ import * as prefs from "../shared/ui/prefs.js";
     // best time with bombs still on the board.
     wonLastRun = reason === "cleared";
 
+    /* A split hive is still a round played to its end, so it earns the sticker
+       — but it has no valid time, so only a win records a number. This sits
+       above the `if (!wonLastRun) return` below, which is the line that would
+       otherwise hide every loss from the book. */
+    recordPlay("honeycomb", wonLastRun ? finalElapsedMs : null, true);
+
     if (wonLastRun && (best === null || finalElapsedMs < best)) writeBest(finalElapsedMs);
     updateHud();
     showOverlay(reason);
@@ -1077,19 +1087,6 @@ import * as prefs from "../shared/ui/prefs.js";
     overlay.classList.remove("won");
   }
 
-  function shareText() {
-    var url = new URL(location.href);
-    url.search = "";
-    url.hash = "";
-    return {
-      text: wonLastRun
-        ? "I cleared HONEYCOMB in " + formatTime(finalElapsedMs) + ". Can you beat it?"
-        : "I lasted " + formatTime(finalElapsedMs) +
-          " in HONEYCOMB before the hive beat me. Can you beat it?",
-      url: url.toString(),
-    };
-  }
-
   // ---------- interaction (tap only, no drag, no destination choice) ----------
   boardEl.addEventListener("click", function (e) {
     if (ended || moving) return;
@@ -1100,8 +1097,27 @@ import * as prefs from "../shared/ui/prefs.js";
 
   newBtn.addEventListener("click", startNewHive);
   againBtn.addEventListener("click", playAgain);
-  initShare({ title: "Honeycomb", payload: shareText });
-  initHowto();
+  bindOverlay(overlay, {
+    primary: againBtn,
+    label: "Game over",
+  });
+
+  initThemeToggle(themeBtn);
+
+  initSoundToggle(soundBtn);
+
+  initShare({
+    btn: shareBtn,
+    note: shareNote,
+    title: "Honeycomb",
+    text: function () {
+      return wonLastRun
+        ? "I cleared HONEYCOMB in " + formatTime(finalElapsedMs) + ". Can you beat it?"
+        : "I lasted " + formatTime(finalElapsedMs) +
+          " in HONEYCOMB before the hive beat me. Can you beat it?";
+    },
+  });
+  initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });
   // Coalesced to one render a frame: a resize arrives in bursts and
   // renderInstant() rebuilds the whole hive.
   var resizeFrame = 0;

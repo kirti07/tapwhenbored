@@ -1,4 +1,9 @@
 import { renderGlobalBest } from "../shared/ui/leaderboard.js";
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import { tone, initSoundToggle } from "../shared/ui/audio.js";
+import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
+import { getInt, set as setPref } from "../shared/ui/prefs.js";
+import { recordPlay } from "../shared/ui/progress.js";
 
 import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
 import * as prefs from "../shared/ui/prefs.js";
@@ -9,7 +14,7 @@ import * as prefs from "../shared/ui/prefs.js";
   var SIZE = 4;
   var TOTAL = SIZE * SIZE;
   var SHUFFLE_MOVES = 160;
-  var BEST_KEY = "slideNOrderBest";
+  var BEST_KEY = "slide-n-order.best";
 
   // ---------- drag-to-slide tuning ----------
   var DRAG_COMMIT_FRACTION = 0.5;   // past halfway toward the gap commits the slide
@@ -31,49 +36,26 @@ import * as prefs from "../shared/ui/prefs.js";
   var againBtn = document.getElementById("againBtn");
   var challengeBanner = document.getElementById("challengeBanner");
   var globalBest = document.getElementById("globalBest");
-
-  var endCard = bindOverlay(overlay);
+  var howtoBtn = document.getElementById("howtoBtn");
+  var howtoSheet = document.getElementById("howtoSheet");
+  var howtoBackdrop = document.getElementById("howtoBackdrop");
+  var soundBtn = document.getElementById("soundBtn");
+  var themeBtn = document.getElementById("themeBtn");
 
   var tiles = [];        // index -> tile number (1..15) or null for the blank
   var blankIndex = TOTAL - 1;
   var tileEls = {};      // index -> tile button el
   var moves = 0;
   var ended = false;
-  var best = readBest();
+  var best = getInt(BEST_KEY);
 
-  function readBest() {
-    var v = prefs.get(BEST_KEY);
-    return typeof v === "number" ? v : null;
-  }
 
   function writeBest(v) {
     best = v;
-    prefs.set(BEST_KEY, v);
+    setPref(BEST_KEY, v);
   }
 
-  // ---------- audio (tiny, procedural, no files) ----------
-  var actx = null;
-  function ctx() {
-    if (!actx) {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      actx = new AC();
-    }
-    return actx;
-  }
-  function tone(freq, dur, type, gain) {
-    try {
-      var c = ctx();
-      var osc = c.createOscillator();
-      var g = c.createGain();
-      osc.type = type;
-      osc.frequency.value = freq;
-      g.gain.value = gain;
-      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
-      osc.connect(g).connect(c.destination);
-      osc.start();
-      osc.stop(c.currentTime + dur);
-    } catch (e) { /* audio not available, ignore */ }
-  }
+  // ---------- audio ----------
   function sndSlide() { tone(900, 0.08, "sine", 0.05); }
   function sndThud() { tone(140, 0.15, "sine", 0.05); }
 
@@ -151,12 +133,26 @@ import * as prefs from "../shared/ui/prefs.js";
     updateMovable();
   }
 
+  /* Where a tile is, asked of the game state rather than of the DOM.
+   *
+   * `tileEls` is already the authoritative index -> element map and is updated
+   * in the same breath as `tiles` on every slide. The old data-index attribute
+   * was a second copy of that fact living on the node, rewritten mid-slide,
+   * and then parsed back out on pointerdown and on keydown — so a missed
+   * attribute write would have produced a tile that moved the wrong way rather
+   * than a visible glitch. Sixteen entries; the scan costs nothing. */
+  function indexOfTileEl(el) {
+    for (var k in tileEls) {
+      if (tileEls[k] === el) return parseInt(k, 10);
+    }
+    return -1;
+  }
+
   function addTileEl(i, value) {
     var btn = document.createElement("button");
     btn.type = "button";
     btn.className = "tile";
     btn.textContent = value;
-    btn.dataset.index = i;
     btn.setAttribute("aria-label", "Tile " + value);
     tileCellEl(i).appendChild(btn);
     tileEls[i] = btn;
@@ -337,7 +333,6 @@ import * as prefs from "../shared/ui/prefs.js";
 
     delete tileEls[i];
     toCell.appendChild(el);
-    el.dataset.index = oldBlank;
     tileEls[oldBlank] = el;
 
     sndSlide();
@@ -363,7 +358,6 @@ import * as prefs from "../shared/ui/prefs.js";
 
     delete tileEls[i];
     toCell.appendChild(el);
-    el.dataset.index = oldBlank;
     tileEls[oldBlank] = el;
     flip(el, fromCell, toCell);
 
@@ -386,6 +380,8 @@ import * as prefs from "../shared/ui/prefs.js";
   function checkWin() {
     if (isSolved()) {
       ended = true;
+      // Before the 350ms overlay delay below, not inside it.
+      recordPlay("slide-n-order", moves, true);
       var isNewBest = best == null || moves < best;
       if (isNewBest) writeBest(moves);
       updateBestHud();
@@ -426,14 +422,6 @@ import * as prefs from "../shared/ui/prefs.js";
     return url.toString();
   }
 
-  function shareText() {
-    return {
-      text: "I solved Slide N Order in " + moves +
-        (moves === 1 ? " move" : " moves") + ". Can you beat that?",
-      url: shareUrl(moves),
-    };
-  }
-
   function checkChallengeLink() {
     if (!challengeBanner) return;
     var params = new URLSearchParams(location.search);
@@ -457,18 +445,37 @@ import * as prefs from "../shared/ui/prefs.js";
     updateBestHud();
   }
 
-  initHowto();
+  // ---------- how to play ----------
+  initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });
 
   restartBtn.addEventListener("click", restart);
   againBtn.addEventListener("click", restart);
-  initShare({ title: "Slide N Order", payload: shareText });
+  bindOverlay(overlay, {
+    primary: againBtn,
+    label: "Game over",
+  });
+
+  initThemeToggle(themeBtn);
+
+  initSoundToggle(soundBtn, sndSlide);
+
+  initShare({
+    btn: shareBtn,
+    note: shareNote,
+    title: "Slide N Order",
+    text: function () {
+      return "I solved Slide N Order in " + moves +
+        (moves === 1 ? " move" : " moves") + ". Can you beat that?";
+    },
+    url: function () { return shareUrl(moves); },
+  });
 
   tilesGrid.addEventListener("pointerdown", function (e) {
     if (ended || activePointerId !== null || settling) return; // one interaction at a time, and only once the last one has fully committed
     var tileEl = e.target.closest(".tile");
     if (!tileEl) return;
     activePointerId = e.pointerId;
-    var i = parseInt(tileEl.dataset.index, 10);
+    var i = indexOfTileEl(tileEl);
     if (neighborIndices(blankIndex).indexOf(i) !== -1) {
       beginDrag(e, tileEl, i);
     } else {
@@ -502,7 +509,7 @@ import * as prefs from "../shared/ui/prefs.js";
     if (!tileEl) return;
     e.preventDefault(); // stop the browser's own click-on-activate; we handle it here
     if (ended || settling) return;
-    var i = parseInt(tileEl.dataset.index, 10);
+    var i = indexOfTileEl(tileEl);
     if (neighborIndices(blankIndex).indexOf(i) === -1) {
       shakeTile(tileEl);
       return;

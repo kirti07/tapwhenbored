@@ -17,6 +17,14 @@
 // them by name through `define`. Always write the full literal: a computed key
 // like import.meta.env[`SUPABASE_${n}`] is NOT replaced, so it works in dev
 // and silently yields undefined in production. See ARCHITECTURE.md §35.
+import { localDay } from "./day.js";
+
+/* Re-exported so the callers that already ask this module for the day — and
+   the leaderboard's own `period` handling — keep working unchanged. The
+   definition moved to day.js when the sticker book needed it in two games that
+   never talk to a server. */
+export { localDay };
+
 const SUPABASE_URL = import.meta.env.SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = import.meta.env.SUPABASE_ANON_KEY || "";
 
@@ -93,10 +101,43 @@ async function submitScore(slug, score, day) {
   }
 }
 
-/** Today's date as the server-comparable "YYYY-MM-DD", in the player's timezone. */
-export function localDay(date = new Date()) {
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+/**
+ * Every game's current global best, in one request.
+ *
+ * This is a plain PostgREST read of `game_scores`, not an RPC. The table
+ * already carries a public read policy and has insert/update/delete revoked
+ * from anon (README-supabase.sql), so this can see every record and change
+ * none of them — which is what makes a homepage wall possible with no schema
+ * change and no new function.
+ *
+ * `period` is "all" for an all-time board and the date for a daily one, so
+ * both are asked for at once and the caller picks the row its game wants.
+ *
+ * Resolves with null — and never rejects — when the leaderboard is
+ * unconfigured, unreachable or slow. The homepage is not allowed to show an
+ * error for this; a wall with no numbers is the degraded state (§27).
+ */
+export async function fetchAllBests(day = localDay()) {
+  if (!isLeaderboardAvailable()) return null;
+
+  const query =
+    "select=game_slug,best_score,period,updated_at" +
+    `&period=in.(all,${encodeURIComponent(day)})`;
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/game_scores?${query}`, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return Array.isArray(rows) ? rows : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

@@ -27,11 +27,13 @@ export const games = [
       "A free online peg-solitaire marble board game. Jump marbles to capture, finish with one.",
     genre: "Puzzle",
     path: "/marble-nostalgia/",
-    thumb: "/assets/marble-nostalgia-thumb.webp",
-    thumbAlt: "Marble Nostalgia — peg solitaire marble board preview",
     ogImage: "/assets/marble-nostalgia-og.jpg",
-    accent: { light: "#1684d1", dark: "#22d3ee" },
-    themeColor: { light: "#eef3ec", dark: "#0d0e1a" },
+    accent: "#1684d1",
+    accentDark: "#22d3ee",
+    sticker: "st-marble",
+    scoreUnit: "marbles left",
+    scoreFormat: "int",
+    darkThemeColor: "#0d0e1a",
     updated: "2026-08-24",
     changefreq: "monthly",
     hasRestart: true,
@@ -39,7 +41,7 @@ export const games = [
       // Fewest marbles left. Bottoms out at 1, so the global best saturates
       // quickly — that is inherent to the game, not a bug.
       lowerIsBetter: true,
-      daily: false
+      daily: false,
     },
   },
   {
@@ -55,14 +57,19 @@ export const games = [
       "A free online bubble wrap popping game. Tap bubbles to score points, but watch out — some hide a bomb.",
     genre: "Casual",
     path: "/bubble-tap/",
-    thumb: "/assets/bubble-tap-thumb.svg",
-    thumbAlt: "Bubble Tap — bubble wrap popping game preview",
     ogImage: "/assets/bubble-tap-og.jpg",
-    accent: { light: "#4fb6e0", dark: "#22e5ff" },
-    themeColor: { light: "#eaf6fb", dark: "#0d0e1a" },
+    accent: "#4fb6e0",
+    accentDark: "#22e5ff",
+    sticker: "st-bubble",
+    scoreUnit: "points",
+    scoreFormat: "int",
+    darkThemeColor: "#0d0e1a",
     updated: "2026-08-24",
     changefreq: "monthly",
     hasRestart: true,
+    // No overlay: bubble-tap predates the shared page template and shows its
+    // game-over state inline instead.
+    hasOverlay: false,
     leaderboard: { lowerIsBetter: false, daily: false },
   },
   {
@@ -78,14 +85,17 @@ export const games = [
       "A free online sliding number puzzle (15-puzzle). Arrange tiles 1 to 15 in order around one empty slot.",
     genre: "Puzzle",
     path: "/slide-n-order/",
-    thumb: "/assets/slide-n-order-thumb.svg",
-    thumbAlt: "Slide N Order — 15-puzzle sliding tile game preview",
     ogImage: "/assets/slide-n-order-og.jpg",
-    accent: { light: "#8b7fe0", dark: "#a855f7" },
-    themeColor: { light: "#f1eefb", dark: "#0d0e1a" },
+    accent: "#8b7fe0",
+    accentDark: "#a855f7",
+    sticker: "st-slide",
+    scoreUnit: "moves",
+    scoreFormat: "int",
+    darkThemeColor: "#0d0e1a",
     updated: "2026-08-24",
     changefreq: "monthly",
     hasRestart: true,
+    hasOverlay: true,
     leaderboard: { lowerIsBetter: true, daily: false },
   },
   {
@@ -101,11 +111,13 @@ export const games = [
       "A free online Lights Out puzzle. Tapping a tile flips it and its four orthogonal neighbours; clear the grid by turning every tile off.",
     genre: "Puzzle",
     path: "/flip-it/",
-    thumb: "/assets/flip-it-thumb.svg",
-    thumbAlt: "Flip It — Lights Out grid puzzle preview",
     ogImage: "/assets/flip-it-og.jpg",
-    accent: { light: "#f0a825", dark: "#ffd60a" },
-    themeColor: { light: "#fdf6e9", dark: "#070b16" },
+    accent: "#f0a825",
+    accentDark: "#ffd60a",
+    sticker: "st-flip",
+    scoreUnit: "perfect time",
+    scoreFormat: "time",
+    darkThemeColor: "#070b16",
     updated: "2026-09-04",
     changefreq: "monthly",
     // The topbar refresh deals a new board. Reset — restore *this* board's
@@ -119,7 +131,7 @@ export const games = [
       // cannot be farmed, and the record keeps moving. Medium only: three
       // levels in one record would put the same problem straight back.
       lowerIsBetter: true,
-      daily: false
+      daily: false,
     },
   },
   {
@@ -135,11 +147,13 @@ export const games = [
       "A free daily word ladder puzzle. Change one letter at a time to turn the start word into the target word.",
     genre: "Word",
     path: "/word-steps/",
-    thumb: "/assets/word-steps-thumb.svg",
-    thumbAlt: "Word Steps — daily word ladder puzzle preview",
     ogImage: "/assets/word-steps-og.jpg",
-    accent: { light: "#1f9974", dark: "#34e19a" },
-    themeColor: { light: "#fdf3d9", dark: "#0d0e1a" },
+    accent: "#1f9974",
+    accentDark: "#34e19a",
+    sticker: "st-word",
+    scoreUnit: "steps",
+    scoreFormat: "int",
+    darkThemeColor: "#0d0e1a",
     updated: "2026-08-25",
     // The puzzle rotates daily, so this page genuinely changes daily.
     changefreq: "daily",
@@ -149,7 +163,7 @@ export const games = [
       // day. An all-time "fewest steps" would just record the easiest puzzle
       // ever published and then never move.
       lowerIsBetter: true,
-      daily: true
+      daily: true,
     },
   },
   {
@@ -165,11 +179,13 @@ export const games = [
       "A free online untangle puzzle. Move dots connected by lines until none of the lines cross.",
     genre: "Puzzle",
     path: "/untangle/",
-    thumb: "/assets/untangle-thumb.svg",
-    thumbAlt: "Untangle — dot and line untangling puzzle preview",
     ogImage: "/assets/untangle-og.jpg",
-    accent: { light: "#ef6a55", dark: "#ff6b57" },
-    themeColor: { light: "#fdf2ef", dark: "#170f11" },
+    accent: "#ef6a55",
+    accentDark: "#ff6b57",
+    sticker: "st-untangle",
+    scoreUnit: "moves",
+    scoreFormat: "int",
+    darkThemeColor: "#170f11",
     updated: "2026-08-28",
     changefreq: "monthly",
     // Restarts from the overlay's "Again" button; no topbar restart control.
@@ -192,18 +208,20 @@ export const games = [
       "A free online hive puzzle. Move edge tiles, watch the clue numbers change, and keep the hive connected.",
     genre: "Puzzle",
     path: "/honeycomb/",
-    thumb: "/assets/honeycomb-thumb.svg",
-    thumbAlt: "Honeycomb — hexagonal hive puzzle preview",
     ogImage: "/assets/honeycomb-og.jpg",
-    accent: { light: "#8b6fd9", dark: "#b48cff" },
-    themeColor: { light: "#fdf8e9", dark: "#14101f" },
+    accent: "#8b6fd9",
+    accentDark: "#b48cff",
+    sticker: "st-honey",
+    scoreUnit: "time",
+    scoreFormat: "time",
+    darkThemeColor: "#14101f",
     updated: "2026-08-30",
     changefreq: "monthly",
     hasRestart: false,
     leaderboard: {
       // Completion time in milliseconds.
       lowerIsBetter: true,
-      daily: false
+      daily: false,
     },
   },
   {
@@ -219,11 +237,11 @@ export const games = [
       "A free online drawing game. Every round gives you a starting shape and a creative direction — turn a circle into something that lives in water, in 30 seconds.",
     genre: "Casual",
     path: "/doodle-on/",
-    thumb: "/assets/doodle-on-thumb.svg",
-    thumbAlt: "Doodle On — 30-second shape-and-idea drawing game preview",
     ogImage: "/assets/doodle-on-og.jpg",
-    accent: { light: "#7c5cff", dark: "#ff5fb3" },
-    themeColor: { light: "#eaf6ee", dark: "#0d0e1a" },
+    accent: "#7c5cff",
+    accentDark: "#ff5fb3",
+    sticker: "st-doodle",
+    darkThemeColor: "#0d0e1a",
     updated: "2026-09-03",
     changefreq: "monthly",
     hasRestart: true,
@@ -241,6 +259,33 @@ export const games = [
 // game, and nothing caught it because the validator only ever walked `games`.
 // Landscape rather than the games' 640² squares, so the homepage is the one
 // page that earns a summary_large_image card.
+/* Pages that are neither the homepage nor a game.
+ *
+ * The build discovers pages from the filesystem, but validation, the sitemap
+ * and the test suites are all registry-driven — so a directory that is not
+ * listed here fails `npm run validate`, which gates the deploy. Anything with
+ * an index.html under src/ belongs in `games`, in `pages`, or nowhere. */
+export const pages = [
+  {
+    slug: "book",
+    title: "Your sticker book",
+    path: "/book/",
+    updated: "2026-09-05",
+    changefreq: "monthly",
+    priority: "0.5",
+  },
+  {
+    slug: "wall",
+    title: "The wall",
+    path: "/wall/",
+    // Every game's record on one page. Unlike the book, this is public content
+    // and is indexed, so it changes as often as somebody beats a record.
+    updated: "2026-09-05",
+    changefreq: "weekly",
+    priority: "0.7",
+  },
+];
+
 export const home = {
   path: "/",
   ogImage: "/assets/tapwhenbored-og.jpg",

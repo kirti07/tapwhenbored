@@ -24,6 +24,9 @@ const RESERVED = new Set([
   "shared",
   "api",
   "_vercel",
+  // Non-game pages (src/data/games.js `pages`).
+  "book",
+  "wall",
 ]);
 
 const slug = process.argv[2];
@@ -62,8 +65,48 @@ const html = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<!-- head-meta -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f6fb">
 <!-- theme-bootstrap -->
+<title>${title} — Free Online Game</title>
+<meta name="description" content="TODO: one sentence on what the player does. No signup, no download.">
+<link rel="canonical" href="https://www.tapwhenbored.com/${slug}/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="${title} — Free Online Game">
+<meta property="og:description" content="TODO: one sentence on what the player does.">
+<meta property="og:url" content="https://www.tapwhenbored.com/${slug}/">
+<meta property="og:image" content="https://www.tapwhenbored.com/assets/${slug}-og.jpg">
+<meta property="og:image:width" content="640">
+<meta property="og:image:height" content="640">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="${title} — Free Online Game">
+<meta name="twitter:description" content="TODO: one sentence on what the player does.">
+<meta name="twitter:image" content="https://www.tapwhenbored.com/assets/${slug}-og.jpg">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Game",
+  "name": "${title}",
+  "url": "https://www.tapwhenbored.com/${slug}/",
+  "description": "TODO: one sentence on what the player does.",
+  "image": "https://www.tapwhenbored.com/assets/${slug}-og.jpg",
+  "genre": "Puzzle",
+  "playMode": "SinglePlayer",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Tap When Bored", "item": "https://www.tapwhenbored.com/" },
+    { "@type": "ListItem", "position": 2, "name": "${title}", "item": "https://www.tapwhenbored.com/${slug}/" }
+  ]
+}
+</script>
+<link rel="preload" href="/fonts/nunito-latin-700.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -81,6 +124,11 @@ const html = `<!doctype html>
         <button class="icon-btn" id="restartBtn" title="Restart" aria-label="Restart">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.9-6.16"/><path d="M20 4v5h-5"/></svg>
         </button>
+        <button class="icon-btn" id="soundBtn" type="button" title="Sound" aria-label="Sound on" aria-pressed="true">
+          <svg class="ico-sound-on" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.2L12 18.5v-13L7.2 9.5H4z"/><path d="M16 9.2a4 4 0 0 1 0 5.6"/><path d="M18.6 6.6a7.6 7.6 0 0 1 0 10.8"/></svg>
+          <svg class="ico-sound-off" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.2L12 18.5v-13L7.2 9.5H4z"/><path d="M16.5 10l5 4"/><path d="M21.5 10l-5 4"/></svg>
+        </button>
+        <!-- theme-btn:icon-btn -->
       </div>
     </header>
 
@@ -122,7 +170,7 @@ const html = `<!doctype html>
            neither. (Spelled out rather than shown, because validation greps
            this file for the literal id.) -->
       <div class="overlay-actions">
-        <button class="again-btn" id="againBtn">Again</button>
+        <button class="again-btn" id="againBtn">Play again</button>
         <button class="share-btn" id="shareBtn">Share</button>
       </div>
       <p class="share-note" id="shareNote">Link copied</p>
@@ -157,11 +205,14 @@ const css = `/* Shared first: game rules below must be able to override them, an
   --ink: #e8e8f0;
   --ink-soft: #9296ad;
   --line: #2a2d42;
+  --accent: #8aa2ff;
+  --accent-dark: #a9baff;
+  color-scheme: dark;
 }
 
 html, body {
   margin: 0;
-  height: 100svh;
+  height: 100%;
   background: var(--bg);
   color: var(--ink);
   font-family: -apple-system, "Segoe UI", sans-serif;
@@ -171,10 +222,17 @@ html, body {
 }
 
 .stage {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  height: 100svh;
-  padding: 2svh 4vw;
+  /* svh, never vh or dvh (§16). max() with the safe-area insets keeps the top
+     bar clear of a notch — meaningful only because the viewport meta above
+     opts into viewport-fit=cover. */
+  padding:
+    max(2.4svh, env(safe-area-inset-top, 0px))
+    max(4vw, env(safe-area-inset-right, 0px))
+    max(3svh, env(safe-area-inset-bottom, 0px))
+    max(4vw, env(safe-area-inset-left, 0px));
 }
 
 .title {
@@ -220,11 +278,10 @@ const js = `// ${title}
 // rather than spread across DOM attributes and CSS classes
 // (ARCHITECTURE.md §13).
 
-// The how-to sheet, the share button and the end card are platform surfaces,
-// not game rules, so they come from here rather than being written again.
-// prefs is localStorage with the try/catch already around it. See §9.
-import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
-import * as prefs from "../shared/ui/prefs.js";
+import { initHowto, initShare, createNote, bindOverlay } from "../shared/ui/shell.js";
+import { tone, toggle as toggleSound, onChange as onSoundChange } from "../shared/ui/audio.js";
+import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
+import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
 
 (function () {
   "use strict";
@@ -234,8 +291,13 @@ import * as prefs from "../shared/ui/prefs.js";
   var overlaySub = document.getElementById("overlaySub");
   var restartBtn = document.getElementById("restartBtn");
   var againBtn = document.getElementById("againBtn");
-
-  var endCard = bindOverlay(overlayEl);
+  var howtoBtn = document.getElementById("howtoBtn");
+  var howtoSheet = document.getElementById("howtoSheet");
+  var howtoBackdrop = document.getElementById("howtoBackdrop");
+  var shareBtn = document.getElementById("shareBtn");
+  var shareNote = document.getElementById("shareNote");
+  var soundBtn = document.getElementById("soundBtn");
+  var themeBtn = document.getElementById("themeBtn");
 
   var state = null;
 
@@ -262,19 +324,41 @@ import * as prefs from "../shared/ui/prefs.js";
     render();
   }
 
-  // Called on each tap of Share, so it describes the run that just ended.
-  function shareText() {
-    var url = new URL(location.href);
-    url.search = "";
-    url.hash = "";
-    return {
-      text: "TODO: what the player just did, in one sentence. Can you beat it?",
-      url: url.toString(),
-    };
-  }
+  // ---------- the page shell ----------
+  // These four come from shared/ui and are not optional: they are what make
+  // the rules sheet and the end card real dialogs (Escape, focus, inert
+  // background), the sound preference site-wide, and localStorage safe in
+  // private mode. See ARCHITECTURE.md §9.
+  initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });
 
-  initHowto();
-  initShare({ title: ${JSON.stringify(title)}, payload: shareText });
+  initShare({
+    btn: shareBtn,
+    note: shareNote,
+    title: ${JSON.stringify(title)},
+    // Called at click time, so it sees the finished score.
+    text: function () {
+      return "TODO: what the player wants to tell someone.";
+    },
+  });
+
+  // Focus lands on Play again, so finishing and pressing Enter replays.
+  bindOverlay(overlayEl, {
+    primary: againBtn,
+    inertRoot: document.querySelector(".stage"),
+    label: "Round over",
+  });
+
+  initThemeToggle(themeBtn);
+
+  onSoundChange(function (on) {
+    soundBtn.classList.toggle("is-off", !on);
+    soundBtn.setAttribute("aria-pressed", on ? "true" : "false");
+    soundBtn.setAttribute("aria-label", on ? "Sound on" : "Sound off");
+  });
+  soundBtn.addEventListener("click", function () {
+    // TODO: play this game's own confirmation note on unmute.
+    if (toggleSound()) tone(660, 0.08, "sine", 0.05);
+  });
 
   restartBtn.addEventListener("click", start);
   againBtn.addEventListener("click", start);
@@ -300,16 +384,25 @@ const entry = `  {
     schemaDescription: "TODO: one sentence for structured data. Plainer than the description.",
     genre: "Puzzle",
     path: ${JSON.stringify(`/${slug}/`)},
-    thumb: ${JSON.stringify(`/assets/${slug}-thumb.svg`)},
-    thumbAlt: ${JSON.stringify(`${title} — preview`)},
     ogImage: ${JSON.stringify(`/assets/${slug}-og.jpg`)},
-    // The homepage card's tint, per theme.
-    accent: { light: "#8b7fe0", dark: "#a855f7" },
-    // Must match --bg in style.css, per theme. Validation enforces it.
-    themeColor: { light: "#f6f6fb", dark: "#0d0e1a" },
+    // The homepage card's colour, light and dark. These used to be a pair of
+    // hand-written CSS rules that nothing checked, so a forgotten pair shipped
+    // a purple card; they are registry data now and the validator wants them.
+    accent: "#8b7fe0",
+    accentDark: "#a855f7",
+    // The glyph the card and the wall draw, from the sprite in src/index.html.
+    // Add a <symbol id="st-TODO"> there before this validates.
+    sticker: "st-TODO",
+    // What this game's score counts, and whether the number is milliseconds
+    // ("time") or a plain count ("int"). Delete both only if the game has no
+    // score at all.
+    scoreUnit: "TODO",
+    scoreFormat: "int",
+    darkThemeColor: "#0f0e18",
     updated: ${JSON.stringify(today)},
     changefreq: "monthly",
     hasRestart: true,
+    hasOverlay: true,
     // A descriptor ({ lowerIsBetter, daily }) opts this game into the
     // global-best line; see ARCHITECTURE.md §27 for what else that needs.
     leaderboard: false,
@@ -327,13 +420,14 @@ writeFileSync(
 console.log(`Created src/${slug}/ and added the registry entry.
 
 Still to do:
-  1. public/assets/${slug}-thumb.svg   homepage card art (640x640)
-  2. public/assets/${slug}-og.jpg      social preview, raster not SVG (640x640)
-  3. Replace every TODO in src/${slug}/ and in the registry entry
-  4. Set accent and themeColor in the registry (themeColor must match --bg)
-  5. Replace the three TODO bullets in the "How to play" sheet
-  6. Build the mechanic in src/${slug}/game.js
-  7. tests/games/${slug}.spec.js once the mechanic works
+  1. public/assets/${slug}-og.jpg      social preview, raster not SVG (640x640)
+  2. A <symbol id="st-${slug}"> in the sprite at the top of src/index.html,
+     then set sticker: "st-${slug}" in the registry entry
+  3. Replace every TODO in src/${slug}/ and in the registry entry, including
+     accent / accentDark / scoreUnit
+  4. Replace the three TODO bullets in the "How to play" sheet
+  5. Build the mechanic in src/${slug}/game.js
+  6. tests/games/${slug}.spec.js once the mechanic works
 
   npm run validate    checks the wiring
   npm run dev         then open http://localhost:5173/${slug}/

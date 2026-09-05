@@ -49,14 +49,17 @@ html, body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 2.4svh 4vw 3svh;
+  padding:
+    max(2.4svh, env(safe-area-inset-top, 0px))
+    max(4vw, env(safe-area-inset-right, 0px))
+    max(3svh, env(safe-area-inset-bottom, 0px))
+    max(4vw, env(safe-area-inset-left, 0px));
 }
 
 /* ---- top bar ---- */
 
 
 
-.back-link:hover { color: var(--ink); }
 
 .title {
   margin: 0;
@@ -529,7 +532,14 @@ html, body {
   .tile-burst-ring { animation: none; opacity: 0; }
   .tile-burst-shockwave { animation: none; opacity: 0; }
   .tile-flash-hex { animation: none; opacity: 0.3; }
-  .overlay-icon polygon { animation: none; }
+  /* `.overlay-icon polygon` (0,1,1) loses to `.overlay-icon polygon:first-child`
+     (0,2,1), so the override that was here never actually applied and the end
+     card's two hexagons kept drifting forever under reduced motion. Matching
+     the specificity is the fix; this is the exact trap the audit called
+     "the loss animation out-specifies its override". */
+  .overlay-icon polygon,
+  .overlay-icon polygon:first-child,
+  .overlay-icon polygon:last-child { animation: none; }
 }
 
 @media (max-width: 480px) {

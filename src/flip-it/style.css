@@ -40,6 +40,8 @@
   --peach: #ffb4a2;
   --peach-ink: #a8452c;
   --scrim: rgba(40, 32, 20, 0.35);
+
+  color-scheme: light;
 }
 
 html, body {
@@ -58,12 +60,15 @@ html, body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 2.4svh 4vw 2.4svh;
+  padding:
+    max(2.4svh, env(safe-area-inset-top, 0px))
+    max(4vw, env(safe-area-inset-right, 0px))
+    max(2.4svh, env(safe-area-inset-bottom, 0px))
+    max(4vw, env(safe-area-inset-left, 0px));
 }
 
 /* ---- top bar ---- */
 
-.back-link:hover { color: var(--ink); }
 
 .title {
   margin: 0;
@@ -82,10 +87,7 @@ html, body {
 }
 
 /* One button, two glyphs: the muted state swaps which one is drawn. */
-.icon-btn .ico-sound-off { display: none; }
-.icon-btn.is-off .ico-sound-on { display: none; }
-.icon-btn.is-off .ico-sound-off { display: block; }
-.icon-btn.is-off { color: var(--ink-soft); }
+/* Sound-button icon states now live in shared/css/shell.css. */
 
 .tagline {
   margin: 1.4svh 0 0;
@@ -507,6 +509,8 @@ html, body {
   --peach: rgba(255, 77, 157, 0.16);
   --peach-ink: #ff4d9d;
   --scrim: rgba(0, 0, 0, 0.6);
+
+  color-scheme: dark;
 }
 
 /* Glow earns its place on the things you interact with — the board edge, a lit
@@ -543,3 +547,15 @@ html, body {
   color: #04212a;
   box-shadow: 0 0.8svh 1.8svh color-mix(in srgb, var(--accent) 40%, transparent);
 }
+
+/* The level pills were 30 tall. They are the first thing a new player touches
+   and they sit in a row of three, so a miss lands on the wrong difficulty. */
+.level-btn { min-height: 44px; }
+
+/* The challenge banner collapses with max-height/opacity when there is no
+   challenge, which hides it visually but leaves a 33x2 button in the tab order
+   and in the hit-test — a control that announces itself to a screen reader and
+   can be focused, for a message that does not exist. `visibility` removes it
+   from both, and `.show` puts it back. */
+.challenge-banner { visibility: hidden; }
+.challenge-banner.show { visibility: visible; min-height: 44px; }

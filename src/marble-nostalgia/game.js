@@ -1,4 +1,9 @@
 import { renderGlobalBest } from "../shared/ui/leaderboard.js";
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import { tone, initSoundToggle } from "../shared/ui/audio.js";
+import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
+import { get as getPref, getInt, set as setPref } from "../shared/ui/prefs.js";
+import { recordPlay } from "../shared/ui/progress.js";
 
 import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
 import * as prefs from "../shared/ui/prefs.js";
@@ -29,6 +34,13 @@ import * as prefs from "../shared/ui/prefs.js";
   var overlaySub = document.getElementById("overlaySub");
   var globalBest = document.getElementById("globalBest");
   var againBtn = document.getElementById("againBtn");
+  var howtoBtn = document.getElementById("howtoBtn");
+  var howtoSheet = document.getElementById("howtoSheet");
+  var howtoBackdrop = document.getElementById("howtoBackdrop");
+  var soundBtn = document.getElementById("soundBtn");
+  var themeBtn = document.getElementById("themeBtn");
+  var shareBtn = document.getElementById("shareBtn");
+  var shareNote = document.getElementById("shareNote");
   var hintBanner = document.getElementById("hintBanner");
   var hintBannerClose = document.getElementById("hintBannerClose");
 
@@ -39,37 +51,19 @@ import * as prefs from "../shared/ui/prefs.js";
   var history = [];      // [{from, to, mid}]
   var ended = false;
 
-  var HINT_STORAGE_KEY = "marbleNostalgiaPlayed";
-  // Hints are for a first-time player. With storage unavailable prefs.get
-  // answers null, so an unreadable "have they played before" reads as "no" and
-  // the hints show — the friendlier of the two failures.
-  var hintsActive = !prefs.get(HINT_STORAGE_KEY);
+  var HINT_STORAGE_KEY = "marble-nostalgia.played";
+  /* Deliberately a different key from HINT_STORAGE_KEY above, which despite its
+     name records that the how-to hint was dismissed, not that a game was
+     finished. This is the fewest marbles ever left — the one number this game
+     keeps, and the last gap in the homepage's "Best" badges. */
+  var BEST_KEY = "marble-nostalgia.best";
+  var best = null;       // fewest marbles ever left; set below, once readBest exists
+  var hintsActive = false;
+  try {
+    hintsActive = !getPref(HINT_STORAGE_KEY, null);
+  } catch (e) { hintsActive = false; }
 
-  var endCard = bindOverlay(overlay);
-
-  // ---------- audio (tiny, procedural, no files) ----------
-  var actx = null;
-  function ctx() {
-    if (!actx) {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      actx = new AC();
-    }
-    return actx;
-  }
-  function tone(freq, dur, type, gain) {
-    try {
-      var c = ctx();
-      var osc = c.createOscillator();
-      var g = c.createGain();
-      osc.type = type;
-      osc.frequency.value = freq;
-      g.gain.value = gain;
-      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
-      osc.connect(g).connect(c.destination);
-      osc.start();
-      osc.stop(c.currentTime + dur);
-    } catch (e) { /* audio not available, ignore */ }
-  }
+  // ---------- audio ----------
   function sndClick() { tone(1100, 0.12, "sine", 0.06); tone(700, 0.1, "sine", 0.03); }
   function sndThud() { tone(140, 0.15, "sine", 0.05); }
 
@@ -225,8 +219,16 @@ import * as prefs from "../shared/ui/prefs.js";
     hintsActive = false;
     clearHints();
     hideHintBanner();
-    prefs.set(HINT_STORAGE_KEY, "1");
+    setPref(HINT_STORAGE_KEY, "1");
   }
+
+
+  function writeBest(v) {
+    best = v;
+    setPref(BEST_KEY, v);
+  }
+
+  best = getInt(BEST_KEY);
 
   function marbleCount() {
     var n = 0;
@@ -359,6 +361,10 @@ import * as prefs from "../shared/ui/prefs.js";
     var n = marbleCount();
     if (n === 1) {
       ended = true;
+      /* One marble left is the win. Recorded before the 500ms celebration so a
+         player who closes the tab on it still keeps the sticker. */
+      recordPlay("marble-nostalgia", n, true);
+      if (best == null || n < best) writeBest(n);
       var lastKey = Object.keys(marbleEls)[0];
       if (lastKey) marbleEls[lastKey].classList.add("win-glow");
       setTimeout(function () {
@@ -367,6 +373,10 @@ import * as prefs from "../shared/ui/prefs.js";
       }, 500);
     } else if (!anyMovesLeft()) {
       ended = true;
+      /* Out of moves is still a finished round, and four marbles left is a real
+         result — the game submits it to the global board too. */
+      recordPlay("marble-nostalgia", n, true);
+      if (best == null || n < best) writeBest(n);
       setTimeout(function () {
         showOverlay("NO MORE MOVES", n + " marbles left");
         showGlobalBest(n);
@@ -396,14 +406,8 @@ import * as prefs from "../shared/ui/prefs.js";
     endCard.show();
   }
 
-  function shareText() {
-    var n = marbleCount();
-    return {
-      text: n === 1
-        ? "I solved Marble Nostalgia — finished with 1 marble left!"
-        : "I played Marble Nostalgia and got down to " + n + " marbles. Can you beat that?",
-      url: location.href,
-    };
+  function hideOverlay() {
+    overlay.classList.remove("show");
   }
 
   function onMarbleClick(e) {
@@ -440,12 +444,30 @@ import * as prefs from "../shared/ui/prefs.js";
     updateHud();
   }
 
-  initHowto();
-
   undoBtn.addEventListener("click", undoMove);
   restartBtn.addEventListener("click", restart);
   againBtn.addEventListener("click", restart);
-  initShare({ title: "Marble Nostalgia", payload: shareText });
+  initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });
+  bindOverlay(overlay, {
+    primary: againBtn,
+    label: "Game over",
+  });
+
+  initThemeToggle(themeBtn);
+
+  initSoundToggle(soundBtn, sndClick);
+
+  initShare({
+    btn: shareBtn,
+    note: shareNote,
+    title: "Marble Nostalgia",
+    text: function () {
+      var n = marbleCount();
+      return n === 1
+        ? "I solved Marble Nostalgia — finished with 1 marble left!"
+        : "I played Marble Nostalgia and got down to " + n + " marbles. Can you beat that?";
+    },
+  });
   if (hintBannerClose) hintBannerClose.addEventListener("click", stopHinting);
 
   buildBoard();
