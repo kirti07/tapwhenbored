@@ -3,14 +3,12 @@
  *
  * Every rule here was byte-identical in all six template-conforming games
  * before it was extracted, which is what makes this safe. Rules that varied —
- * `html, body`, `.title` and `.icon-btn:hover/:active` (per-game accent tint) —
- * deliberately stayed in each game. (`.howto-link` was on that list too; it
- * turned out to be identical everywhere and now lives in howto.css.)
+ * `html, body`, `.title`, `.icon-btn:hover/:active` (per-game accent tint) and
+ * `.howto-link` — deliberately stayed in each game.
  *
- * Depends on the game defining --ink, --ink-soft and --line. Notably NOT on
- * --font-display: this file is imported by bubble-tap, which is deliberately
- * system-font, and a shared rule that reached for the display face would make
- * every page importing it need a webfont preload. See ARCHITECTURE.md §16. */
+ * Depends on the game defining --ink, --ink-soft and --line. bubble-tap uses
+ * --paper and its own topbar markup, so it does not import this file; see
+ * ARCHITECTURE.md §16. */
 
 .topbar {
   display: flex;

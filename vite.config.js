@@ -107,9 +107,6 @@ function vercelInsights() {
  * game, so anything matching the tail of the path matches every page. This has
  * to be an exact comparison.
  */
-// The one thing a game page's <head> still says for itself.
-const MARKER = "<!-- head-meta -->";
-
 const isHomepage = (ctx) => ctx.path === "/index.html" || ctx.path === "/";
 const isBook = (ctx) => ctx.path === "/book/index.html" || ctx.path === "/book/";
 const isWall = (ctx) => ctx.path === "/wall/index.html" || ctx.path === "/wall/";
@@ -148,7 +145,7 @@ function themeBootstrap() {
     .replace(/\s+/g, " ")
     .trim();
 
-  const darkFor = new Map(games.map((g) => [g.slug, g.themeColor.dark]));
+  const darkFor = new Map(games.map((g) => [g.slug, g.darkThemeColor]));
 
   return {
     name: "twb:theme-bootstrap",
@@ -157,7 +154,7 @@ function themeBootstrap() {
       order: "pre",
       handler(html, ctx) {
         const slug = ctx.path.replace(/^\//, "").split("/")[0];
-        const color = darkFor.get(slug) ?? home.themeColor.dark;
+        const color = darkFor.get(slug) ?? HOME_DARK_THEME_COLOR;
         return html.replace(
           "<!-- theme-bootstrap -->",
           `<script>${snippet.replace("__DARK_THEME_COLOR__", color)}</script>`,
@@ -220,12 +217,6 @@ function sharedMarkup() {
  * Fills the homepage's game shelf and its WebSite/hasPart JSON-LD from the
  * registry, replacing what used to be seven hand-maintained card blocks and a
  * parallel hand-maintained list of the same seven games.
- *
- * Each card carries its accent as two inline custom properties rather than a
- * `.card--<slug>` class, which is what those sixteen rules in style.css were.
- * Two properties and not one, because the accent is per theme: style.css picks
- * between them with `.card` and `[data-theme="dark"] .card`. A single inline
- * `--accent` could not switch theme, and would out-specify the dark rule.
  *
  * Build-time rather than a runtime render, because this is indexable content
  * and essential structured data: ARCHITECTURE.md §28 requires it be static in
@@ -525,7 +516,6 @@ export default defineConfig(({ mode }) => {
   appType: "mpa",
   plugins: [
     trailingSlashParity(),
-    headFromRegistry(),
     themeBootstrap(),
     sharedMarkup(),
     homepageFromRegistry(),

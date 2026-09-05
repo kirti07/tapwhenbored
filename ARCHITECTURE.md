@@ -293,13 +293,8 @@ tap-when-bored/
 │   └── ...                   one flat directory per game
 │
 ├── scripts/
-│   ├── new-game.js           scaffolds src/<slug>/ + the registry entry (§33)
-│   ├── validate-games.js     structural checks, runs before every build (§29)
-│   ├── check-bundles.js      per-page gzipped weight vs the §23 budgets
-│   ├── font-preloads.js      derives a page's font preloads from its CSS (§25)
-│   ├── theme-bootstrap.js    inlined into every page by vite.config.js (§17)
-│   ├── sw-cleanup.js         inlined into every page; removes old workers (§19)
-│   └── brand/                icon and social-card source (mark.svg, README)
+│   ├── new-game.js
+│   └── validate-games.js
 │
 ├── tests/
 │   ├── smoke/
@@ -444,11 +439,7 @@ export const games = [
     slug: "honeycomb",
     title: "Honeycomb",
     tagline: "Tap · Reshape",       // the homepage card's second line
-    description: "...",             // <meta name="description">
-    seoTitle: "Honeycomb — Free Online Hex Puzzle Game",  // <title>, og, twitter
-    ogDescription: "...",           // og:description + twitter:description
-    schemaDescription: "...",       // the Game JSON-LD's description
-    genre: "Puzzle",                // the Game JSON-LD's genre
+    description: "...",
     path: "/honeycomb/",            // flat (§5) — must equal "/" + slug + "/"
     ogImage: "/assets/honeycomb-og.jpg",
     accent: "#8b6fd9",              // the homepage card's colour, light
@@ -460,6 +451,7 @@ export const games = [
     updated: "2026-08-24",          // sitemap lastmod; bump on real change only
     changefreq: "monthly",          // sitemap changefreq
     hasRestart: false,              // restarts via the overlay, not a topbar button
+    hasOverlay: true,
     leaderboard: {                  // or false ⇒ never contacts Supabase
       lowerIsBetter: true,          //   checked against game_config (§27)
       daily: false
@@ -476,7 +468,6 @@ export const pages = [
 export const home = {
   path: "/",
   ogImage: "/assets/tapwhenbored-og.jpg",   // the site's card, not a game's
-  themeColor: { light: "#f6f6fb", dark: "#0d0e1a" },
   updated: "2026-09-03",
   changefreq: "monthly",
   priority: "1.0",
@@ -486,24 +477,7 @@ export const home = {
 Every field here has a consumer. A field nothing reads is worse than no field:
 it looks like a contract, and it drifts. `category` was one — validated,
 scaffolded into every new game, and read by nothing — and it was removed rather
-than wired up, because nothing on the site groups games by category. Three more
-went the same way: `cardClass` (replaced by `accent`, which the homepage plugin
-writes as an inline custom property), `hasOverlay` (a flag that existed only to
-exempt one game from one smoke assertion, removed when that game joined the
-template, §16), and `leaderboard.unit` (read by nothing but its own validation).
-
-The five SEO fields are the other side of that rule: they are not decoration,
-they are the entire input to `headFromRegistry()` (§28). Every one is a value
-that genuinely differs per game and cannot be derived from another field —
-`seoTitle` is not `title` plus a fixed suffix, and the three description strings
-serve a search snippet, a social card and structured data respectively.
-
-`themeColor` and `accent` are `{ light, dark }` pairs because both values are
-real and both were previously written out by hand somewhere else — the light
-theme colour in each page's `<head>`, the dark one in the registry, and the two
-accents in sixteen hand-maintained CSS rules. Validation pins `themeColor`
-against the game's own `--bg` in both themes (§29), which is what stops the pair
-drifting apart the way honeycomb's did.
+than wired up, because nothing on the site groups games by category.
 
 Three fields went the same way when the homepage moved to the sticker design.
 `thumb` and `thumbAlt` named per-game artwork the shelf no longer draws — the
@@ -742,13 +716,6 @@ Shared CSS is pulled in with an `@import` at the top of the game's own
 stylesheet, never a second `<link>`. The shared rules must precede the game's
 own so game-level overrides still win, and `@import` inlining makes that order
 deterministic in both dev and build.
-
-`color-scheme` is declared once, in `shared/css/base.css`, as `light` on `:root`
-and `dark` under `[data-theme="dark"]`. It belongs there rather than in each
-game because it is not a colour — it tells the browser how to render form
-controls, scrollbars and the canvas behind the page, and the answer is the same
-for every game. It was previously set by three pages out of nine, which is why
-the other six had light scrollbars in dark mode.
 
 Avoid creating a global component library unless repeated requirements justify it.
 
@@ -1144,24 +1111,10 @@ A preloaded face is fetched at the browser's highest priority, ahead of the
 things the page paints with, so preloading an unused weight is not a harmless
 extra — it is ~16 kB of the critical path spent on nothing. Every page but
 honeycomb shipped the 800 face that way for a while.
-So a page's preloads are **derived, never declared**. `scripts/font-preloads.js`
-reads that page's own stylesheet and answers the two questions the CSS already
-settles: does anything use `var(--font-display)`, and does any single rule pair
-it with `font-weight: 800`. `headFromRegistry()` emits the answer (§28), and
-validation uses the same helper, so there is one rule in one place and no
-registry field that can lie about which weights a page renders.
-
-`tests/smoke/site.spec.js` keeps its own independent implementation of that rule
-and checks it against the *built* CSS, which is the black-box half: it would
-still catch a minifier or `@import`-order surprise the source-level helper
-cannot see.
-
-Two traps when touching this. A rule can declare `font-weight: 800` and mean the
-*system* font, which consumes nothing from `public/fonts/` — that is why the
-test pairs the weight with the family rather than searching for either alone.
-And CSS comments must be stripped before the search: `tokens.css`'s own header
-discusses `var(--font-display)` in prose, and a naive scan would conclude that
-every page importing it renders the display face.
+`tests/smoke/site.spec.js` now pins each page's preloads to the weights its own
+stylesheet renders. Beware when auditing this by hand: a rule can declare
+`font-weight: 800` and mean the *system* font, which consumes nothing from
+`public/fonts/`.
 
 ---
 
@@ -1335,57 +1288,6 @@ Adding a game should not require manually editing the sitemap.
 
 Runtime JavaScript should not be responsible for essential SEO metadata.
 
-## The head is generated, not written
-
-A game page's `<head>` is emitted by `headFromRegistry()` in `vite.config.js`,
-which replaces a `<!-- head-meta -->` marker. The source of every game page is:
-
-```html
-<head>
-<meta charset="utf-8">
-<!-- head-meta -->
-<!-- theme-bootstrap -->
-<link rel="stylesheet" href="style.css">
-</head>
-```
-
-Marker order matters: the theme bootstrap rewrites the `theme-color` meta tag
-that the head plugin emits, so it has to run after it in document order.
-
-This is build-time substitution, not runtime rendering — `transformIndexHtml`
-with `order: "pre"`, the same mechanism and the same ordering as
-`homepageFromRegistry()`. Every tag is static in the shipped HTML, so the rule
-above ("runtime JavaScript should not be responsible for essential SEO
-metadata") and §41's ban on runtime-generated SEO both still hold. It runs in
-dev too, so what you see locally is what ships.
-
-What the plugin emits, and from where:
-
-| Tag | Source |
-| --- | --- |
-| viewport, charset, favicon, `og:type`, `twitter:card`, `og:image:width/height`, `playMode`, `offers`, `BreadcrumbList` | constants in the plugin — identical on every game page |
-| `<title>`, `og:title`, `twitter:title` | `seoTitle` |
-| `<meta name="description">` | `description` |
-| `og:description`, `twitter:description` | `ogDescription` |
-| `Game` JSON-LD `description` | `schemaDescription` |
-| `Game` JSON-LD `genre` | `genre` |
-| `<meta name="theme-color">` | `themeColor.light` |
-| canonical, `og:url`, JSON-LD `url`, breadcrumb | `SITE_URL` + `path` |
-| `og:image`, `twitter:image`, JSON-LD `image` | `SITE_URL` + `ogImage` |
-| `<link rel="preload">` for the webfonts | derived from the page's CSS, §25 |
-
-**The homepage is deliberately not run through it.** Its head is a different
-shape — `summary_large_image` at 1200×630, `og:site_name`, `og:locale`,
-`og:image:alt`, a `WebSite` JSON-LD and a `FAQPage` JSON-LD — and there is
-exactly one of it, so the duplication this plugin exists to remove does not
-apply. Its `theme-color` still comes from `home.themeColor` so the colour has
-one home (§17).
-
-A page must not hand-write any tag the plugin owns. Validation rejects a game
-page containing its own `og:`, `twitter:`, `ld+json`, canonical, `theme-color`
-or font-preload tags, because a hand-written copy would ship alongside the
-generated one rather than instead of it.
-
 ## SEO invariants
 
 * Game URLs are flat and permanent (§5).
@@ -1429,20 +1331,7 @@ Required files exist
 Metadata exists
     ↓
 Referenced public/ assets exist on disk
-    ↓
-Exactly one <!-- head-meta --> marker, before <!-- theme-bootstrap -->
-    ↓
-No hand-written og:/twitter:/ld+json/canonical/theme-color/preload tag
-    ↓
-themeColor.light|dark === that game's --bg in each theme
-    ↓
-accent.light|dark are #rrggbb; genre is one of the allowed values
 ```
-
-The last three are what stop the generated head from drifting away from the
-game it describes. The theme-colour check is the one with a track record: a
-page shipped `#fdf8e7` while its own stylesheet said `#fdf8e9`, and nothing
-could notice, because the two values were string literals in different files.
 
 The bidirectional registry-to-filesystem check is what makes adding game #50
 safe: filesystem discovery means `vite.config.js` never needs editing, and this
@@ -1476,10 +1365,8 @@ Three layers:
 
 * **Smoke** — driven by `src/data/games.js`, so every registered game is covered
   automatically and the suite grows as games are added. Assertions that do not
-  hold for every game are gated on a registry capability flag such as
-  `hasRestart`, rather than assumed. A flag is a last resort: `hasOverlay`
-  existed only to excuse one game from one assertion, and it was deleted by
-  making that game conform (§16), not by keeping the exemption.
+  hold for every game are gated on registry capability flags such as
+  `hasRestart` and `hasOverlay`, rather than assumed.
 * **Game-specific** — core mechanic, win and loss conditions, restart. Only for
   games whose complexity earns it.
 * **PWA** — manifest and icons, and the absence of any worker, cache or
@@ -1573,21 +1460,6 @@ It must also add the registry entry, or `npm run validate` will fail the next
 build — which is the intended safety net (§29).
 
 Manual duplication of boilerplate should decrease as the number of games grows.
-
-## The scaffold is tested, not trusted
-
-A scaffold is a copy of the page template frozen at the moment someone last
-edited it, so it goes stale silently: it once emitted `dvh` where §16 requires
-`svh`, the homepage's theme colour instead of the game's, and a preload for a
-webfont weight no new game renders. Nothing failed, because nothing ran it.
-
-CI now runs it. A job scaffolds a throwaway game, stages placeholder art for it,
-validates, runs that game's own smoke tests, and then deletes everything and
-asserts the tree is clean again. It is a separate job from `verify`, so a
-mutated working tree can never reach the deploy path.
-
-This is also why the head belongs in `headFromRegistry()` (§28) rather than in
-the scaffold's template: a marker cannot go stale.
 
 ---
 

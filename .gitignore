@@ -9,8 +9,12 @@ dist/
 .env*.local
 
 .DS_Store
+.architecture.md
 
 # Playwright
 test-results/
 playwright-report/
+
+# The UX research: personas, prototypes, screenshots. Read from, never built
+# from, and large. Kept out of the repo rather than out of the working tree.
 research/

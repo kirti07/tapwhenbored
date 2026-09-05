@@ -4,10 +4,6 @@ import { tone as playTone, initSoundToggle } from "../shared/ui/audio.js";
 import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 import { recordPlay } from "../shared/ui/progress.js";
 
-// initShare is deliberately not imported: this game shares a rendered PNG, not
-// a link. See the header of ../shared/ui/shell.js.
-import { initHowto, bindOverlay } from "../shared/ui/shell.js";
-
 (function () {
   "use strict";
 
@@ -641,7 +637,7 @@ import { initHowto, bindOverlay } from "../shared/ui/shell.js";
     }
   }
 
-  function showOverlay() { endCard.show(); }
+  function showOverlay() { overlay.classList.add("show"); }
 
   // ---------- share ----------
   function shareBackground(octx, SIZE) {

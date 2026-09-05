@@ -19,11 +19,10 @@
  * a while and never drew a glyph in it, which is ~16 kB of the critical path at
  * the highest fetch priority the browser has.
  *
- * That is now derived rather than remembered: scripts/font-preloads.js reads a
- * page's own stylesheet and headFromRegistry() emits the answer, so a new game
- * gets it right without anyone deciding. Note the trap this file itself sets —
- * the prose above says `var(--font-display)` out loud, so the derivation strips
- * CSS comments before it looks.
+ * Each page therefore preloads only the weights it renders, and
+ * tests/smoke/site.spec.js pins the two together in both directions: a page
+ * that uses the display font must preload 700, and one that never renders
+ * weight 800 must not preload it.
  *
  * Note that `font-weight: 600` against these faces resolves to the 700 file:
  * with no 600 available, CSS font matching for a target above 500 checks
