@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Flip It — cleared — Tap When Bored</title>
+<script>(function(){try{var q=new URLSearchParams(location.search).get("theme");var t=q||localStorage.getItem("twb:theme")||(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=(t==="dark"?"dark":"light");}catch(e){document.documentElement.dataset.theme="light";}})();</script>
+
+<style>
+/* Nunito is the site's own face. It is declared with local() only: no network request,
+   so these dummies render identically online and offline, with no FOUT and no layout
+   shift. Anyone without Nunito installed gets the system rounded stack, which is what
+   tapwhenbored.com already uses for body copy. No display font is added. */
+@font-face{
+  font-family:"Nunito"; font-style:normal; font-weight:400 900; font-display:swap;
+  src:local("Nunito"), local("Nunito Regular"), local("Nunito-Regular");
+}
+:root{
+  --font: "Nunito", ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --bg:#f3f3fa; --bg-2:#e9e9f4;
+  --surface:#ffffff; --surface-2:#f7f7fc; --surface-3:#eeeef8;
+  --ink:#1b1d2e; --ink-soft:#5f6379; --ink-faint:#8a8da3;
+  --line:#e5e4f0; --line-2:#d5d4e6;
+  --accent:#5546c8; --accent-2:#7b6ce8; --accent-soft:#eeebff;
+  --up:#0f6b50; --up-soft:#e0f3ec;
+  --gold:#8a6206; --gold-soft:#fbeed0;
+  --silver:#5c6076; --silver-soft:#eaecf4;
+  --bronze:#8a5730; --bronze-soft:#f7e9dd;
+  --you-soft:#efecff; --you-line:#7b6ce8;
+  --par:#6d7189; --par-soft:#f0f0f6;
+  --sk:#e9e9f2;
+  --shadow:0 1px 2px rgba(24,22,58,.05), 0 10px 30px -14px rgba(24,22,58,.24);
+  --shadow-lg:0 2px 6px rgba(24,22,58,.08), 0 30px 60px -22px rgba(24,22,58,.42);
+  --r:16px; --r-sm:10px;
+  /* motion: strong custom curves; the built-in CSS easings are too weak */
+  --ease-out:cubic-bezier(0.23,1,0.32,1);
+  --ease-in-out:cubic-bezier(0.77,0,0.175,1);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0d0e1a; --bg-2:#080910;
+  --surface:#171932; --surface-2:#1d1f3b; --surface-3:#242648;
+  --ink:#eeecfa; --ink-soft:#a6a7c9; --ink-faint:#82849f;
+  --line:#282a4c; --line-2:#373a66;
+  --accent:#a794ff; --accent-2:#bfb0ff; --accent-soft:#232048;
+  --up:#48dfa2; --up-soft:#0f3328;
+  --gold:#ffd166; --gold-soft:#3a2c0c;
+  --silver:#ccd0e6; --silver-soft:#252843;
+  --bronze:#e3a678; --bronze-soft:#37200f;
+  --you-soft:#241f52; --you-line:#a794ff;
+  --par:#9698ba; --par-soft:#1e2040;
+  --sk:#232544;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7);
+  --shadow-lg:0 2px 8px rgba(0,0,0,.5), 0 30px 60px -20px rgba(0,0,0,.85);
+}}
+html[data-theme="dark"]{
+  --bg:#0d0e1a; --bg-2:#080910;
+  --surface:#171932; --surface-2:#1d1f3b; --surface-3:#242648;
+  --ink:#eeecfa; --ink-soft:#a6a7c9; --ink-faint:#82849f;
+  --line:#282a4c; --line-2:#373a66;
+  --accent:#a794ff; --accent-2:#bfb0ff; --accent-soft:#232048;
+  --up:#48dfa2; --up-soft:#0f3328;
+  --gold:#ffd166; --gold-soft:#3a2c0c;
+  --silver:#ccd0e6; --silver-soft:#252843;
+  --bronze:#e3a678; --bronze-soft:#37200f;
+  --you-soft:#241f52; --you-line:#a794ff;
+  --par:#9698ba; --par-soft:#1e2040;
+  --sk:#232544;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7);
+  --shadow-lg:0 2px 8px rgba(0,0,0,.5), 0 30px 60px -20px rgba(0,0,0,.85);
+}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+:root[data-theme="dark"]{color-scheme:dark}
+:root[data-theme="light"]{color-scheme:light}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--font); font-size:15px; line-height:1.5;
+  font-variant-numeric:tabular-nums lining-nums;
+  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  -webkit-tap-highlight-color:transparent;
+}
+button,a,summary,label,input,select{touch-action:manipulation}
+h1,h2,h3,p,ol,ul,figure{margin:0}
+ol,ul{padding:0;list-style:none}
+a{color:inherit}
+img,svg{display:block}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent-2); outline-offset:2px; border-radius:8px}
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ---------- app frame ---------- */
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px}
+.site-head{display:flex;align-items:center;gap:12px;padding:18px 0 14px;flex-wrap:wrap}
+.brand-name{font-size:26px;font-weight:800;letter-spacing:-.4px;line-height:1.1}
+.brand-name .warm{color:#e04a37} .brand-name .cool{color:#137a5b}
+html[data-theme="dark"] .brand-name .warm{color:#ff7d6b} html[data-theme="dark"] .brand-name .cool{color:#34e19a}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .brand-name .warm{color:#ff7d6b} :root:not([data-theme="light"]) .brand-name .cool{color:#34e19a}}
+.brand-sub{color:var(--ink-soft);font-size:14px;margin-top:2px}
+.head-tools{margin-left:auto;display:flex;align-items:center;gap:8px}
+@media (max-width:559px){ .site-head:has(.me){gap:10px} .site-head:has(.me) .head-tools{margin-left:0;width:100%;justify-content:flex-start} }
+
+/* identity chip */
+.me{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:6px 14px 6px 6px;border-radius:999px;
+  background:var(--surface);border:1.5px solid var(--line);text-decoration:none;font-weight:700;font-size:14px;box-shadow:var(--shadow)}
+@media (hover:hover) and (pointer:fine){ .me:hover{border-color:var(--line-2)} }
+.me-av{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-size:14px;font-weight:800;flex:none}
+.me-txt{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.me--ghost .me-av{background:var(--surface-3);color:var(--ink-faint)}
+
+/* theme toggle */
+.tt{width:56px;height:44px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);
+  display:inline-flex;align-items:center;justify-content:center;box-shadow:var(--shadow)}
+.tt svg{width:19px;height:19px;stroke:var(--ink-soft);fill:none;stroke-width:1.9;stroke-linecap:round}
+.tt .moon{display:none} html[data-theme="dark"] .tt .moon{display:block} html[data-theme="dark"] .tt .sun{display:none}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tt .moon{display:block} :root:not([data-theme="light"]) .tt .sun{display:none}}
+
+/* ---------- THE WEEKLY WINDOW (identical markup on every page) ---------- */
+.wk{background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);
+  padding:10px 12px 8px;position:relative;overflow:hidden}
+.wk-top{display:flex;align-items:flex-start;gap:10px;height:44px}
+.wk-id{min-width:0;flex:1}
+.wk-title{display:flex;align-items:center;gap:8px;font-size:15.5px;font-weight:800;letter-spacing:-.2px;line-height:1.25;min-width:0}
+.wk-title .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wk-dot{width:10px;height:10px;border-radius:3px;flex:none;background:var(--dot,var(--accent))}
+html[data-theme="dark"] .wk-dot{background:var(--dotd,var(--accent))}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .wk-dot{background:var(--dotd,var(--accent))}}
+.wk-unit{font-size:12.5px;color:var(--ink-faint);font-weight:600;margin-top:2px;letter-spacing:.01em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wk-reset{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:1px;
+  height:44px;padding:0 2px;border:0;background:transparent;flex:none;text-align:right;border-radius:10px}
+.wk-reset b{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;line-height:1.3}
+/* The time is a detail, not a countdown: reserved height, revealed on hover or tap, never ticking. */
+.wk-clock{height:17px;line-height:17px;font-size:12.5px;font-weight:700;color:var(--ink-faint);
+  min-width:80px;white-space:nowrap;opacity:0;transition:opacity 140ms var(--ease-out)}
+.wk-reset[aria-expanded="true"] .wk-clock,.wk-reset:focus-visible .wk-clock{opacity:1}
+@media (hover:hover) and (pointer:fine){ .wk-reset:hover .wk-clock{opacity:1} .wk-reset:hover{background:var(--surface-2)} }
+@media (prefers-reduced-motion: reduce){ .wk-clock{transition:none} }
+
+.wk-rows{margin-top:8px}
+.wk-row{display:grid;grid-template-columns:28px minmax(0,1fr) 30px auto;align-items:center;gap:10px;
+  height:40px;padding:0 8px;border-radius:10px;position:relative}
+.wk-row + .wk-row{box-shadow:inset 0 1px 0 var(--line)}
+.wk-rank{font-size:13.5px;font-weight:800;color:var(--ink-faint);text-align:center}
+.wk-rank.medal{display:grid;place-items:center;width:26px;height:26px;border-radius:8px;font-size:13px;margin:0 auto}
+.wk-rank.rk1{background:var(--gold-soft);color:var(--gold)}
+.wk-rank.rk2{background:var(--silver-soft);color:var(--silver)}
+.wk-rank.rk3{background:var(--bronze-soft);color:var(--bronze)}
+.wk-name{display:flex;align-items:center;gap:6px;min-width:0;font-weight:700;font-size:14.5px;overflow:hidden}
+.wk-name span.nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crown{width:11px;height:9px;flex:none;fill:#c99213}
+html[data-theme="dark"] .crown{fill:#ffd166}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .crown{fill:#ffd166}}
+.chip{flex:none;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  padding:2px 6px;border-radius:6px;line-height:1.35}
+.chip-you{background:var(--you-line);color:#fff}
+html[data-theme="dark"] .chip-you{color:#171932}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .chip-you{color:#171932}}
+.chip-par{background:var(--par-soft);color:var(--par);border:1px dashed var(--line-2)}
+.wk-move{font-size:12px;font-weight:800;color:transparent;text-align:center}
+.wk-move.up{color:var(--up)}
+.wk-move.dn{color:var(--ink-faint)}
+.wk-score{font-size:15px;font-weight:800;text-align:right;min-width:64px;white-space:nowrap}
+.wk-score i{font-style:normal;font-weight:700;font-size:11.5px;color:var(--ink-faint);margin-left:3px}
+.wk-row.is-you{background:var(--you-soft);box-shadow:none}
+.wk-row.is-you + .wk-row{box-shadow:none}
+.wk-row.is-you::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:3px;background:var(--you-line)}
+.wk-row.is-par .wk-name{color:var(--par)}
+.wk-row.is-par .wk-score{color:var(--par)}
+.wk-row.is-open .wk-rank,.wk-row.is-open .wk-name,.wk-row.is-open .wk-score{color:var(--ink-faint);font-weight:700}
+.wk-gap{height:18px;display:flex;align-items:center;gap:8px;padding:0 8px;color:var(--ink-faint);font-size:11.5px;font-weight:700}
+.wk-gap::before,.wk-gap::after{content:"";height:1px;background:var(--line);flex:1}
+.wk-gap.blank span{display:none}
+.wk-gap.blank::after{display:none}
+.wk-msg{height:218px;margin-top:8px;display:grid;place-content:center;justify-items:center;gap:10px;text-align:center;padding:0 12px}
+.wk-msg p{font-size:14px;color:var(--ink-soft);max-width:30ch}
+.wk-msg b{font-size:15px}
+.sk{background:var(--sk);border-radius:6px;height:12px}
+.wk-row.is-sk .wk-rank{background:var(--sk);border-radius:6px;height:14px;color:transparent}
+.wk-row.is-sk .wk-name{display:block;height:13px;background:var(--sk);border-radius:6px;width:60%}
+.wk-row.is-sk .wk-score{background:var(--sk);border-radius:6px;height:13px;color:transparent;min-width:52px}
+.wk-drama{height:30px;display:flex;align-items:center;gap:7px;padding:0 8px;margin-top:5px;line-height:1.3;
+  font-size:13.5px;font-weight:700;color:var(--ink-soft)}
+.wk-drama .txt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wk-drama .bolt{color:var(--accent);font-weight:800}
+.wk-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;height:30px;
+  padding:5px 8px 0;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-faint);font-weight:700}
+.wk-foot>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wk-more{color:var(--accent);text-decoration:none;font-weight:800;display:inline-flex;align-items:center;gap:4px;
+  min-height:30px;align-self:center;position:relative;flex:none}
+/* the visual stays 30px tall; the hit area is 44 */
+.wk-more::after{content:"";position:absolute;left:-10px;right:-8px;bottom:-2px;height:45px}
+@media (hover:hover) and (pointer:fine){ .wk-more:hover{text-decoration:underline} }
+/* Purpose: state indication — where this run landed. One property (opacity), one shot,
+   over a row that is already permanently marked, so nothing is lost when it is removed. */
+@keyframes youpulse{0%{opacity:0}22%{opacity:1}100%{opacity:0}}
+.wk-row.is-new::after{content:"";position:absolute;inset:0;border-radius:10px;pointer-events:none;
+  background:color-mix(in srgb, var(--accent) 24%, transparent);opacity:0;
+  animation:youpulse 520ms var(--ease-out) 1}
+@media (prefers-reduced-motion: reduce){ .wk-row.is-new::after{animation:none} }
+
+.honest{font-size:12px;color:var(--ink-faint);text-align:center;margin-top:10px;font-weight:600}
+
+/* game marks (shared by home cards and the account list) */
+.gicon{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;
+  background:color-mix(in srgb, var(--dot) 17%, transparent);color:var(--dot);flex:none}
+.gicon svg{width:22px;height:22px}
+html[data-theme="dark"] .gicon{background:color-mix(in srgb, var(--dotd) 22%, transparent);color:var(--dotd)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .gicon{background:color-mix(in srgb, var(--dotd) 22%, transparent);color:var(--dotd)}}
+
+/* ---------- buttons ---------- */
+.btn{min-height:48px;padding:0 20px;border-radius:999px;border:1.5px solid transparent;font-weight:800;font-size:15px;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;
+  transition:transform 140ms var(--ease-out)}
+.btn:active{transform:scale(.97)}
+@media (prefers-reduced-motion: reduce){.btn{transition:none}.btn:active{transform:none}}
+.btn-primary{background:var(--accent);color:#fff}
+html[data-theme="dark"] .btn-primary{color:#12132a}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn-primary{color:#12132a}}
+@media (hover:hover) and (pointer:fine){ .btn-primary:hover{background:var(--accent-2)} }
+.btn-ghost{background:var(--surface);border-color:var(--line-2);color:var(--ink)}
+@media (hover:hover) and (pointer:fine){ .btn-ghost:hover{background:var(--surface-2)} }
+.btn-quiet{background:transparent;border-color:var(--line);color:var(--ink-soft);font-weight:700}
+@media (hover:hover) and (pointer:fine){ .btn-quiet:hover{background:var(--surface-2)} }
+.btn-sm{min-height:44px;font-size:14px;padding:0 16px}
+
+/* ---------- forms ---------- */
+.field{display:block}
+.field label{display:block;font-size:13px;font-weight:800;color:var(--ink-soft);margin-bottom:6px}
+.input{width:100%;min-height:50px;font-size:16px;font-weight:700;padding:0 14px;border-radius:12px;
+  border:1.5px solid var(--line-2);background:var(--surface-2);color:var(--ink)}
+.input::placeholder{color:var(--ink-faint);font-weight:600}
+.input:focus{border-color:var(--accent);background:var(--surface)}
+.consent{font-size:12px;color:var(--ink-faint);line-height:1.45;font-weight:600}
+
+/* ---------- demo bar ---------- */
+.demo-bar{position:fixed;left:10px;bottom:10px;z-index:90;display:flex;align-items:center;gap:4px;flex-wrap:wrap;
+  max-width:min(94vw,520px);background:#2b2c38;color:#d8d9e4;border-radius:10px;padding:5px 7px;
+  font:600 10.5px/1 var(--font);box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.demo-bar b{font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8b8da0;margin-right:2px;font-size:9.5px}
+.demo-bar button{background:#3d3f4f;border:0;color:#e6e7f0;border-radius:6px;padding:5px 7px;font:700 10.5px/1 var(--font);min-height:24px}
+.demo-bar button[aria-pressed="true"]{background:#cfd0dd;color:#23242e}
+
+/* ---------- misc ---------- */
+.tabs{display:flex;gap:6px;background:var(--surface-2);border:1.5px solid var(--line);padding:4px;border-radius:999px}
+.tab{flex:1;min-height:44px;border:0;background:transparent;border-radius:999px;font-weight:800;font-size:13.5px;color:var(--ink-soft);padding:0 10px}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.card-note{font-size:12.5px;color:var(--ink-faint);font-weight:700}
+.section-h{display:flex;align-items:baseline;gap:10px;margin:26px 0 12px}
+.section-h h2{font-size:17px;font-weight:800;letter-spacing:-.2px}
+.section-h span{font-size:12.5px;color:var(--ink-faint);font-weight:700}
+.site-foot{padding:26px 0 34px;text-align:center;color:var(--ink-faint);font-size:13px;font-weight:600}
+
+
+.stage{max-width:520px;margin:0 auto;padding:14px 16px 0}
+.topbar{display:flex;align-items:flex-start;gap:10px}
+.tb-brand{min-width:0}
+.back{display:inline-flex;align-items:center;gap:4px;color:var(--ink-soft);text-decoration:none;font-size:13px;font-weight:700;
+  min-height:44px;margin-top:-6px;padding-right:6px}
+.tb-title{font-size:26px;font-weight:800;letter-spacing:.02em;line-height:1.05;margin-top:2px}
+.tb-sub{font-size:10.5px;letter-spacing:.22em;color:var(--ink-faint);font-weight:800;margin-top:3px}
+.tb-actions{margin-left:auto;display:flex;gap:6px;align-items:center;flex:none}
+.ico{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--line-2);background:transparent;display:grid;place-items:center}
+.ico svg{width:19px;height:19px;fill:none;stroke:var(--ink-soft);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.me--tb{padding:5px;gap:0}
+.weekbar{display:flex;align-items:center;gap:9px;margin-top:12px;padding:9px 12px;min-height:52px;
+  border-radius:14px;background:var(--surface);border:1.5px solid var(--line);text-decoration:none;box-shadow:var(--shadow)}
+.wb-dot{width:9px;height:9px;border-radius:3px;background:#f0a825;flex:none}
+html[data-theme="dark"] .wb-dot{background:#ffd60a}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .wb-dot{background:#ffd60a}}
+.wb-txt{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+.wb-txt b{font-size:14px;font-weight:800}
+.wb-txt span{font-size:12px;color:var(--ink-soft);font-weight:600}
+.wb-clock{margin-left:auto;font-size:11.5px;color:var(--ink-faint);font-weight:700;text-align:right;flex:none}
+.wb-go{color:var(--ink-faint);font-size:20px;font-weight:800;flex:none}
+.fi-tag{text-align:center;color:var(--ink-soft);font-size:13.5px;margin-top:16px;line-height:1.45}
+.fi-board{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:16px auto 0;max-width:340px}
+.fi-tile{aspect-ratio:1;border-radius:12px;border:0;background:var(--surface-3);box-shadow:inset 0 -2px 0 rgba(0,0,0,.05)}
+.fi-tile.on{background:linear-gradient(180deg,#ffd05a,#f0a825);box-shadow:0 2px 0 rgba(180,120,10,.35)}
+html[data-theme="dark"] .fi-tile.on{background:linear-gradient(180deg,#ffe27a,#ffc60a);box-shadow:0 2px 0 rgba(0,0,0,.5)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .fi-tile.on{background:linear-gradient(180deg,#ffe27a,#ffc60a)}}
+.fi-stats{display:flex;justify-content:center;gap:26px;margin-top:18px}
+.fi-stats div{text-align:center}
+.fi-stats b{display:block;font-size:22px;font-weight:800;line-height:1.1}
+.fi-stats span{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);font-weight:800}
+.fi-levels{display:flex;justify-content:center;gap:8px;margin-top:18px}
+.lvl{min-height:44px;padding:0 18px;border-radius:999px;border:1.5px solid var(--line-2);background:transparent;font-weight:800;font-size:13px;color:var(--ink-soft)}
+.lvl[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+html[data-theme="dark"] .lvl[aria-pressed="true"]{color:#12132a}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .lvl[aria-pressed="true"]{color:#12132a}}
+
+html,body{height:100%}
+body{overflow:hidden}
+.stage{padding-top:14px;filter:saturate(.6);opacity:.6}
+.scrim{position:fixed;inset:0;background:color-mix(in srgb, var(--bg) 84%, transparent);backdrop-filter:blur(3px);z-index:10}
+.dwrap{position:fixed;inset:0;z-index:11;display:grid;place-items:center;
+  padding:10px max(10px, env(safe-area-inset-left)) max(38px, env(safe-area-inset-bottom))}
+.dcard{width:100%;max-width:420px;max-height:calc(100svh - 48px);overflow:auto;overscroll-behavior:contain;
+  background:var(--surface);border:1.5px solid var(--line);border-radius:22px;box-shadow:var(--shadow-lg);
+  padding:12px;display:grid;gap:8px;grid-template-areas:"head" "board" "ask" "act" "note"}
+/* Entrance. Purpose: the card is not part of the page the player was looking at, so it must
+   arrive rather than appear. Modal, so it scales from its own centre, not from a trigger. */
+.scrim{opacity:1;transition:opacity 200ms var(--ease-out)}
+@starting-style{ .scrim{opacity:0} }
+.dcard{transform:scale(1);opacity:1;transform-origin:center;
+  transition:transform 220ms var(--ease-out), opacity 160ms var(--ease-out)}
+@starting-style{ .dcard{transform:scale(.96);opacity:0} }
+@media (prefers-reduced-motion: reduce){
+  .dcard{transition:opacity 140ms linear}
+  @starting-style{ .dcard{transform:none;opacity:0} }
+}
+.d-head{grid-area:head}
+.d-board{grid-area:board}
+.d-ask{grid-area:ask}
+.d-act{grid-area:act}
+.dtitle{font-size:23px;font-weight:800;letter-spacing:-.4px;line-height:1.1;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.badge{font-size:10.5px;font-weight:800;letter-spacing:.1em;padding:4px 9px;border-radius:7px;background:var(--up-soft);color:var(--up)}
+.dstat{margin-top:4px;font-size:16px;font-weight:800}
+.dstat i{font-style:normal;color:var(--ink-faint);font-weight:700;font-size:13px}
+.dmean{margin-top:3px;font-size:13.5px;color:var(--ink-soft);line-height:1.45;min-height:40px}
+.dmean b{color:var(--ink)}
+.d-act{display:flex;gap:10px;align-items:center}
+.d-act .btn{flex:1}
+.noterow{grid-area:note;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:18px}
+.noterow .honest{margin:0;text-align:left;font-size:11.5px}
+/* Confirmation lives in space that is always reserved, so it can never move a button. */
+.sharenote{font-size:12.5px;font-weight:800;color:var(--up);text-align:right;flex:none;
+  visibility:hidden;opacity:0;transition:opacity 140ms var(--ease-out)}
+.sharenote.on{visibility:visible;opacity:1}
+@media (prefers-reduced-motion: reduce){ .sharenote{transition:none} }
+.reopen{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:12}
+@media (min-width:780px){
+  .dcard{max-width:720px;grid-template-columns:322px 340px;grid-template-areas:"head board" "ask board" "act board" "note board";
+    align-content:start;padding:18px;gap:12px 20px}
+  .noterow{justify-content:flex-start}
+  /* the honesty line gets the whole row back from the reserved confirmation slot */
+  .noterow .honest{font-size:11px}
+  .d-board{align-self:start}
+}
+
+.d-ask{min-height:0}
+.quiet-line{font-size:13.5px;color:var(--ink-soft);line-height:1.5;padding:11px 13px;border-radius:12px;
+  background:var(--surface-2);border:1.5px solid var(--line)}
+.quiet-line b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="stage" id="behind">
+  <header class="topbar">
+    <div class="tb-brand">
+      <a class="back" href="home.html"><span aria-hidden="true">&lsaquo;</span> Games</a>
+      <h1 class="tb-title">FLIP IT</h1>
+      <p class="tb-sub">PUZZLE</p>
+    </div>
+    <div class="tb-actions">
+      <button class="ico" type="button" aria-label="Reset board"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.6-5.9M4 4v4h4"/></svg></button>
+      <button class="ico" type="button" aria-label="New board"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9M20 4v4h-4"/></svg></button>
+      <button class="ico" type="button" aria-label="Sound on" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M4 9v6h3.5L12 19V5L7.5 9zM16 9.5a3.5 3.5 0 0 1 0 5M18.5 7a7 7 0 0 1 0 10"/></svg></button>
+      <a class="me me--tb" href="account.html"><span class="me-av" aria-hidden="true">QO</span></a>
+    </div>
+  </header>
+  <a class="weekbar" href="leaderboard.html">
+    <span class="wb-dot" aria-hidden="true"></span>
+    <span class="wb-txt"><b>3rd this week</b><span>1 move off 2nd</span></span>
+    <span class="wb-clock">Resets Sunday</span>
+    <span class="wb-go" aria-hidden="true">&rsaquo;</span>
+  </a>
+  <p class="fi-tag">Turn off every tile.<br>Tap a tile — it flips its neighbours too.</p>
+  <div class="fi-board" role="grid" aria-label="Flip It board, 5 by 5"><button class="fi-tile on" type="button" aria-label="Tile 1"></button><button class="fi-tile" type="button" aria-label="Tile 2"></button><button class="fi-tile on" type="button" aria-label="Tile 3"></button><button class="fi-tile" type="button" aria-label="Tile 4"></button><button class="fi-tile" type="button" aria-label="Tile 5"></button><button class="fi-tile" type="button" aria-label="Tile 6"></button><button class="fi-tile on" type="button" aria-label="Tile 7"></button><button class="fi-tile on" type="button" aria-label="Tile 8"></button><button class="fi-tile" type="button" aria-label="Tile 9"></button><button class="fi-tile on" type="button" aria-label="Tile 10"></button><button class="fi-tile on" type="button" aria-label="Tile 11"></button><button class="fi-tile on" type="button" aria-label="Tile 12"></button><button class="fi-tile" type="button" aria-label="Tile 13"></button><button class="fi-tile on" type="button" aria-label="Tile 14"></button><button class="fi-tile" type="button" aria-label="Tile 15"></button><button class="fi-tile" type="button" aria-label="Tile 16"></button><button class="fi-tile" type="button" aria-label="Tile 17"></button><button class="fi-tile on" type="button" aria-label="Tile 18"></button><button class="fi-tile on" type="button" aria-label="Tile 19"></button><button class="fi-tile on" type="button" aria-label="Tile 20"></button><button class="fi-tile on" type="button" aria-label="Tile 21"></button><button class="fi-tile" type="button" aria-label="Tile 22"></button><button class="fi-tile" type="button" aria-label="Tile 23"></button><button class="fi-tile" type="button" aria-label="Tile 24"></button><button class="fi-tile on" type="button" aria-label="Tile 25"></button></div>
+  <div class="fi-stats">
+    <div><b>9</b><span>Moves</span></div>
+    <div><b>00:33</b><span>Time</span></div>
+    <div><b>9</b><span>Week best</span></div>
+  </div>
+  <div class="fi-levels" role="group" aria-label="Difficulty">
+    <button class="lvl" type="button" aria-pressed="false">Easy</button>
+    <button class="lvl" type="button" aria-pressed="true">Medium</button>
+    <button class="lvl" type="button" aria-pressed="false">Hard</button>
+  </div>
+</div>
+<div class="scrim" id="scrim"></div>
+<div class="dwrap" id="dwrap">
+  <div class="dcard" role="dialog" aria-modal="true" aria-labelledby="erTitle" id="dcard">
+    <div class="d-head">
+      <p class="dtitle" id="erTitle">CLEARED! <span class="badge">UP 2 PLACES</span></p>
+      <p class="dstat">9 moves <i>· 00:33 · Medium</i></p>
+      <p class="dmean"><b>3rd this week</b>, up from 5th. One move under Par.</p>
+    </div>
+    <div class="d-board">
+      <section class="wk" id="wkEnd"></section>
+    </div>
+    <div class="d-ask" id="ask"><p class="quiet-line">Nice week, <b>Quiet Otter 42</b>. Nothing to fill in — you’re already on the table.</p></div>
+    <div class="d-act">
+      <button class="btn btn-primary" type="button" id="againBtn">Play again</button>
+      <button class="btn btn-ghost" type="button" id="shareBtn">Share</button>
+    </div>
+    <div class="noterow">
+      <p class="honest">Boards are for fun — scores aren’t verified.</p>
+      <p class="sharenote" id="shareNote" role="status">Link copied</p>
+    </div>
+  </div>
+</div>
+<button class="btn btn-ghost btn-sm reopen" type="button" id="reopen" hidden>Show result</button>
+<script>
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+
+/* ---- theme ---- */
+function initTheme(){
+  var btn = document.querySelector(".tt");
+  if(!btn) return;
+  btn.addEventListener("click", function(){
+    var cur = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+    var next = cur === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try{ localStorage.setItem("twb:theme", next); }catch(e){}
+    btn.setAttribute("aria-label", next === "dark" ? "Switch to light theme" : "Switch to dark theme");
+  });
+}
+
+/* ---- weekly reset: a date, not a countdown ---- */
+function nextReset(){
+  var n = new Date();
+  var d = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+  var add = (7 - n.getDay()) % 7;
+  if(add === 0) add = 7;
+  d.setDate(d.getDate() + add);
+  return d;
+}
+/* Coarse on purpose: no minutes means nothing has to tick, and nothing has to move. */
+function countdownText(){
+  var ms = nextReset() - new Date();
+  if(ms < 0) ms = 0;
+  var m = Math.round(ms/6e4), h = Math.round(ms/36e5), d = Math.round(ms/864e5);
+  if(ms >= 1296e5) return "in " + d + " days";
+  if(ms >= 54e5)   return "in " + h + " hour" + (h === 1 ? "" : "s");
+  return "in " + m + " minute" + (m === 1 ? "" : "s");
+}
+function initCountdown(){
+  var t = countdownText(), all = document.querySelectorAll("[data-clock]");
+  for(var i=0;i<all.length;i++) all[i].textContent = t;
+  /* On a fine pointer hover reveals the time; on touch, a tap does. Never both, never ticking. */
+  document.addEventListener("click", function(e){
+    var b = e.target.closest && e.target.closest(".wk-reset");
+    if(!b) return;
+    b.setAttribute("aria-expanded", b.getAttribute("aria-expanded") === "true" ? "false" : "true");
+  });
+}
+
+/* ---- THE weekly window. One renderer, identical markup everywhere. ---- */
+function renderWk(el, cfg){
+  var st = cfg.state || "full";
+  el.dataset.state = st;
+  el.style.setProperty("--dot", cfg.dot);
+  el.style.setProperty("--dotd", cfg.dotd);
+  var head =
+    '<div class="wk-top">' +
+      '<div class="wk-id">' +
+        '<h2 class="wk-title"><span class="wk-dot"></span><span class="nm">' + esc(cfg.title) + '</span></h2>' +
+        '<p class="wk-unit">' + esc(cfg.unit) + '</p>' +
+      '</div>' +
+      '<button class="wk-reset" type="button" aria-expanded="false" aria-label="Resets Sunday. Show how long is left.">' +
+        '<b>Resets Sunday</b><span class="wk-clock" data-clock>' + countdownText() + '</span></button>' +
+    '</div>';
+
+  var body = "";
+  if(st === "error"){
+    body = '<div class="wk-msg"><b>Couldn\u2019t reach the board</b><p>' + esc(cfg.errorNote) +
+           '</p><button class="btn btn-ghost btn-sm" type="button" data-wk-retry>Try again</button></div>';
+  } else if(st === "loading"){
+    body = '<ol class="wk-rows">';
+    for(var i=0;i<5;i++){
+      body += '<li class="wk-row is-sk"><span class="wk-rank">0</span><span class="wk-name">&nbsp;</span>' +
+              '<span class="wk-move"></span><span class="wk-score">0</span></li>';
+      if(i===2) body += '<li class="wk-gap blank"><span>&nbsp;</span></li>';
+    }
+    body += '</ol>';
+  } else {
+    var rows = cfg.rows || [];
+    body = '<ol class="wk-rows">';
+    for(var j=0;j<rows.length;j++){
+      var r = rows[j];
+      var cls = "wk-row";
+      if(r.you) cls += " is-you";
+      if(r.par) cls += " is-par";
+      if(r.open) cls += " is-open";
+      if(r.pulse) cls += " is-new";
+      var rank = r.rank <= 3 && !r.open
+        ? '<span class="wk-rank medal rk' + r.rank + '">' + r.rank + '</span>'
+        : '<span class="wk-rank">' + (r.open ? "\u2013" : r.rank) + '</span>';
+      var crown = r.rank === 1 && !r.open && !r.par
+        ? '<svg class="crown" viewBox="0 0 24 18" aria-hidden="true"><title>Leads the week</title><path d="M1.6 16.4 0 3.2l6.4 4.6L12 0l5.6 7.8L24 3.2l-1.6 13.2z"/></svg>'
+        : "";
+      var chips = "";
+      if(r.you) chips += '<span class="chip chip-you">you</span>';
+      if(r.par) chips += '<span class="chip chip-par">target</span>';
+      var mv = '<span class="wk-move"></span>';
+      if(r.up) mv = '<span class="wk-move up" title="Up ' + r.up + ' this week">\u25B2' + r.up + '</span>';
+      else if(r.down) mv = '<span class="wk-move dn" title="Down ' + r.down + ' this week">\u25BC' + r.down + '</span>';
+      var score = r.open
+        ? '<span class="wk-score">\u2013</span>'
+        : '<span class="wk-score">' + esc(r.score) + (r.you ? '<i>' + esc(cfg.short) + '</i>' : "") + '</span>';
+      body += '<li class="' + cls + '">' + rank +
+              '<span class="wk-name">' + (r.open ? '<span class="nm">' + esc(r.name) + '</span>' : '<span class="nm">' + esc(r.name) + '</span>' + crown + chips) + '</span>' +
+              mv + score + '</li>';
+      if(j === 2){
+        var g = cfg.gap ? cfg.gap : "";
+        body += '<li class="wk-gap' + (g ? "" : " blank") + '"><span>' + esc(g || "x") + '</span></li>';
+      }
+    }
+    body += '</ol>';
+  }
+
+  /* A failed fetch has nothing encouraging to say and no player count to quote:
+     both strips stay empty, and both are fixed height, so nothing resizes. */
+  var drama = (st === "loading" || st === "error") ? "" : (cfg.drama || "");
+  var foot  = st === "loading" ? "Reading this week\u2019s board\u2026" : (st === "error" ? "" : (cfg.count || ""));
+  var out = head + body +
+    '<p class="wk-drama">' + (drama ? '<span class="bolt">\u2192</span>' : "") + '<span class="txt">' + esc(drama) + '</span></p>' +
+    '<div class="wk-foot"><span>' + esc(foot) + '</span>' +
+    (cfg.link ? '<a class="wk-more" href="' + cfg.link + '">Full table \u203A</a>' : '<span></span>') + '</div>';
+  el.innerHTML = out;
+  var rt = el.querySelector("[data-wk-retry]");
+  if(rt && cfg.onRetry) rt.addEventListener("click", cfg.onRetry);
+}
+
+/* ---- demo state bar ---- */
+function initDemo(states, apply){
+  var bar = document.querySelector(".demo-bar");
+  if(!bar) return;
+  bar.addEventListener("click", function(e){
+    var b = e.target.closest("button[data-state]");
+    if(!b) return;
+    var btns = bar.querySelectorAll("button[data-state]");
+    for(var i=0;i<btns.length;i++) btns[i].setAttribute("aria-pressed", String(btns[i] === b));
+    apply(b.dataset.state);
+  });
+  apply(states[0]);
+}
+
+/* ---- stored player ---- */
+function getPlayer(){
+  try{ return JSON.parse(localStorage.getItem("twb:player") || "null"); }catch(e){ return null; }
+}
+function setPlayer(name){
+  var p = getPlayer() || { id: "p_" + Math.random().toString(36).slice(2,10) };
+  p.name = name;
+  try{ localStorage.setItem("twb:player", JSON.stringify(p)); }catch(e){}
+  return p;
+}
+
+
+initTheme(); initCountdown();
+
+var dwrap = document.getElementById("dwrap"), scrim = document.getElementById("scrim"),
+    behind = document.getElementById("behind"), reopen = document.getElementById("reopen");
+function openDialog(){
+  dwrap.hidden = false; scrim.hidden = false; reopen.hidden = true;
+  if(behind) behind.inert = true;
+  var p = document.getElementById("againBtn"); if(p) p.focus({preventScroll:true});
+}
+function closeDialog(){
+  dwrap.hidden = true; scrim.hidden = true; reopen.hidden = false;
+  if(behind) behind.inert = false;
+  reopen.focus({preventScroll:true});
+}
+document.addEventListener("keydown", function(e){ if(e.key === "Escape" && !dwrap.hidden) closeDialog(); });
+reopen.addEventListener("click", openDialog);
+if(behind) behind.inert = true;
+document.getElementById("againBtn").focus({preventScroll:true});
+var sb = document.getElementById("shareBtn"), sn = document.getElementById("shareNote");
+if(sb) sb.addEventListener("click", function(){
+  var txt = "I cleared FLIP IT in 9 moves this week on Tap When Bored. 3rd \u2014 come and take it.";
+  function copied(){ if(sn) sn.classList.add("on"); }
+  /* The share sheet is its own confirmation; only the clipboard path needs one from us. */
+  if(navigator.share){ navigator.share({ text: txt }).catch(function(){}); return; }
+  if(navigator.clipboard){ navigator.clipboard.writeText(txt).then(copied, function(){}); return; }
+  copied();
+});
+
+renderWk(document.getElementById("wkEnd"), {
+  title: "Flip It \u00B7 this week", unit: "Moves \u00B7 fewer is better", short: "moves",
+  dot: "#f0a825", dotd: "#ffd60a", link: "leaderboard.html",
+  rows: [{"rank":1,"name":"Nadia Kova","score":"7"},{"rank":2,"name":"Tomas Reyes","score":"8"},{"rank":3,"name":"Quiet Otter 42","score":"9","you":true,"up":2,"pulse":true},{"rank":4,"name":"Par","score":"10","par":true},{"rank":5,"name":"Bea Mwangi","score":"11"}],
+  drama: "One move off second. Good week.",
+  count: "14 players this week"
+});
+</script>
+</body>
+</html>
