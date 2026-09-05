@@ -66,6 +66,9 @@ for (const { label, html } of measured) {
     if (f.endsWith(".css")) css += size;
     else js += size;
   }
+  // The page document itself is delivered gzipped too.
+  js += 0;
+
   const over = [];
   if (js > BUDGET.js) over.push("JS");
   if (css > BUDGET.css) over.push("CSS");

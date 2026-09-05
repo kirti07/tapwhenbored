@@ -51,10 +51,10 @@ transparency for iOS to mishandle on the apple-touch-icon, and no
 double-rounding when the OS applies its own mask.
 
 Note that the icon canvas is *not* the manifest's `background_color`. That is
-`#f6f6fb`, the homepage's ground, because Android holds the launch screen in
-`background_color` and then cross-fades to the page — so it has to match the
-page, not the icon. `npm run validate` pins it to `home.themeColor.light` in
-the registry.
+`#f3ece0`, the homepage's paper ground, because Android holds the launch screen
+in `background_color` and then cross-fades to the page — so it has to match the
+page, not the icon. `npm run validate` pins it to the homepage's `theme-color`
+meta tag.
 
 **The maskable inset.** Android may crop a maskable icon to a circle of 80%
 diameter, and the largest square inside that circle has a side of
@@ -87,5 +87,5 @@ Two things to keep in mind if you replace the social card:
   against the homepage's `og:image`, so both have to move together.
 - **Keep `background_color` matching the homepage, not the icon.** It is the
   colour Android holds the launch screen in before cross-fading to the page, so
-  a mismatch reads as a coloured flash. It is pinned to `home.themeColor.light`
-  by `npm run validate`, so change it there.
+  a mismatch reads as a coloured flash. `npm run validate` pins it to the
+  homepage's `theme-color` meta tag, so the two move together.

@@ -81,12 +81,24 @@ jobs:
       - name: Scaffold a probe game
         run: node scripts/new-game.js ci-probe
 
-      # Validation requires both images on disk (§29), so borrow an existing
-      # game's. The probe never renders them; it only has to resolve.
+      # Validation requires the og image on disk (§29), so borrow an existing
+      # game's. The probe never renders it; it only has to resolve. There is no
+      # thumbnail to stage — the shelf draws a glyph from the shared sprite.
+      #
+      # The scaffold writes `sticker: "st-TODO"` and tells the author to add the
+      # symbol by hand, which is right for a person and impossible for CI. So
+      # stage that too, and revert it below alongside the registry.
       - name: Stage placeholder art
         run: |
-          cp public/assets/untangle-thumb.svg public/assets/ci-probe-thumb.svg
-          cp public/assets/untangle-og.jpg    public/assets/ci-probe-og.jpg
+          cp public/assets/untangle-og.jpg public/assets/ci-probe-og.jpg
+          node -e '
+            const fs = require("fs");
+            const p = "scripts/sprite.svg";
+            const symbol =
+              `<symbol id="st-todo" viewBox="0 0 48 48">` +
+              `<circle cx="24" cy="24" r="13" fill="currentColor"/></symbol>\n`;
+            fs.writeFileSync(p, fs.readFileSync(p, "utf8").replace("</svg>", symbol + "</svg>"));
+          '
 
       - name: Validate the scaffolded repository
         run: npm run validate
@@ -103,6 +115,6 @@ jobs:
         if: always()
         run: |
           rm -rf src/ci-probe public/assets/ci-probe-*
-          git checkout -- src/data/games.js
+          git checkout -- src/data/games.js scripts/sprite.svg
           git status --porcelain
           git diff --exit-code

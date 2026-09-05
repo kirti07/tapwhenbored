@@ -259,10 +259,6 @@ test.describe("the end card shows the global best", () => {
 // bubble-tap hid the line with a class where every other game used the
 // `hidden` attribute. A suite that only tested failure modes saw neither.
 //
-// bubble-tap now uses the same #overlay + `show` end card as everything else,
-// so this block no longer carries an exception for it — only its own wording,
-// which is all-caps and zero-padded because that is the game's voice.
-//
 // So these play the two other games whose end state is reachable without
 // writing a solver — bubble-tap by tapping a bomb, word-steps by walking a
 // real ladder. Between them and marble-nostalgia they cover both wordings,
@@ -278,7 +274,9 @@ test.describe("bubble-tap reports the global best", () => {
     await bomb.waitFor({ state: "visible", timeout: 20_000 });
     await bomb.click({ force: true });
     // endRun reveals the bomb, then shows the card 620ms later.
-    await expect(page.locator("#overlay")).toHaveClass(/show/, { timeout: 5000 });
+    await expect(page.locator("#gameOverOverlay")).not.toHaveClass(/hidden/, {
+      timeout: 5000,
+    });
   }
 
   test("shows the record on the end card", async ({ page }) => {
@@ -298,7 +296,7 @@ test.describe("bubble-tap reports the global best", () => {
 
     // Highest wins, and a bomb on the first tap scores nothing, so 4321
     // stands. This is also the regression guard for the line being hidden by
-    // the `hidden` attribute rather than a class: if bubble-tap's own CSS
+    // the `hidden` attribute now rather than a class: if bubble-tap's own CSS
     // kept overriding that, toBeVisible would fail here.
     const line = page.locator("#globalBest");
     await expect(line).toBeVisible();
@@ -321,10 +319,10 @@ test.describe("bubble-tap reports the global best", () => {
 
     await expect(page.locator("#globalBest")).toHaveText("GLOBAL BEST UNAVAILABLE");
     // The rest of the card must survive it — that is the whole point.
-    await expect(page.locator("#againBtn")).toBeVisible();
+    await expect(page.locator("#restartBtn")).toBeVisible();
     await expect(page.locator("#shareBtn")).toBeVisible();
-    await page.locator("#againBtn").click();
-    await expect(page.locator("#overlay")).not.toHaveClass(/show/);
+    await page.locator("#restartBtn").click();
+    await expect(page.locator("#gameOverOverlay")).toHaveClass(/hidden/);
     expect(uncaught()).toEqual([]);
   });
 });

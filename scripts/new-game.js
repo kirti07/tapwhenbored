@@ -53,14 +53,9 @@ const title = slug
   .join(" ");
 const today = new Date().toISOString().slice(0, 10);
 
-// The shared page shell, matching every other game.
-//
-// The <head> is two markers. headFromRegistry() writes the title, description,
-// canonical, Open Graph and Twitter sets, both JSON-LD blocks, the theme colour
-// and the font preloads from the registry entry below (§28); the theme
-// bootstrap is inlined after it, because it rewrites the theme-color tag the
-// first one emits. This used to be forty-five lines pasted here, and it went
-// stale — a marker cannot.
+// The shared page shell, matching the six template-conforming games. The
+// theme-bootstrap marker sits immediately after the theme-color meta because
+// the snippet queries that tag (§18).
 const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -216,9 +211,6 @@ html, body {
   background: var(--bg);
   color: var(--ink);
   font-family: -apple-system, "Segoe UI", sans-serif;
-  /* Kills double-tap-to-zoom across the page. A play surface that owns its own
-     drag gesture should set touch-action: none on itself, not here. */
-  touch-action: manipulation;
 }
 
 .stage {
@@ -288,7 +280,6 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
 
   var boardEl = document.getElementById("board");
   var overlayEl = document.getElementById("overlay");
-  var overlaySub = document.getElementById("overlaySub");
   var restartBtn = document.getElementById("restartBtn");
   var againBtn = document.getElementById("againBtn");
   var howtoBtn = document.getElementById("howtoBtn");
@@ -310,17 +301,18 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
     boardEl.textContent = "TODO: build " + ${JSON.stringify(title)};
   }
 
-  // Fill the card's own text first, then show it — endCard.show() also clears
-  // any "Link copied" note left over from the last round.
   function showOverlay() {
-    overlaySub.textContent = state.moves + (state.moves === 1 ? " move" : " moves");
-    endCard.show();
+    overlayEl.classList.add("show");
+  }
+
+  function hideOverlay() {
+    overlayEl.classList.remove("show");
   }
 
   // A restart must produce a clean state without a page reload (§14).
   function start() {
     state = newState();
-    endCard.hide();
+    hideOverlay();
     render();
   }
 
@@ -379,10 +371,6 @@ const entry = `  {
     tagline: "TODO · TODO",
     description:
       "TODO: one sentence for search results, ending in no signup.",
-    seoTitle: ${JSON.stringify(`${title} — Free Online Game`)},
-    ogDescription: "TODO: one sentence for a social card. Shorter than the description.",
-    schemaDescription: "TODO: one sentence for structured data. Plainer than the description.",
-    genre: "Puzzle",
     path: ${JSON.stringify(`/${slug}/`)},
     ogImage: ${JSON.stringify(`/assets/${slug}-og.jpg`)},
     // The homepage card's colour, light and dark. These used to be a pair of
@@ -392,7 +380,7 @@ const entry = `  {
     accentDark: "#a855f7",
     // The glyph the card and the wall draw, from the sprite in src/index.html.
     // Add a <symbol id="st-TODO"> there before this validates.
-    sticker: "st-TODO",
+    sticker: "st-todo",
     // What this game's score counts, and whether the number is milliseconds
     // ("time") or a plain count ("int"). Delete both only if the game has no
     // score at all.
@@ -409,8 +397,15 @@ const entry = `  {
   },
 `;
 
+// Anchored to the `games` array specifically, not to the last `];` in the file.
+// It used to be `lastIndexOf`, which was correct while `games` was the only
+// array in the registry — the moment `pages` was added below it, every new game
+// was appended to *that* instead, and validation passed because a scaffolded
+// page satisfies the page checks. Silent, and wrong.
+const arrayStart = registry.indexOf("export const games = [");
+if (arrayStart === -1) die("could not find `export const games` in src/data/games.js");
 const marker = "\n];\n";
-const at = registry.lastIndexOf(marker);
+const at = registry.indexOf(marker, arrayStart);
 if (at === -1) die("could not find the end of the games array in src/data/games.js");
 writeFileSync(
   registryPath,
