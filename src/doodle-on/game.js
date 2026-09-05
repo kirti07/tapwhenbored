@@ -1,5 +1,9 @@
 import { pickRound, drawShape } from "./prompts.js";
 
+// initShare is deliberately not imported: this game shares a rendered PNG, not
+// a link. See the header of ../shared/ui/shell.js.
+import { initHowto, bindOverlay } from "../shared/ui/shell.js";
+
 (function () {
   "use strict";
 
@@ -73,9 +77,8 @@ import { pickRound, drawShape } from "./prompts.js";
   var againBtn = document.getElementById("againBtn");
   var shareBtn = document.getElementById("shareBtn");
   var shareNote = document.getElementById("shareNote");
-  var howtoBtn = document.getElementById("howtoBtn");
-  var howtoSheet = document.getElementById("howtoSheet");
-  var howtoBackdrop = document.getElementById("howtoBackdrop");
+
+  var endCard = bindOverlay(overlay);
 
   // ---------- state ----------
   var phase = "idle";        // "idle" | "playing" | "finished"
@@ -649,7 +652,7 @@ import { pickRound, drawShape } from "./prompts.js";
     }
   }
 
-  function showOverlay() { overlay.classList.add("show"); }
+  function showOverlay() { endCard.show(); }
 
   // ---------- share ----------
   function shareBackground(octx, SIZE) {
@@ -831,18 +834,6 @@ import { pickRound, drawShape } from "./prompts.js";
     }, "image/png");
   }
 
-  // ---------- how to play ----------
-  function openHowto() {
-    howtoSheet.classList.add("show");
-    howtoBackdrop.classList.add("show");
-    holdTimer();
-  }
-  function closeHowto() {
-    howtoSheet.classList.remove("show");
-    howtoBackdrop.classList.remove("show");
-    releaseTimer();
-  }
-
   // ---------- wiring ----------
   strokeCanvas.addEventListener("pointerdown", beginStroke);
   strokeCanvas.addEventListener("pointermove", continueStroke);
@@ -858,8 +849,8 @@ import { pickRound, drawShape } from "./prompts.js";
   restartBtn.addEventListener("click", newRound);
   againBtn.addEventListener("click", newRound);
   shareBtn.addEventListener("click", shareResult);
-  howtoBtn.addEventListener("click", openHowto);
-  howtoBackdrop.addEventListener("click", closeHowto);
+  // The round clock must not run while the sheet covers the board.
+  initHowto({ onOpen: holdTimer, onClose: releaseTimer });
 
   document.addEventListener("visibilitychange", function () {
     if (document.hidden) holdTimer(); else releaseTimer();

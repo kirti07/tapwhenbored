@@ -54,3 +54,55 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  # A scaffold is a copy of the page template frozen at the moment someone last
+  # edited it, so it goes stale silently — it once emitted `dvh` where §16 asks
+  # for `svh`, and preloaded a webfont weight no new game renders. Nothing
+  # failed, because nothing ran it. This runs it: scaffold a throwaway game,
+  # give it placeholder art, validate, play its own smoke tests, then delete it
+  # and prove the tree is clean again.
+  #
+  # A separate job from `verify` on purpose. It mutates the working tree, and a
+  # mutated tree must never be what reaches the deploy path.
+  scaffold:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Scaffold a probe game
+        run: node scripts/new-game.js ci-probe
+
+      # Validation requires both images on disk (§29), so borrow an existing
+      # game's. The probe never renders them; it only has to resolve.
+      - name: Stage placeholder art
+        run: |
+          cp public/assets/untangle-thumb.svg public/assets/ci-probe-thumb.svg
+          cp public/assets/untangle-og.jpg    public/assets/ci-probe-og.jpg
+
+      - name: Validate the scaffolded repository
+        run: npm run validate
+
+      - name: Install browsers
+        run: npx playwright install --with-deps chromium
+
+      # The probe's own smoke tests. `-g` matches the per-game describe block in
+      # tests/smoke/site.spec.js, which is named after the slug.
+      - name: Smoke-test the probe
+        run: npx playwright test tests/smoke --project=desktop -g "ci-probe"
+
+      - name: Remove the probe and prove the tree is clean
+        if: always()
+        run: |
+          rm -rf src/ci-probe public/assets/ci-probe-*
+          git checkout -- src/data/games.js
+          git status --porcelain
+          git diff --exit-code

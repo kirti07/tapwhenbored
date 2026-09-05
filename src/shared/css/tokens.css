@@ -2,23 +2,28 @@
  *
  * Nunito is self-hosted rather than loaded from fonts.googleapis.com. The
  * reason is first paint: a cross-origin stylesheet in the <head> blocks
- * rendering until it arrives, and the service worker only handles same-origin
- * requests (scripts/sw-template.js), so on an installed cold start every byte
- * of the app came from cache *except* that one request — and the splash screen
- * sat there waiting for it. Same-origin files are precached with the shell and
- * the page paints offline.
+ * rendering until it arrives, so a page cannot paint until a third-party
+ * server answers. A same-origin file is one fewer connection to open and one
+ * fewer party to depend on. (This paragraph used to justify the choice by the
+ * service worker's precache; there is no worker and no cache any more —
+ * ARCHITECTURE.md §19 — but the first-paint reason is the one that mattered
+ * and it still holds.)
  *
  * Latin subset only, both weights, straight from Google's own CSS: 16.2 kB +
  * 16.5 kB. Nunito is SIL OFL 1.1, which permits this and asks that the licence
  * travel with the files — see public/fonts/Nunito-OFL.txt.
  *
- * A page preloads only the weights it actually renders, and only weight 700 is
- * precached with the app shell. Weight 800 is honeycomb's alone — its
- * .tile-label is the one rule in the site that pairs var(--font-display) with
- * font-weight: 800 — so it is that game's asset and enters the cache when
- * honeycomb is opened. Every other page preloaded it for a while and never drew
- * a glyph in it, which is ~16 kB of the critical path at the highest fetch
- * priority the browser has. tests/smoke/site.spec.js now pins the two together.
+ * A page preloads only the weights it actually renders. Weight 800 is
+ * honeycomb's alone — its .tile-label is the one rule in the site that pairs
+ * var(--font-display) with font-weight: 800. Every other page preloaded it for
+ * a while and never drew a glyph in it, which is ~16 kB of the critical path at
+ * the highest fetch priority the browser has.
+ *
+ * That is now derived rather than remembered: scripts/font-preloads.js reads a
+ * page's own stylesheet and headFromRegistry() emits the answer, so a new game
+ * gets it right without anyone deciding. Note the trap this file itself sets —
+ * the prose above says `var(--font-display)` out loud, so the derivation strips
+ * CSS comments before it looks.
  *
  * Note that `font-weight: 600` against these faces resolves to the 700 file:
  * with no 600 available, CSS font matching for a target above 500 checks

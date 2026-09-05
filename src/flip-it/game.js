@@ -1,5 +1,8 @@
 import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import * as prefs from "../shared/ui/prefs.js";
+
 (function () {
   "use strict";
 
@@ -51,12 +54,9 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   var globalBest = document.getElementById("globalBest");
   var lbHint = document.getElementById("lbHint");
   var againBtn = document.getElementById("againBtn");
-  var shareBtn = document.getElementById("shareBtn");
-  var shareNote = document.getElementById("shareNote");
   var challengeBanner = document.getElementById("challengeBanner");
-  var howtoBtn = document.getElementById("howtoBtn");
-  var howtoSheet = document.getElementById("howtoSheet");
-  var howtoBackdrop = document.getElementById("howtoBackdrop");
+
+  var endCard = bindOverlay(overlay);
 
   var level = readLevel();
   var size = LEVELS[level].sizes[0]; // the dealt board decides; this is a seed
@@ -77,46 +77,40 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   // ---------- storage (all of it optional, none of it load-bearing) ----------
 
   function readLevel() {
-    try {
-      var v = localStorage.getItem(LEVEL_KEY);
-      return LEVEL_ORDER.indexOf(v) !== -1 ? v : DEFAULT_LEVEL;
-    } catch (e) { return DEFAULT_LEVEL; }
+    var v = prefs.get(LEVEL_KEY);
+    return LEVEL_ORDER.indexOf(v) !== -1 ? v : DEFAULT_LEVEL;
   }
 
   function writeLevel(v) {
-    try { localStorage.setItem(LEVEL_KEY, v); } catch (e) { /* ignore */ }
+    prefs.set(LEVEL_KEY, v);
   }
 
   function readRecent() {
-    try {
-      var v = JSON.parse(localStorage.getItem(RECENT_KEY));
-      return Array.isArray(v) ? v.slice(-RECENT_MAX) : [];
-    } catch (e) { return []; }
+    var v = prefs.get(RECENT_KEY);
+    return Array.isArray(v) ? v.slice(-RECENT_MAX) : [];
   }
 
   function pushRecent(sig) {
     recent.push(sig);
     if (recent.length > RECENT_MAX) recent = recent.slice(-RECENT_MAX);
-    try { localStorage.setItem(RECENT_KEY, JSON.stringify(recent)); } catch (e) { /* ignore */ }
+    prefs.set(RECENT_KEY, recent);
   }
 
   function readBests() {
-    try {
-      var v = JSON.parse(localStorage.getItem(BEST_KEY));
-      return v && typeof v === "object" ? v : {};
-    } catch (e) { return {}; }
+    var v = prefs.get(BEST_KEY);
+    return v && typeof v === "object" ? v : {};
   }
 
   function writeBests() {
-    try { localStorage.setItem(BEST_KEY, JSON.stringify(bests)); } catch (e) { /* ignore */ }
+    prefs.set(BEST_KEY, bests);
   }
 
   function readSound() {
-    try { return localStorage.getItem(SOUND_KEY) !== "false"; } catch (e) { return true; }
+    return prefs.get(SOUND_KEY) !== false;
   }
 
   function writeSound() {
-    try { localStorage.setItem(SOUND_KEY, String(soundOn)); } catch (e) { /* ignore */ }
+    prefs.set(SOUND_KEY, soundOn);
   }
 
   // ---------- audio (tiny, procedural, no files) ----------
@@ -475,8 +469,6 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
       "Time " + formatTime(finalMs) + " · " +
       (isNewBest ? "New personal best" : "Best " + prev.moves + " moves");
 
-    shareNote.classList.remove("show");
-
     // The end card is complete before the leaderboard is asked anything, so a
     // slow or failed request costs nothing but this one line.
     if (level === LB_LEVEL && perfect) {
@@ -495,11 +487,11 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
       lbHint.hidden = false;
     }
 
-    overlay.classList.add("show");
+    endCard.show();
   }
 
   function hideOverlay() {
-    overlay.classList.remove("show");
+    endCard.hide();
     globalBest.hidden = true;
     globalBest.classList.remove("new-global");
     lbHint.hidden = true;
@@ -571,26 +563,13 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     return url.toString();
   }
 
-  function shareResult() {
-    var url = shareUrl();
-    var text =
-      "I cleared FLIP IT on " + LEVELS[level].label + " (" + size + "×" + size +
-      ") in " + moves + (moves === 1 ? " move" : " moves") +
-      " (optimal " + optimal + "). Can you beat that?";
-
-    if (navigator.share) {
-      navigator.share({ title: "Flip It", text: text, url: url }).catch(function () {});
-      return;
-    }
-
-    var payload = text + " " + url;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(payload).then(showShareNote).catch(function () {});
-    }
-  }
-
-  function showShareNote() {
-    shareNote.classList.add("show");
+  function shareText() {
+    return {
+      text: "I cleared FLIP IT on " + LEVELS[level].label + " (" + size + "×" + size +
+        ") in " + moves + (moves === 1 ? " move" : " moves") +
+        " (optimal " + optimal + "). Can you beat that?",
+      url: shareUrl(),
+    };
   }
 
   /** A shared link carries the friend's score and the level they played. */
@@ -628,19 +607,7 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     soundBtn.setAttribute("aria-label", soundOn ? "Sound on" : "Sound off");
   }
 
-  // ---------- how to play ----------
-  function openHowto() {
-    howtoSheet.classList.add("show");
-    howtoBackdrop.classList.add("show");
-  }
-
-  function closeHowto() {
-    howtoSheet.classList.remove("show");
-    howtoBackdrop.classList.remove("show");
-  }
-
-  howtoBtn.addEventListener("click", openHowto);
-  howtoBackdrop.addEventListener("click", closeHowto);
+  initHowto();
 
   board.addEventListener("click", function (e) {
     var el = e.target.closest(".tile");
@@ -662,7 +629,7 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   resetBtn.addEventListener("click", function () { sndUi(); resetBoard(); });
   restartBtn.addEventListener("click", function () { sndUi(); deal(); });
   againBtn.addEventListener("click", function () { sndUi(); deal(); });
-  shareBtn.addEventListener("click", shareResult);
+  initShare({ title: "Flip It", payload: shareText });
 
   soundBtn.addEventListener("click", function () {
     soundOn = !soundOn;

@@ -9,8 +9,8 @@ dist/
 .env*.local
 
 .DS_Store
-.architecture.md
 
 # Playwright
 test-results/
 playwright-report/
+research/

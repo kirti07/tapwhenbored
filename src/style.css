@@ -206,14 +206,11 @@ html, body {
 
 .card:active { transform: scale(0.98); }
 
-.card--marble { --accent: #1684d1; }
-.card--bubble { --accent: #4fb6e0; }
-.card--slide  { --accent: #8b7fe0; }
-.card--doodle { --accent: #7c5cff; }
-.card--word   { --accent: #1f9974; }
-.card--untangle { --accent: #ef6a55; }
-.card--honeycomb { --accent: #8b6fd9; }
-.card--flip-it { --accent: #f0a825; }
+/* The accent arrives per card as two inline custom properties, written from the
+   registry by homepageFromRegistry(). This pair is what selects between them;
+   it replaced sixteen hand-maintained .card--<slug> rules that nothing
+   validated, and that a new game silently never got. */
+.card { --accent: var(--accent-light); }
 
 .thumb {
   display: block;
@@ -312,14 +309,7 @@ html, body {
 [data-theme="dark"] .brand-pop--warm { color: #ff5c8a; }
 [data-theme="dark"] .brand-pop--cool { color: #34e19a; }
 
-[data-theme="dark"] .card--marble { --accent: #22d3ee; }
-[data-theme="dark"] .card--bubble { --accent: #22e5ff; }
-[data-theme="dark"] .card--slide  { --accent: #a855f7; }
-[data-theme="dark"] .card--doodle { --accent: #ff5fb3; }
-[data-theme="dark"] .card--word   { --accent: #34e19a; }
-[data-theme="dark"] .card--untangle { --accent: #ff6b57; }
-[data-theme="dark"] .card--honeycomb { --accent: #b48cff; }
-[data-theme="dark"] .card--flip-it { --accent: #ffd60a; }
+[data-theme="dark"] .card { --accent: var(--accent-dark); }
 
 [data-theme="dark"] .card {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent), 0 0 22px color-mix(in srgb, var(--accent) 14%, transparent);

@@ -1,5 +1,8 @@
 import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import * as prefs from "../shared/ui/prefs.js";
+
 (function () {
   "use strict";
 
@@ -26,11 +29,6 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   var overlaySub = document.getElementById("overlaySub");
   var globalBest = document.getElementById("globalBest");
   var againBtn = document.getElementById("againBtn");
-  var howtoBtn = document.getElementById("howtoBtn");
-  var howtoSheet = document.getElementById("howtoSheet");
-  var howtoBackdrop = document.getElementById("howtoBackdrop");
-  var shareBtn = document.getElementById("shareBtn");
-  var shareNote = document.getElementById("shareNote");
   var hintBanner = document.getElementById("hintBanner");
   var hintBannerClose = document.getElementById("hintBannerClose");
 
@@ -42,10 +40,12 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   var ended = false;
 
   var HINT_STORAGE_KEY = "marbleNostalgiaPlayed";
-  var hintsActive = false;
-  try {
-    hintsActive = !localStorage.getItem(HINT_STORAGE_KEY);
-  } catch (e) { hintsActive = false; }
+  // Hints are for a first-time player. With storage unavailable prefs.get
+  // answers null, so an unreadable "have they played before" reads as "no" and
+  // the hints show — the friendlier of the two failures.
+  var hintsActive = !prefs.get(HINT_STORAGE_KEY);
+
+  var endCard = bindOverlay(overlay);
 
   // ---------- audio (tiny, procedural, no files) ----------
   var actx = null;
@@ -225,7 +225,7 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     hintsActive = false;
     clearHints();
     hideHintBanner();
-    try { localStorage.setItem(HINT_STORAGE_KEY, "1"); } catch (e) { /* ignore */ }
+    prefs.set(HINT_STORAGE_KEY, "1");
   }
 
   function marbleCount() {
@@ -393,34 +393,17 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   function showOverlay(title, sub) {
     overlayTitle.textContent = title;
     overlaySub.textContent = sub;
-    shareNote.classList.remove("show");
-    overlay.classList.add("show");
+    endCard.show();
   }
 
-  function hideOverlay() {
-    overlay.classList.remove("show");
-  }
-
-  function shareResult() {
+  function shareText() {
     var n = marbleCount();
-    var text = n === 1
-      ? "I solved Marble Nostalgia — finished with 1 marble left!"
-      : "I played Marble Nostalgia and got down to " + n + " marbles. Can you beat that?";
-    var url = location.href;
-
-    if (navigator.share) {
-      navigator.share({ title: "Marble Nostalgia", text: text, url: url }).catch(function () {});
-      return;
-    }
-
-    var payload = text + " " + url;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(payload).then(showShareNote).catch(function () {});
-    }
-  }
-
-  function showShareNote() {
-    shareNote.classList.add("show");
+    return {
+      text: n === 1
+        ? "I solved Marble Nostalgia — finished with 1 marble left!"
+        : "I played Marble Nostalgia and got down to " + n + " marbles. Can you beat that?",
+      url: location.href,
+    };
   }
 
   function onMarbleClick(e) {
@@ -451,27 +434,18 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     ended = false;
     history = [];
     selected = null;
-    hideOverlay();
+    endCard.hide();
     buildBoard();
     renderMarbles();
     updateHud();
   }
 
-  function openHowto() {
-    howtoSheet.classList.add("show");
-    howtoBackdrop.classList.add("show");
-  }
-  function closeHowto() {
-    howtoSheet.classList.remove("show");
-    howtoBackdrop.classList.remove("show");
-  }
+  initHowto();
 
   undoBtn.addEventListener("click", undoMove);
   restartBtn.addEventListener("click", restart);
   againBtn.addEventListener("click", restart);
-  howtoBtn.addEventListener("click", openHowto);
-  howtoBackdrop.addEventListener("click", closeHowto);
-  shareBtn.addEventListener("click", shareResult);
+  initShare({ title: "Marble Nostalgia", payload: shareText });
   if (hintBannerClose) hintBannerClose.addEventListener("click", stopHinting);
 
   buildBoard();

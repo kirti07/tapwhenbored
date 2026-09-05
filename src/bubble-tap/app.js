@@ -1,4 +1,6 @@
 import { renderGlobalBest } from "../shared/ui/leaderboard.js";
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import * as prefs from "../shared/ui/prefs.js";
 
 (() => {
   "use strict";
@@ -56,13 +58,15 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   const playIcon = document.getElementById("playIcon");
   const pauseOverlay = document.getElementById("pauseOverlay");
   const resumeBtn = document.getElementById("resumeBtn");
+  const pauseCard = bindOverlay(pauseOverlay);
 
-  const gameOverOverlay = document.getElementById("gameOverOverlay");
+  const overlay = document.getElementById("overlay");
+  const endCard = bindOverlay(overlay);
   const finalScoreEl = document.getElementById("finalScore");
   const bestScoreEl = document.getElementById("bestScore");
   const globalScoreEl = document.getElementById("globalBest");
   const restartBtn = document.getElementById("restartBtn");
-  const shareBtn = document.getElementById("shareBtn");
+  const againBtn = document.getElementById("againBtn");
   const restartFromSettingsBtn = document.getElementById("restartFromSettingsBtn");
 
   const settingsBtn = document.getElementById("settingsBtn");
@@ -70,17 +74,14 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   const closeSettingsBtn = document.getElementById("closeSettingsBtn");
   const soundToggle = document.getElementById("soundToggle");
   const motionToggle = document.getElementById("motionToggle");
-  const howtoBtn = document.getElementById("howtoBtn");
-  const howtoSheet = document.getElementById("howtoSheet");
-  const howtoBackdrop = document.getElementById("howtoBackdrop");
 
   // ---------- helpers ----------
   const rand = (a, b) => a + Math.random() * (b - a);
   const randInt = (a, b) => Math.floor(rand(a, b + 1));
   const pad = (n, w) => String(n).padStart(w, "0");
   const loadFlag = (key, def) => {
-    const v = localStorage.getItem(key);
-    return v === null ? def : v === "true";
+    const v = prefs.get(key);
+    return typeof v === "boolean" ? v : def;
   };
 
   // ---------- state ----------
@@ -502,7 +503,7 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   // ---------- pause ----------
   function setPaused(p) {
     state.paused = p;
-    pauseOverlay.classList.toggle("hidden", !p);
+    if (p) pauseCard.show(); else pauseCard.hide();
     pauseIcon.style.display = p ? "none" : "";
     playIcon.style.display = p ? "" : "none";
     playfield.style.pointerEvents = p ? "none" : "";
@@ -516,10 +517,10 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   // ---------- game over / restart ----------
   function showGameOver() {
     finalScoreEl.textContent = pad(state.score, 5);
-    const best = Math.max(state.score, Number(localStorage.getItem("twb_best") || 0));
-    localStorage.setItem("twb_best", String(best));
+    const best = Math.max(state.score, Number(prefs.get("twb_best") || 0));
+    prefs.set("twb_best", best);
     bestScoreEl.textContent = "BEST " + pad(best, 5);
-    gameOverOverlay.classList.remove("hidden");
+    endCard.show();
 
     renderGlobalBest(globalScoreEl, {
       slug: "bubble-tap",
@@ -547,7 +548,7 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     topUpAcc = 0;
     updateStats();
     setPaused(false);
-    gameOverOverlay.classList.add("hidden");
+    endCard.hide();
     measurePlayfield();
     topUpBubbles();
     spawnInitialBombs();
@@ -555,6 +556,7 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   }
 
   restartBtn.addEventListener("click", resetGame);
+  againBtn.addEventListener("click", resetGame);
   restartFromSettingsBtn.addEventListener("click", () => {
     settingsPanel.classList.add("hidden");
     resetGame();
@@ -569,30 +571,13 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     return url.toString();
   }
 
-  async function handleShare() {
-    const score = state.score;
-    const url = shareUrl(score);
-    const text = `I scored ${score} popping bubbles in Tap When Bored — dodge the hidden bombs and beat me:`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "Tap When Bored", text, url });
-      } catch (e) {
-        // user cancelled the share sheet — nothing to do
-      }
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(`${text} ${url}`);
-      const original = shareBtn.textContent;
-      shareBtn.textContent = "LINK COPIED";
-      setTimeout(() => {
-        shareBtn.textContent = original;
-      }, 1600);
-    } catch (e) {
-      // clipboard unavailable — nothing more we can do silently
-    }
-  }
-  shareBtn.addEventListener("click", handleShare);
+  initShare({
+    title: "Tap When Bored",
+    payload: () => ({
+      text: `I scored ${state.score} popping bubbles in Tap When Bored — dodge the hidden bombs and beat me:`,
+      url: shareUrl(state.score),
+    }),
+  });
 
   // ---------- challenge banner ----------
   function checkChallengeLink() {
@@ -617,30 +602,19 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     syncToggle(motionToggle, state.calmMode);
   }
   // ---------- how to play ----------
-  const openHowto = () => {
-    howtoSheet.classList.add("show");
-    howtoBackdrop.classList.add("show");
-  };
-
-  const closeHowto = () => {
-    howtoSheet.classList.remove("show");
-    howtoBackdrop.classList.remove("show");
-  };
-
-  howtoBtn.addEventListener("click", openHowto);
-  howtoBackdrop.addEventListener("click", closeHowto);
+  initHowto();
 
   settingsBtn.addEventListener("click", openSettings);
   closeSettingsBtn.addEventListener("click", () => settingsPanel.classList.add("hidden"));
   soundToggle.addEventListener("click", () => {
     state.soundOn = !state.soundOn;
-    localStorage.setItem("twb_sound", String(state.soundOn));
+    prefs.set("twb_sound", state.soundOn);
     syncToggle(soundToggle, state.soundOn);
     if (state.soundOn) { ensureAudio(); playPop(); }
   });
   motionToggle.addEventListener("click", () => {
     state.calmMode = !state.calmMode;
-    localStorage.setItem("twb_calm", String(state.calmMode));
+    prefs.set("twb_calm", state.calmMode);
     syncToggle(motionToggle, state.calmMode);
     const mul = state.calmMode ? 0.35 : 1;
     for (const b of bubbles) {

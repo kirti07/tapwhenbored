@@ -1,6 +1,9 @@
 import * as DATA from "./data.js";
 import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
 
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import * as prefs from "../shared/ui/prefs.js";
+
 (function () {
   "use strict";
 
@@ -44,21 +47,15 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
   }
 
   function loadState() {
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return freshState();
-      var saved = JSON.parse(raw);
-      if (!saved || saved.day !== dayIndex || !Array.isArray(saved.history) || !saved.history.length) {
-        return freshState();
-      }
-      return saved;
-    } catch (e) {
+    var saved = prefs.get(STORAGE_KEY);
+    if (!saved || saved.day !== dayIndex || !Array.isArray(saved.history) || !saved.history.length) {
       return freshState();
     }
+    return saved;
   }
 
   function persist() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+    prefs.set(STORAGE_KEY, state);
   }
 
   // ---------- dom ----------
@@ -70,22 +67,19 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
   var hintMsg = document.getElementById("hintMsg");
   var undoBtn = document.getElementById("undoBtn");
   var restartBtn = document.getElementById("restartBtn");
-  var howtoBtn = document.getElementById("howtoBtn");
-  var howtoSheet = document.getElementById("howtoSheet");
-  var howtoBackdrop = document.getElementById("howtoBackdrop");
   var letterBackdrop = document.getElementById("letterBackdrop");
   var letterSheet = document.getElementById("letterSheet");
   var letterGrid = document.getElementById("letterGrid");
   var letterCloseBtn = document.getElementById("letterCloseBtn");
   var overlay = document.getElementById("overlay");
+
+  var endCard = bindOverlay(overlay);
   var overlayTitle = document.getElementById("overlayTitle");
   var overlaySub = document.getElementById("overlaySub");
   var overlaySteps = document.getElementById("overlaySteps");
   var overlayBest = document.getElementById("overlayBest");
   var globalBest = document.getElementById("globalBest");
   var againBtn = document.getElementById("againBtn");
-  var shareBtn = document.getElementById("shareBtn");
-  var shareNote = document.getElementById("shareNote");
   var countdownEl = document.getElementById("countdown");
 
   startWordEl.textContent = START;
@@ -445,57 +439,37 @@ import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
       overlayBest.textContent = "★ Best today: " + stepLabel(state.bestSteps);
     }
     showGlobalBest(steps);
-    shareNote.classList.remove("show");
-    overlay.classList.add("show");
+    endCard.show();
     tickCountdown();
     if (countdownTimer) clearInterval(countdownTimer);
     countdownTimer = setInterval(tickCountdown, 1000);
   }
 
   function hideOverlay() {
-    overlay.classList.remove("show");
+    endCard.hide();
     if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
   }
 
   // ---------- share ----------
-  function shareResult() {
-    var steps = state.solvedSteps;
-    var lines = [
-      "Word Steps #" + (dayIndex + 1) + " — " + START + " → " + TARGET,
-      "Solved in " + stepLabel(steps) + " (best today: " + stepLabel(state.bestSteps) + ")",
-      "https://www.tapwhenbored.com/word-steps/"
-    ];
-    var text = lines.join("\n");
-
-    if (navigator.share) {
-      navigator.share({ title: "Word Steps", text: text }).catch(function () {});
-      return;
-    }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () {
-        shareNote.textContent = "Copied!";
-        shareNote.classList.add("show");
-      }).catch(function () {});
-    }
-  }
-
-  // ---------- how to play ----------
-  function openHowto() {
-    howtoSheet.classList.add("show");
-    howtoBackdrop.classList.add("show");
-  }
-  function closeHowto() {
-    howtoSheet.classList.remove("show");
-    howtoBackdrop.classList.remove("show");
+  // No `url`: the link is the third line of the result, because this share is a
+  // multi-line ladder card rather than a sentence with a link after it.
+  function shareText() {
+    return {
+      text: [
+        "Word Steps #" + (dayIndex + 1) + " — " + START + " → " + TARGET,
+        "Solved in " + stepLabel(state.solvedSteps) +
+          " (best today: " + stepLabel(state.bestSteps) + ")",
+        "https://www.tapwhenbored.com/word-steps/",
+      ].join("\n"),
+    };
   }
 
   // ---------- wiring ----------
   undoBtn.addEventListener("click", undo);
   restartBtn.addEventListener("click", restart);
   againBtn.addEventListener("click", tryAgain);
-  shareBtn.addEventListener("click", shareResult);
-  howtoBtn.addEventListener("click", openHowto);
-  howtoBackdrop.addEventListener("click", closeHowto);
+  initShare({ title: "Word Steps", payload: shareText });
+  initHowto();
   letterBackdrop.addEventListener("click", closeLetterPicker);
   letterCloseBtn.addEventListener("click", closeLetterPicker);
 

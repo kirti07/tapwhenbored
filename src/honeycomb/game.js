@@ -1,5 +1,8 @@
 import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import * as prefs from "../shared/ui/prefs.js";
+
 (function () {
   "use strict";
 
@@ -90,11 +93,8 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
   var overlaySub = document.getElementById("overlaySub");
   var globalScoreEl = document.getElementById("globalBest");
   var againBtn = document.getElementById("againBtn");
-  var shareBtn = document.getElementById("shareBtn");
-  var shareNote = document.getElementById("shareNote");
-  var howtoBtn = document.getElementById("howtoBtn");
-  var howtoSheet = document.getElementById("howtoSheet");
-  var howtoBackdrop = document.getElementById("howtoBackdrop");
+
+  var endCard = bindOverlay(overlay);
 
   var tiles = [];         // [{id, q, r, revealed, bomb, removed}]
   var posMap = new Map(); // "q,r" -> tile id
@@ -118,14 +118,12 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 
   // ---------- persistence ----------
   function readBest() {
-    try {
-      var v = localStorage.getItem(BEST_KEY);
-      return v ? parseInt(v, 10) : null;
-    } catch (e) { return null; }
+    var v = prefs.get(BEST_KEY);
+    return typeof v === "number" ? v : null;
   }
   function writeBest(v) {
     best = v;
-    try { localStorage.setItem(BEST_KEY, String(v)); } catch (e) { /* ignore */ }
+    prefs.set(BEST_KEY, v);
   }
 
   // ---------- timer ----------
@@ -1071,40 +1069,25 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
     globalScoreEl.hidden = true;
     globalScoreEl.classList.remove("new-global");
     overlaySub.textContent = "Time " + formatTime(finalElapsedMs) + " · Best " + formatTime(best);
-    shareNote.classList.remove("show");
-    overlay.classList.add("show");
+    endCard.show();
   }
   function hideOverlay() {
-    overlay.classList.remove("show", "won");
+    endCard.hide();
+    // `won` recolours this game's card, so it is this game's to clear.
+    overlay.classList.remove("won");
   }
 
-  function shareResult() {
+  function shareText() {
     var url = new URL(location.href);
     url.search = "";
     url.hash = "";
-    var text = wonLastRun
-      ? "I cleared HONEYCOMB in " + formatTime(finalElapsedMs) + ". Can you beat it?"
-      : "I lasted " + formatTime(finalElapsedMs) + " in HONEYCOMB before the hive beat me. Can you beat it?";
-
-    if (navigator.share) {
-      navigator.share({ title: "Honeycomb", text: text, url: url.toString() }).catch(function () {});
-      return;
-    }
-    var payload = text + " " + url.toString();
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(payload).then(function () {
-        shareNote.classList.add("show");
-      }).catch(function () {});
-    }
-  }
-
-  function openHowto() {
-    howtoSheet.classList.add("show");
-    howtoBackdrop.classList.add("show");
-  }
-  function closeHowto() {
-    howtoSheet.classList.remove("show");
-    howtoBackdrop.classList.remove("show");
+    return {
+      text: wonLastRun
+        ? "I cleared HONEYCOMB in " + formatTime(finalElapsedMs) + ". Can you beat it?"
+        : "I lasted " + formatTime(finalElapsedMs) +
+          " in HONEYCOMB before the hive beat me. Can you beat it?",
+      url: url.toString(),
+    };
   }
 
   // ---------- interaction (tap only, no drag, no destination choice) ----------
@@ -1117,9 +1100,8 @@ import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 
   newBtn.addEventListener("click", startNewHive);
   againBtn.addEventListener("click", playAgain);
-  shareBtn.addEventListener("click", shareResult);
-  howtoBtn.addEventListener("click", openHowto);
-  howtoBackdrop.addEventListener("click", closeHowto);
+  initShare({ title: "Honeycomb", payload: shareText });
+  initHowto();
   // Coalesced to one render a frame: a resize arrives in bursts and
   // renderInstant() rebuilds the whole hive.
   var resizeFrame = 0;

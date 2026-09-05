@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { games, home, SITE_URL } from "./src/data/games.js";
+import { preloadsFor } from "./scripts/font-preloads.js";
 
 // Absolute, derived from this file's own location. A relative `root: "src"`
 // would be resolved against process.cwd(), which is not necessarily the repo.
@@ -107,6 +108,9 @@ function vercelInsights() {
  * game, so anything matching the tail of the path matches every page. This has
  * to be an exact comparison.
  */
+// The one thing a game page's <head> still says for itself.
+const MARKER = "<!-- head-meta -->";
+
 const isHomepage = (ctx) => ctx.path === "/index.html" || ctx.path === "/";
 
 const escapeHtml = (v) =>
@@ -114,9 +118,6 @@ const escapeHtml = (v) =>
     /[&<>"]/g,
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
   );
-
-// The homepage's dark theme-color. Games carry their own in the registry.
-const HOME_DARK_THEME_COLOR = "#0d0e1a";
 
 /**
  * How many shelf cards are at or near the fold. The shelf is two columns on a
@@ -153,7 +154,7 @@ function themeBootstrap() {
     .replace(/\s+/g, " ")
     .trim();
 
-  const darkFor = new Map(games.map((g) => [g.slug, g.darkThemeColor]));
+  const darkFor = new Map(games.map((g) => [g.slug, g.themeColor.dark]));
 
   return {
     name: "twb:theme-bootstrap",
@@ -162,7 +163,7 @@ function themeBootstrap() {
       order: "pre",
       handler(html, ctx) {
         const slug = ctx.path.replace(/^\//, "").split("/")[0];
-        const color = darkFor.get(slug) ?? HOME_DARK_THEME_COLOR;
+        const color = darkFor.get(slug) ?? home.themeColor.dark;
         return html.replace(
           "<!-- theme-bootstrap -->",
           `<script>${snippet.replace("__DARK_THEME_COLOR__", color)}</script>`,
@@ -173,9 +174,127 @@ function themeBootstrap() {
 }
 
 /**
+ * Writes every game page's <head> from the registry, in place of its
+ * `<!-- head-meta -->` marker.
+ *
+ * This is the change that made a platform edit cost one edit instead of eight.
+ * Each game used to paste ~45 lines of head by hand — viewport, theme colour,
+ * title, description, the Open Graph and Twitter sets, two JSON-LD blocks and
+ * the font preloads — and the copies drifted. Only the canonical and og:url
+ * were ever validated; a theme colour was already one hex digit out from the
+ * stylesheet it was supposed to match, and nothing could see it.
+ *
+ * Build-time substitution, not a runtime render: transformIndexHtml with
+ * order: "pre", the same mechanism as homepageFromRegistry(). Every tag is
+ * static in the shipped HTML, so ARCHITECTURE.md §28's rule that essential SEO
+ * never depends on runtime JS still holds, and §41's ban on runtime-generated
+ * SEO is untouched. It runs in dev too, so local matches production.
+ *
+ * The homepage is deliberately not run through this. Its head is a different
+ * shape — summary_large_image at 1200x630, og:site_name, og:locale,
+ * og:image:alt, a WebSite JSON-LD and a FAQPage JSON-LD — and there is exactly
+ * one of it, so the duplication this exists to remove does not apply. Growing
+ * this into a branch per field to cover one page would cost more than it saves.
+ *
+ * Preloads are derived from the page's own stylesheet rather than declared in
+ * the registry, so no field can claim a weight the page does not render. See
+ * scripts/font-preloads.js.
+ */
+function headFromRegistry() {
+  const bySlug = new Map(games.map((g) => [g.slug, g]));
+
+  // Identical on every game page, so they are constants here rather than
+  // fields nothing would ever vary (ARCHITECTURE.md §10).
+  const VIEWPORT = "width=device-width, initial-scale=1";
+  const OG_IMAGE_SIZE = "640";
+
+  const head = (g, css) => {
+    const url = SITE_URL + g.path;
+    const img = SITE_URL + g.ogImage;
+    const meta = (k, v, prop) =>
+      `<meta ${prop ? "property" : "name"}="${k}" content="${escapeHtml(v)}">`;
+
+    return [
+      `<meta name="viewport" content="${VIEWPORT}">`,
+      meta("theme-color", g.themeColor.light),
+      `<title>${escapeHtml(g.seoTitle)}</title>`,
+      meta("description", g.description),
+      `<link rel="canonical" href="${url}">`,
+      meta("og:type", "website", true),
+      meta("og:title", g.seoTitle, true),
+      meta("og:description", g.ogDescription, true),
+      meta("og:url", url, true),
+      meta("og:image", img, true),
+      meta("og:image:width", OG_IMAGE_SIZE, true),
+      meta("og:image:height", OG_IMAGE_SIZE, true),
+      meta("twitter:card", "summary"),
+      meta("twitter:title", g.seoTitle),
+      meta("twitter:description", g.ogDescription),
+      meta("twitter:image", img),
+      `<link rel="icon" type="image/svg+xml" href="/favicon.svg">`,
+      `<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Game",
+  "name": ${JSON.stringify(g.title)},
+  "url": ${JSON.stringify(url)},
+  "description": ${JSON.stringify(g.schemaDescription)},
+  "image": ${JSON.stringify(img)},
+  "genre": ${JSON.stringify(g.genre)},
+  "playMode": "SinglePlayer",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>`,
+      `<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Tap When Bored", "item": ${JSON.stringify(SITE_URL + home.path)} },
+    { "@type": "ListItem", "position": 2, "name": ${JSON.stringify(g.title)}, "item": ${JSON.stringify(url)} }
+  ]
+}
+</script>`,
+      ...preloadsFor(css).map(
+        (f) => `<link rel="preload" href="${f}" as="font" type="font/woff2" crossorigin>`,
+      ),
+    ].join("\n");
+  };
+
+  return {
+    name: "twb:head-from-registry",
+    // "pre" so Vite still sees a plain <head> when it injects preloads, and so
+    // the stylesheet link this reads is still the source one.
+    transformIndexHtml: {
+      order: "pre",
+      handler(html, ctx) {
+        if (!html.includes(MARKER)) return html;
+
+        const slug = ctx.path.replace(/^\//, "").split("/")[0];
+        const g = bySlug.get(slug);
+        if (!g) return html;
+
+        const stylesheet = path.join(srcDir, slug, "style.css");
+        // So `vite dev` re-runs this when a game restyles itself into or out of
+        // needing a font weight.
+        this.addWatchFile?.(stylesheet);
+
+        return html.replace(MARKER, head(g, readFileSync(stylesheet, "utf8")));
+      },
+    },
+  };
+}
+
+/**
  * Fills the homepage's game shelf and its WebSite/hasPart JSON-LD from the
  * registry, replacing what used to be seven hand-maintained card blocks and a
  * parallel hand-maintained list of the same seven games.
+ *
+ * Each card carries its accent as two inline custom properties rather than a
+ * `.card--<slug>` class, which is what those sixteen rules in style.css were.
+ * Two properties and not one, because the accent is per theme: style.css picks
+ * between them with `.card` and `[data-theme="dark"] .card`. A single inline
+ * `--accent` could not switch theme, and would out-specify the dark rule.
  *
  * Build-time rather than a runtime render, because this is indexable content
  * and essential structured data: ARCHITECTURE.md §28 requires it be static in
@@ -183,7 +302,7 @@ function themeBootstrap() {
  * is what ships.
  */
 function homepageFromRegistry() {
-  const card = (g, i) => `    <a class="card ${g.cardClass}" href="${g.path}">
+  const card = (g, i) => `    <a class="card" style="--accent-light:${g.accent.light};--accent-dark:${g.accent.dark}" href="${g.path}">
       <img class="thumb" src="${g.thumb}" width="640" height="640" decoding="async"${
         i === 0 ? ' fetchpriority="high"' : ""
       }${i < EAGER_CARDS ? "" : ' loading="lazy"'} alt="${escapeHtml(g.thumbAlt)}">
@@ -215,7 +334,14 @@ function homepageFromRegistry() {
 
         return html
           .replace("    <!-- games-shelf -->", shelf)
-          .replace('  "hasPart": []', `  "hasPart": [\n${hasPart}\n  ]`);
+          .replace('  "hasPart": []', `  "hasPart": [\n${hasPart}\n  ]`)
+          // The homepage's two theme colours, from the registry. They used to be
+          // literals in four files — here, the meta tag, the toggle below it and
+          // style.css — which is how the manifest once shipped a purple launch
+          // screen in front of a near-white page. Both placeholders appear more
+          // than once, hence the global replace.
+          .replaceAll("__THEME_LIGHT__", home.themeColor.light)
+          .replaceAll("__THEME_DARK__", home.themeColor.dark);
       },
     },
   };
@@ -390,6 +516,7 @@ export default defineConfig(({ mode }) => {
   appType: "mpa",
   plugins: [
     trailingSlashParity(),
+    headFromRegistry(),
     themeBootstrap(),
     homepageFromRegistry(),
     vercelInsights(),

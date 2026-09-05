@@ -50,56 +50,20 @@ const title = slug
   .join(" ");
 const today = new Date().toISOString().slice(0, 10);
 
-// The shared page shell, matching the six template-conforming games. The
-// theme-bootstrap marker sits immediately after the theme-color meta because
-// the snippet queries that tag (§18).
+// The shared page shell, matching every other game.
+//
+// The <head> is two markers. headFromRegistry() writes the title, description,
+// canonical, Open Graph and Twitter sets, both JSON-LD blocks, the theme colour
+// and the font preloads from the registry entry below (§28); the theme
+// bootstrap is inlined after it, because it rewrites the theme-color tag the
+// first one emits. This used to be forty-five lines pasted here, and it went
+// stale — a marker cannot.
 const html = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#f6f6fb">
+<!-- head-meta -->
 <!-- theme-bootstrap -->
-<title>${title} — Free Online Game</title>
-<meta name="description" content="TODO: one sentence on what the player does. No signup, no download.">
-<link rel="canonical" href="https://www.tapwhenbored.com/${slug}/">
-<meta property="og:type" content="website">
-<meta property="og:title" content="${title} — Free Online Game">
-<meta property="og:description" content="TODO: one sentence on what the player does.">
-<meta property="og:url" content="https://www.tapwhenbored.com/${slug}/">
-<meta property="og:image" content="https://www.tapwhenbored.com/assets/${slug}-og.jpg">
-<meta property="og:image:width" content="640">
-<meta property="og:image:height" content="640">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="${title} — Free Online Game">
-<meta name="twitter:description" content="TODO: one sentence on what the player does.">
-<meta name="twitter:image" content="https://www.tapwhenbored.com/assets/${slug}-og.jpg">
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "Game",
-  "name": "${title}",
-  "url": "https://www.tapwhenbored.com/${slug}/",
-  "description": "TODO: one sentence on what the player does.",
-  "image": "https://www.tapwhenbored.com/assets/${slug}-og.jpg",
-  "genre": "Puzzle",
-  "playMode": "SinglePlayer",
-  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-}
-</script>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    { "@type": "ListItem", "position": 1, "name": "Tap When Bored", "item": "https://www.tapwhenbored.com/" },
-    { "@type": "ListItem", "position": 2, "name": "${title}", "item": "https://www.tapwhenbored.com/${slug}/" }
-  ]
-}
-</script>
-<link rel="preload" href="/fonts/nunito-latin-700.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="/fonts/nunito-latin-800.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -197,31 +161,34 @@ const css = `/* Shared first: game rules below must be able to override them, an
 
 html, body {
   margin: 0;
-  min-height: 100dvh;
+  height: 100svh;
   background: var(--bg);
   color: var(--ink);
   font-family: -apple-system, "Segoe UI", sans-serif;
+  /* Kills double-tap-to-zoom across the page. A play surface that owns its own
+     drag gesture should set touch-action: none on itself, not here. */
+  touch-action: manipulation;
 }
 
 .stage {
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
-  padding: 2vh 4vw;
+  height: 100svh;
+  padding: 2svh 4vw;
 }
 
 .title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(16px, 2.6vh, 21px);
+  font-size: clamp(16px, 2.6svh, 21px);
   letter-spacing: 0.02em;
 }
 
 .tagline {
   flex-shrink: 0;
-  margin: 1.2vh 0;
+  margin: 1.2svh 0;
   color: var(--ink-soft);
-  font-size: clamp(11px, 1.6vh, 13px);
+  font-size: clamp(11px, 1.6svh, 13px);
   text-align: center;
 }
 
@@ -253,16 +220,22 @@ const js = `// ${title}
 // rather than spread across DOM attributes and CSS classes
 // (ARCHITECTURE.md §13).
 
+// The how-to sheet, the share button and the end card are platform surfaces,
+// not game rules, so they come from here rather than being written again.
+// prefs is localStorage with the try/catch already around it. See §9.
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
+import * as prefs from "../shared/ui/prefs.js";
+
 (function () {
   "use strict";
 
   var boardEl = document.getElementById("board");
   var overlayEl = document.getElementById("overlay");
+  var overlaySub = document.getElementById("overlaySub");
   var restartBtn = document.getElementById("restartBtn");
   var againBtn = document.getElementById("againBtn");
-  var howtoBtn = document.getElementById("howtoBtn");
-  var howtoSheet = document.getElementById("howtoSheet");
-  var howtoBackdrop = document.getElementById("howtoBackdrop");
+
+  var endCard = bindOverlay(overlayEl);
 
   var state = null;
 
@@ -275,34 +248,33 @@ const js = `// ${title}
     boardEl.textContent = "TODO: build " + ${JSON.stringify(title)};
   }
 
+  // Fill the card's own text first, then show it — endCard.show() also clears
+  // any "Link copied" note left over from the last round.
   function showOverlay() {
-    overlayEl.classList.add("show");
-  }
-
-  function hideOverlay() {
-    overlayEl.classList.remove("show");
+    overlaySub.textContent = state.moves + (state.moves === 1 ? " move" : " moves");
+    endCard.show();
   }
 
   // A restart must produce a clean state without a page reload (§14).
   function start() {
     state = newState();
-    hideOverlay();
+    endCard.hide();
     render();
   }
 
-  // ---------- how to play ----------
-  function openHowto() {
-    howtoSheet.classList.add("show");
-    howtoBackdrop.classList.add("show");
+  // Called on each tap of Share, so it describes the run that just ended.
+  function shareText() {
+    var url = new URL(location.href);
+    url.search = "";
+    url.hash = "";
+    return {
+      text: "TODO: what the player just did, in one sentence. Can you beat it?",
+      url: url.toString(),
+    };
   }
 
-  function closeHowto() {
-    howtoSheet.classList.remove("show");
-    howtoBackdrop.classList.remove("show");
-  }
-
-  howtoBtn.addEventListener("click", openHowto);
-  howtoBackdrop.addEventListener("click", closeHowto);
+  initHowto();
+  initShare({ title: ${JSON.stringify(title)}, payload: shareText });
 
   restartBtn.addEventListener("click", start);
   againBtn.addEventListener("click", start);
@@ -323,17 +295,22 @@ const entry = `  {
     tagline: "TODO · TODO",
     description:
       "TODO: one sentence for search results, ending in no signup.",
+    seoTitle: ${JSON.stringify(`${title} — Free Online Game`)},
+    ogDescription: "TODO: one sentence for a social card. Shorter than the description.",
+    schemaDescription: "TODO: one sentence for structured data. Plainer than the description.",
+    genre: "Puzzle",
     path: ${JSON.stringify(`/${slug}/`)},
     thumb: ${JSON.stringify(`/assets/${slug}-thumb.svg`)},
     thumbAlt: ${JSON.stringify(`${title} — preview`)},
     ogImage: ${JSON.stringify(`/assets/${slug}-og.jpg`)},
-    cardClass: ${JSON.stringify(`card--${slug}`)},
-    darkThemeColor: "#0d0e1a",
+    // The homepage card's tint, per theme.
+    accent: { light: "#8b7fe0", dark: "#a855f7" },
+    // Must match --bg in style.css, per theme. Validation enforces it.
+    themeColor: { light: "#f6f6fb", dark: "#0d0e1a" },
     updated: ${JSON.stringify(today)},
     changefreq: "monthly",
     hasRestart: true,
-    hasOverlay: true,
-    // A descriptor ({ lowerIsBetter, daily, unit }) opts this game into the
+    // A descriptor ({ lowerIsBetter, daily }) opts this game into the
     // global-best line; see ARCHITECTURE.md §27 for what else that needs.
     leaderboard: false,
   },
@@ -353,7 +330,7 @@ Still to do:
   1. public/assets/${slug}-thumb.svg   homepage card art (640x640)
   2. public/assets/${slug}-og.jpg      social preview, raster not SVG (640x640)
   3. Replace every TODO in src/${slug}/ and in the registry entry
-  4. Add .card--${slug} { --accent: ...; } to src/style.css
+  4. Set accent and themeColor in the registry (themeColor must match --bg)
   5. Replace the three TODO bullets in the "How to play" sheet
   6. Build the mechanic in src/${slug}/game.js
   7. tests/games/${slug}.spec.js once the mechanic works
