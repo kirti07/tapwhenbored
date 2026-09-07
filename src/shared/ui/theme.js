@@ -15,6 +15,12 @@
  * The bootstrap cannot import anything — it is inlined as a string — so the
  * two have to agree on a literal, and the bootstrap is the one that cannot
  * change. A comment in both files is weaker than this being the only writer.
+ *
+ * The arcade prototypes store this under `twb:theme`. That is not adopted:
+ * renaming the key would silently forget every visitor's existing choice, and
+ * it would have to be renamed in the inlined bootstrap too, where a migration
+ * cannot run. If a prefix ever matters here, it needs a legacy-key read like
+ * the one in prefs.js — not a rename.
  */
 
 var DARK = "dark";

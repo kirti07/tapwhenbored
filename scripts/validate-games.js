@@ -26,7 +26,10 @@ const RESERVED = new Set([
   "shared",
   "api",
   "_vercel",
-  // Non-game pages. A game may not claim one of these slugs.
+  // Non-game pages. A game may not claim one of these slugs. "book" stays
+  // reserved after that page was retired: the URL was indexed, and a game
+  // claiming it would start serving something else at a remembered address.
+  "account",
   "book",
   "wall",
 ]);
@@ -250,8 +253,7 @@ if (!existsSync(homepage)) {
   // which is why it is checked here rather than trusted.
   for (const [marker, what] of [
     ["<!-- games-shelf -->", "game shelf"],
-    ["<!-- book-slots -->", "your-bests slots"],
-    ["<!-- wall-tiles -->", "wall tiles"],
+      ["<!-- wall-tiles -->", "wall tiles"],
     ['"hasPart": []', "WebSite hasPart JSON-LD"],
     ["<!-- theme-bootstrap -->", "theme bootstrap"],
   ]) {

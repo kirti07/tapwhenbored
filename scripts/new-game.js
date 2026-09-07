@@ -386,7 +386,7 @@ const entry = `  {
     // score at all.
     scoreUnit: "TODO",
     scoreFormat: "int",
-    darkThemeColor: "#0f0e18",
+    darkThemeColor: "#0d0e1a",
     updated: ${JSON.stringify(today)},
     changefreq: "monthly",
     hasRestart: true,

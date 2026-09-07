@@ -42,7 +42,7 @@ for (const g of withLeaderboard) {
       ["the network is unreachable", (route) => route.abort()],
       ["the server returns 500", (route) => route.fulfill({ status: 500, body: "" })],
       [
-        "the response is not a number",
+        "the response carries no record",
         (route) =>
           route.fulfill({
             status: 200,
@@ -180,13 +180,26 @@ async function playToEnd(page) {
   return (await overlay.count()) > 0;
 }
 
+/**
+ * What submit_game_run() answers with: the game-wide record, whether this run
+ * was written, and where the player stands on today's board. The end card
+ * wants all of it in one round trip, so the RPC returns an object rather than
+ * the bare number the pre-board shape did.
+ */
+const answer = (best, extra = {}) =>
+  JSON.stringify({
+    best,
+    accepted: true,
+    your_best: best,
+    rank: null,
+    total: 1,
+    above: null,
+    ...extra,
+  });
+
 const mockBest = (page, best) =>
   page.route(RPC, (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(best),
-    }),
+    route.fulfill({ status: 200, contentType: "application/json", body: answer(best) }),
   );
 
 test.describe("the end card shows the global best", () => {
@@ -200,7 +213,7 @@ test.describe("the end card shows the global best", () => {
     // 1 marble is a perfect game, so any real result is worse than this.
     await page.route(RPC, async (route) => {
       sent.push(JSON.parse(route.request().postData() || "{}"));
-      await route.fulfill({ status: 200, contentType: "application/json", body: "1" });
+      await route.fulfill({ status: 200, contentType: "application/json", body: answer(1) });
     });
 
     await page.goto("/marble-nostalgia/");
@@ -217,6 +230,16 @@ test.describe("the end card shows the global best", () => {
     expect(Number.isInteger(sent[0].p_score)).toBe(true);
     // Not a daily game, so it must not pin a day.
     expect(sent[0].p_day).toBeUndefined();
+
+    // Identity travels with the score, or the run cannot land on a board.
+    // The id and token are this browser's, minted on first use; the run id is
+    // per submission, and is what stops a resend being counted twice (§27).
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+    expect(sent[0].p_player_id, "player id").toMatch(uuid);
+    expect(sent[0].p_write_token, "write token").toMatch(uuid);
+    expect(sent[0].p_run_id, "run id").toMatch(uuid);
+    // The token authorises a rename; it must never equal the public id.
+    expect(sent[0].p_write_token).not.toBe(sent[0].p_player_id);
     expect(uncaught()).toEqual([]);
   });
 
@@ -287,7 +310,7 @@ test.describe("bubble-tap reports the global best", () => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: "4321",
+        body: answer(4321),
       });
     });
 
@@ -307,6 +330,16 @@ test.describe("bubble-tap reports the global best", () => {
     expect(sent[0].p_slug).toBe("bubble-tap");
     // Not a daily game, so it must not pin a day.
     expect(sent[0].p_day).toBeUndefined();
+
+    // Identity travels with the score, or the run cannot land on a board.
+    // The id and token are this browser's, minted on first use; the run id is
+    // per submission, and is what stops a resend being counted twice (§27).
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+    expect(sent[0].p_player_id, "player id").toMatch(uuid);
+    expect(sent[0].p_write_token, "write token").toMatch(uuid);
+    expect(sent[0].p_run_id, "run id").toMatch(uuid);
+    // The token authorises a rename; it must never equal the public id.
+    expect(sent[0].p_write_token).not.toBe(sent[0].p_player_id);
     expect(uncaught()).toEqual([]);
   });
 
@@ -380,7 +413,7 @@ test.describe("word-steps reports the global best for today", () => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: "1",
+        body: answer(1),
       });
     });
 

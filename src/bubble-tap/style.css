@@ -1,6 +1,7 @@
 /* Shared first: game rules below must be able to override them, and
    @import inlines in source order in both dev and build. */
 @import "../shared/css/base.css";
+@import "../shared/css/shell.css";
 @import "../shared/css/howto.css";
 
 :root {
@@ -53,24 +54,25 @@ html, body {
     var(--paper);
 }
 
+/* Shell owns the row; this game centres it, pads it, and puts the back link
+   beside the title rather than above it. */
 .topbar {
-  display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 18px 20px 10px;
 }
 
-.title-group { display: flex; align-items: center; gap: 12px; }
+.brand {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.top-actions { gap: 8px; }
 
 .back-link {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--ink-soft);
+  margin-bottom: 0;
   font-size: 11px;
-  font-weight: 600;
   letter-spacing: 0.06em;
-  text-decoration: none;
   white-space: nowrap;
 }
 /* Gated: on a touch screen a tap leaves a false hover behind that sticks
@@ -87,8 +89,10 @@ html, body {
   letter-spacing: 0.32em;
 }
 
-.controls { display: flex; gap: 8px; }
-
+/* Square and smaller than the shell's 44px circle: three of these sit in a
+   14px-padded top bar on a 320px screen, and at 44px they would overlap and
+   steal each other's taps. The a11y suite exempts this game's topbar icons
+   from the width floor for exactly this reason, and holds them to 44 tall. */
 .icon-btn {
   width: 36px;
   height: 36px;
@@ -562,7 +566,7 @@ html, body {
     padding: max(8px, env(safe-area-inset-top)) 14px 6px;
   }
   .title { font-size: 13px; letter-spacing: 0.2em; }
-  .title-group { gap: 8px; }
+  .brand { gap: 8px; }
   .back-link span { display: none; }
   .icon-btn { width: 30px; height: 30px; border-radius: 8px; }
   .icon-btn svg { width: 15px; height: 15px; }

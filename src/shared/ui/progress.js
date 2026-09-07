@@ -24,7 +24,7 @@
  * over the boundary.
  */
 
-import { getJSON, setJSON } from "./prefs.js";
+import { get as getPref, getJSON, setJSON } from "./prefs.js";
 import { localDay } from "./day.js";
 
 function key(slug) {
@@ -57,7 +57,55 @@ export function recordPlay(slug, score, lowerIsBetter) {
     }
   }
 
+  if (slug === STREAK_GAME) bumpStreak(day);
   return setJSON(key(slug), { day: day, score: next });
+}
+
+/* Word Steps is the one game everybody plays the same puzzle of, so it is the
+   one where "how many days running" means anything. */
+var STREAK_GAME = "word-steps";
+var STREAK_KEY = "word-steps.streak";
+
+/** Yesterday, relative to a "YYYY-MM-DD" day, in the player's own timezone. */
+function dayBefore(day) {
+  var parts = String(day).split("-");
+  var d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  d.setDate(d.getDate() - 1);
+  return localDay(d);
+}
+
+/**
+ * Extend the streak, or start a new one.
+ *
+ * Only the last day and the count are kept — not a history — because the only
+ * question anyone asks of it is "how many days running", and storing a row per
+ * day to answer that would grow without limit for a number that fits in a byte.
+ *
+ * A player who was already playing when this shipped starts at 1 rather than at
+ * whatever they had earned. That is honest and it self-corrects in a day.
+ */
+function bumpStreak(day) {
+  var record = getJSON(STREAK_KEY, null);
+  if (!record || typeof record !== "object") record = { day: null, run: 0 };
+  if (record.day === day) return;
+
+  var run = record.day === dayBefore(day) ? (record.run || 0) + 1 : 1;
+  setJSON(STREAK_KEY, { day: day, run: run });
+}
+
+/**
+ * How many days running, or 0.
+ *
+ * A streak that did not reach yesterday is over, so it reads as 0 rather than
+ * as its final length — a number that has stopped counting is not a streak.
+ */
+export function wordStepsStreak() {
+  var record = getJSON(STREAK_KEY, null);
+  if (!record || typeof record !== "object" || !Number.isFinite(record.run)) return 0;
+
+  var today = localDay();
+  if (record.day === today || record.day === dayBefore(today)) return record.run;
+  return 0;
 }
 
 /**
@@ -73,11 +121,50 @@ export function playedToday(slug) {
   return record;
 }
 
-/** How many of `slugs` have been played today. */
-export function countPlayedToday(slugs) {
-  var n = 0;
-  for (var i = 0; i < slugs.length; i++) {
-    if (playedToday(slugs[i])) n += 1;
+/**
+ * A game's best result on this device, or null when it has none.
+ *
+ * This is the one function that knows all eight storage shapes, and that is
+ * the point of it being here: two pages now ask the same question — the
+ * homepage strip and the player card — and a second copy would be a second
+ * answer. The shapes are not uniform because each game wrote its own first,
+ * and normalising them would mean a migration for every player's stored data
+ * to gain nothing a reader can see.
+ *
+ * Two of the eight cannot always answer: doodle-on keeps no score at all, and
+ * word-steps keeps today's result only and clears it at midnight. Both return
+ * null, and a caller renders that as an empty cell, which is true.
+ *
+ * Bests never leave the browser (ARCHITECTURE.md §27). The board knows a
+ * player's rank; only this knows their best.
+ */
+export function localBest(game) {
+  var slug = game.slug;
+
+  if (slug === "flip-it") {
+    // A map of level -> { moves, ms }. The best is the quickest solve on record.
+    var byLevel = getJSON("flip-it.best", null);
+    if (!byLevel || typeof byLevel !== "object") return null;
+    var quickest = null;
+    for (var k in byLevel) {
+      var entry = byLevel[k];
+      if (entry && Number.isFinite(entry.ms) && (quickest === null || entry.ms < quickest)) {
+        quickest = entry.ms;
+      }
+    }
+    return quickest;
   }
-  return n;
+
+  if (slug === "word-steps") {
+    // Scoped to one day by design; a stale day is not a best, it is nothing.
+    var state = getJSON("word-steps.state", null);
+    if (!state || typeof state !== "object") return null;
+    if (!Number.isFinite(state.bestSteps)) return null;
+    return state.bestSteps;
+  }
+
+  var raw = getPref(slug + ".best", null);
+  if (raw === null) return null;
+  var n = Number(raw);
+  return Number.isFinite(n) ? n : null;
 }
