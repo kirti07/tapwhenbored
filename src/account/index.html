@@ -50,6 +50,15 @@
           <div class="arc-st arc-on" data-state="view">
             <p class="youname arc-mono" id="nameOut">Unsigned</p>
             <p class="youmeta" id="youMeta">Not on any board yet.</p>
+            <!-- Here at its final size reading 0 / 8; script fills the count. -->
+            <div class="stkbox stkbox--empty" id="youBox">
+              <span class="stkbox-ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-box"/></svg></span>
+              <span>
+                <span class="stkbox-k">Today&rsquo;s box</span>
+                <span class="stkbox-v num"><span id="youBoxN">0</span><span class="stkbox-of"> / 8</span></span>
+              </span>
+              <span class="arc-chip stkbox-chip" id="youBoxFull" hidden>Full box</span>
+            </div>
             <button class="arc-btn arc-btn--ghost arc-btn--sm" id="editBtn" type="button">Change name</button>
           </div>
           <div class="arc-st" data-state="edit">
@@ -68,6 +77,22 @@
         </div>
       </div>
     </section>
+
+    <!-- Your streaks.
+         One sticker per cabinet you are on a run with, and nothing at all for
+         the ones you are not — the sheet is what is going well, not a checklist
+         of what is not. Both states are here; script shows whichever is true.
+         Its height genuinely depends on the data, so unlike the box there is no
+         final size to hold. -->
+    <h2 class="arc-sect arc-pix" id="streaksH">Streaks</h2>
+    <div class="arc-panel stksheet">
+      <ul class="stkwall" id="streakWall" aria-labelledby="streaksH" hidden></ul>
+      <div class="arc-msg arc-msg--page" id="streakNone">
+        <span class="arc-pix">No streaks yet</span>
+        <p>Finish the same cabinet two days running and its sticker turns up here.</p>
+      </div>
+      <p class="arc-hint">The number is days in a row. Miss a day and that cabinet starts over &mdash; you have until your own midnight to keep one alive.</p>
+    </div>
 
     <!-- Your bests.
          The Best column is local and the Rank column is not. That split is the

@@ -57,14 +57,22 @@ export function recordPlay(slug, score, lowerIsBetter) {
     }
   }
 
-  if (slug === STREAK_GAME) bumpStreak(day);
+  bumpStreak(slug, day);
   return setJSON(key(slug), { day: day, score: next });
 }
 
-/* Word Steps is the one game everybody plays the same puzzle of, so it is the
-   one where "how many days running" means anything. */
-var STREAK_GAME = "word-steps";
-var STREAK_KEY = "word-steps.streak";
+/* Every cabinet keeps a run, not just Word Steps.
+ *
+ * It used to be Word Steps alone, on the reasoning that a shared daily puzzle
+ * is the only place "how many days running" means anything. The player card
+ * disagrees: a run is a reason to come back to any of them, and the card shows
+ * one sticker per cabinet you have one on.
+ *
+ * Same key shape as before — `word-steps.streak` still holds `{ day, run }`
+ * under exactly that name — so nobody's existing run needed migrating. */
+function streakKey(slug) {
+  return slug + ".streak";
+}
 
 /** Yesterday, relative to a "YYYY-MM-DD" day, in the player's own timezone. */
 function dayBefore(day) {
@@ -75,37 +83,66 @@ function dayBefore(day) {
 }
 
 /**
- * Extend the streak, or start a new one.
+ * Extend this game's streak, or start a new one.
  *
  * Only the last day and the count are kept — not a history — because the only
  * question anyone asks of it is "how many days running", and storing a row per
  * day to answer that would grow without limit for a number that fits in a byte.
  *
+ * The `record.day === day` guard is what makes a second run on the same day
+ * cost nothing: a streak counts days, not games, so playing twice before
+ * midnight must not read as two days.
+ *
  * A player who was already playing when this shipped starts at 1 rather than at
  * whatever they had earned. That is honest and it self-corrects in a day.
  */
-function bumpStreak(day) {
-  var record = getJSON(STREAK_KEY, null);
+function bumpStreak(slug, day) {
+  var record = getJSON(streakKey(slug), null);
   if (!record || typeof record !== "object") record = { day: null, run: 0 };
   if (record.day === day) return;
 
   var run = record.day === dayBefore(day) ? (record.run || 0) + 1 : 1;
-  setJSON(STREAK_KEY, { day: day, run: run });
+  setJSON(streakKey(slug), { day: day, run: run });
 }
 
 /**
- * How many days running, or 0.
+ * How many days running on one game, or 0.
  *
  * A streak that did not reach yesterday is over, so it reads as 0 rather than
  * as its final length — a number that has stopped counting is not a streak.
+ * Reaching *yesterday* still counts: the day is not lost until the player's own
+ * midnight, and a card that wrote a run off at breakfast would be wrong for
+ * most of the day it was wrong on.
  */
-export function wordStepsStreak() {
-  var record = getJSON(STREAK_KEY, null);
+export function streak(slug) {
+  var record = getJSON(streakKey(slug), null);
   if (!record || typeof record !== "object" || !Number.isFinite(record.run)) return 0;
 
   var today = localDay();
   if (record.day === today || record.day === dayBefore(today)) return record.run;
   return 0;
+}
+
+/** The homepage's one-line version, which only ever asks about Word Steps. */
+export function wordStepsStreak() {
+  return streak("word-steps");
+}
+
+/**
+ * Every cabinet with a live run, longest first.
+ *
+ * Takes slugs rather than reading the registry, for the same reason
+ * `recordPlay` takes `lowerIsBetter`: a caller that has the catalogue already
+ * can hand over eight strings, and one that does not should not gain every
+ * game's metadata in its bundle to ask this.
+ */
+export function streaks(slugs) {
+  var live = [];
+  for (var i = 0; i < slugs.length; i++) {
+    var run = streak(slugs[i]);
+    if (run > 0) live.push({ slug: slugs[i], run: run });
+  }
+  return live.sort(function (a, b) { return b.run - a.run; });
 }
 
 /**

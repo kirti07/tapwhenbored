@@ -141,6 +141,15 @@ test.describe("a cabinet's meta line", () => {
 });
 
 test.describe("the wall", () => {
+  // Every test in here is about the expanded panel, which now only exists at
+  // rail widths — below 920px the roll collapses to a single link. Pinning the
+  // width keeps these honest under the mobile project: without it the height
+  // assertions would compare 0 to 0 against a hidden panel and pass having
+  // checked nothing. The collapsed state has its own block below.
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+  });
+
   test("shows one tile per game that has a board", async ({ page }) => {
     await page.goto(home.path);
     await expect(page.locator(".roll-row")).toHaveCount(boarded.length);
@@ -222,6 +231,94 @@ test.describe("the wall", () => {
 
 });
 
+// The roll in one column.
+//
+// A header, eight rows and a two-line foot is about 500px, and above the shelf
+// that was the whole first screen — mostly dashes, since a row only fills once
+// a board answers. So below the rail breakpoint the panel is its header and
+// nothing else, and the header is the way to the boards.
+//
+// The height assertion is the one that matters: it is the complaint itself,
+// written down. The others describe the mechanism that answers it.
+test.describe("the roll in one column", () => {
+  const PHONE = { width: 390, height: 844 };
+
+  test("collapses to a link to the boards", async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await page.goto(home.path);
+
+    await expect(page.locator("#rollH")).toBeVisible();
+    await expect(page.locator(".attract .roll")).toBeHidden();
+    await expect(page.locator(".attract .arc-screen-foot")).toBeHidden();
+
+    const link = page.locator(".attract .roll-open");
+    await expect(link).toHaveAttribute("href", "/wall/");
+
+    // The whole bar is the target, and the site has a 44px floor.
+    const box = await link.boundingBox();
+    expect(box.height).toBeGreaterThanOrEqual(44);
+
+    await link.click();
+    await expect(page).toHaveURL(/\/wall\/$/);
+  });
+
+  test("does not cost the reader the first screen", async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await page.goto(home.path);
+
+    const panel = await page.locator(".attract").boundingBox();
+    expect(panel.height, "the collapsed roll is a bar, not a slab").toBeLessThan(70);
+
+    // And the first cabinet is on screen without scrolling past it.
+    const card = await page.locator(".shelf .card").first().boundingBox();
+    expect(card.y).toBeLessThan(PHONE.height);
+  });
+
+  test("is the full panel again on a rail", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(home.path);
+
+    await expect(page.locator(".attract .roll")).toBeVisible();
+    await expect(page.locator(".attract .arc-screen-foot")).toBeVisible();
+    // Hidden, so there is no second boards link in the accessibility tree.
+    await expect(page.locator(".attract .roll-open")).toBeHidden();
+  });
+
+  test("still fetches on a phone, so expanding shows scores and not dashes", async ({ page }) => {
+    // renderRoll() is deliberately not gated on the breakpoint. Gating it would
+    // save the request, and cost an iPad rotated from portrait to landscape a
+    // panel of dashes that never fill. This is that trade, asserted.
+    const day = today();
+    await page.route(REST, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(rows(day)),
+      }),
+    );
+
+    await page.setViewportSize(PHONE);
+    await page.goto(home.path);
+    await expect(page.locator(".attract .roll")).toBeHidden();
+
+    // No reload — the rows were filled while they were hidden.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await expect(page.locator(".attract .roll")).toBeVisible();
+    await expect(page.locator(".roll-row").first().locator("[data-score]")).not.toHaveText("—");
+  });
+
+  test("leaves the boards page alone", async ({ page }) => {
+    // /wall/ loads this same stylesheet and is built from the same screen
+    // components, so an unscoped rule would have collapsed the page whose whole
+    // job is showing the rows. This is the guard for that.
+    await page.setViewportSize(PHONE);
+    await page.goto("/wall/");
+
+    await expect(page.locator(".arc-screen-bar").first()).toBeVisible();
+    await expect(page.locator(".arc-screen-foot").first()).toBeVisible();
+  });
+});
+
 test.describe("theme", () => {
   test("toggles, persists, and honours a shared ?theme= link", async ({ page }) => {
     await page.goto(home.path);
@@ -241,5 +338,68 @@ test.describe("theme", () => {
     expect(await theme()).toBe("dark");
     await page.goto("/?theme=light");
     expect(await theme()).toBe("light");
+  });
+});
+
+// Today's box.
+//
+// The count and the strip are both personal state, so both arrive from script
+// onto a card that already reads 0 / 8. What is worth guarding is that an empty
+// box is a zero and not a blank, that the strip says which cabinet each square
+// is rather than leaving it to eight colours, and that the nudge only runs
+// while there is room in the box.
+test.describe("today's box", () => {
+  test("counts the cabinets played today, and marks which ones", async ({ browser }) => {
+    const context = await withStorage(browser, [
+      playedOn("marble-nostalgia", 4),
+      playedOn("bubble-tap", 120),
+      playedOn("word-steps", 3),
+    ]);
+    const page = await context.newPage();
+    await page.goto(home.path);
+
+    await expect(page.locator("#p1BoxN")).toHaveText("3");
+    await expect(page.locator(".stkpip")).toHaveCount(games.length);
+    await expect(page.locator(".stkpip--on")).toHaveCount(3);
+    await expect(page.locator('.stkpip[aria-label*="Marble Nostalgia"]')).toHaveClass(
+      /stkpip--on/,
+    );
+    await expect(page.locator('.stkpip[aria-label*="Untangle"]')).not.toHaveClass(/stkpip--on/);
+    await context.close();
+  });
+
+  test("reads zero and holds still on a browser that has played nothing", async ({ page }) => {
+    await page.goto(home.path);
+
+    await expect(page.locator("#p1BoxN")).toHaveText("0");
+    await expect(page.locator("#p1Box")).toHaveClass(/stkbox--empty/);
+    await expect(page.locator(".stkpip--on")).toHaveCount(0);
+    await expect(page.locator("#p1BoxFull")).toBeHidden();
+
+    // Nothing to point at, so the lid does not move.
+    const animation = await page
+      .locator("#p1Box .stkbox-ico svg")
+      .evaluate((el) => getComputedStyle(el).animationName);
+    expect(animation).toBe("none");
+  });
+
+  test("seals at eight of eight and stops nudging", async ({ browser }) => {
+    const context = await withStorage(
+      browser,
+      games.map((g) => playedOn(g.slug, 1)),
+    );
+    const page = await context.newPage();
+    await page.goto(home.path);
+
+    await expect(page.locator("#p1BoxN")).toHaveText(String(games.length));
+    await expect(page.locator("#p1Box")).toHaveClass(/stkbox--full/);
+    await expect(page.locator("#p1BoxFull")).toBeVisible();
+    await expect(page.locator(".stkpip--on")).toHaveCount(games.length);
+
+    const animation = await page
+      .locator("#p1Box .stkbox-ico svg")
+      .evaluate((el) => getComputedStyle(el).animationName);
+    expect(animation).toBe("none");
+    await context.close();
   });
 });

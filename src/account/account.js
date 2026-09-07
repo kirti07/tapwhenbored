@@ -13,7 +13,7 @@
  */
 
 import { games } from "../data/games.js";
-import { localBest, wordStepsStreak } from "../shared/ui/progress.js";
+import { localBest, playedToday, streaks } from "../shared/ui/progress.js";
 import { getName, setName, clean, UNSIGNED } from "../shared/ui/player.js";
 import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 import { formatScore } from "../shared/ui/format.js";
@@ -26,6 +26,20 @@ var nameOut = document.getElementById("nameOut");
 var youMeta = document.getElementById("youMeta");
 
 var boarded = games.filter(function (g) { return g.leaderboard !== false; });
+
+var bySlug = Object.create(null);
+for (var gi = 0; gi < games.length; gi++) bySlug[games[gi].slug] = games[gi];
+
+/* One sticker's shape, as a constant. Nothing is interpolated into it: the
+   glyph's id goes on with setAttribute and the two bits of text with
+   textContent, so a registry value can never be parsed as markup. */
+var STICKER = [
+  '<span class="stk-cut">',
+  '<span class="stk-face" aria-hidden="true"><svg viewBox="0 0 48 48"><use/></svg></span>',
+  '<span class="stk-run arc-medal" aria-hidden="true"></span>',
+  "</span>",
+  '<span class="stk-n"></span>',
+].join("");
 
 // ---------- the local half ----------
 
@@ -50,24 +64,72 @@ function renderName() {
  * The one line under the name.
  *
  * Counts only what this browser can answer for on its own — how many boards it
- * has a best on — plus the streak, which is also local. Nothing here waits on
- * the network, so the line is right on the first frame and does not change
- * under the reader when the ranks land.
+ * has a best on. Nothing here waits on the network, so the line is right on the
+ * first frame and does not change under the reader when the ranks land.
+ *
+ * It used to carry the Word Steps streak too. The sheet below now shows every
+ * cabinet's run as its own sticker, so saying one of them again in prose was
+ * the same fact twice. The homepage keeps that clause; it has no sheet.
  */
 function renderMeta() {
   var on = boarded.filter(function (g) { return localBest(g) !== null; }).length;
-  var streak = wordStepsStreak();
 
-  var parts = [];
-  parts.push(
+  youMeta.textContent =
     on === 0
       ? "Not on any board yet."
-      : "A best on " + on + " of the " + boarded.length + " cabinets that keep score.",
-  );
-  if (streak > 0) {
-    parts.push("Word Steps streak: " + streak + (streak === 1 ? " day." : " days."));
+      : "A best on " + on + " of the " + boarded.length + " cabinets that keep score.";
+}
+
+/** Today's box: how many of the eight have been played to an end state. */
+function renderBox() {
+  var box = document.getElementById("youBox");
+  if (!box) return;
+
+  var got = games.filter(function (g) { return playedToday(g.slug) !== null; }).length;
+
+  document.getElementById("youBoxN").textContent = String(got);
+  box.classList.toggle("stkbox--empty", got === 0);
+  box.classList.toggle("stkbox--full", got === games.length);
+  document.getElementById("youBoxFull").hidden = got !== games.length;
+}
+
+/**
+ * The streak sheet: one sticker per cabinet with a live run, longest first.
+ *
+ * A cabinet with no run gets nothing rather than a zero — this is a shelf of
+ * what is going well, and a wall of eight zeroes is a different, worse page.
+ * Which means the sheet has two states, and an empty one is the normal state
+ * for a first visit rather than an error.
+ *
+ * The count is on the sticker and again in its label, because a badge on a
+ * glyph is not a sentence: `21` beside a hexagon tells a screen reader nothing.
+ */
+function renderStreaks() {
+  var wall = document.getElementById("streakWall");
+  var none = document.getElementById("streakNone");
+  if (!wall || !none) return;
+
+  var live = streaks(games.map(function (g) { return g.slug; }));
+
+  wall.hidden = live.length === 0;
+  none.hidden = live.length > 0;
+
+  for (var i = 0; i < live.length; i++) {
+    var game = bySlug[live[i].slug];
+    var run = live[i].run;
+
+    var item = document.createElement("li");
+    item.className = "stk";
+    item.style.setProperty("--accent", game.accent);
+    item.style.setProperty("--accent-d", game.accentDark);
+    item.innerHTML = STICKER;
+
+    item.querySelector("use").setAttribute("href", "#" + game.sticker);
+    item.querySelector(".stk-run").textContent = String(run);
+    item.querySelector(".stk-n").textContent = game.title;
+    item.setAttribute("aria-label", game.title + " — " + run + (run === 1 ? " day" : " days") + " in a row");
+    wall.appendChild(item);
   }
-  youMeta.textContent = parts.join(" ");
 }
 
 // ---------- the remote half ----------
@@ -206,4 +268,6 @@ initPrefs();
 renderName();
 renderBests();
 renderMeta();
+renderBox();
+renderStreaks();
 renderRanks();

@@ -115,6 +115,17 @@
   <path d="M17.9 28.1 23.5 31.3 23.5 37.7 17.9 40.9 12.4 37.7 12.4 31.3z" fill="none" stroke="currentColor" stroke-width="2" opacity=".5"/>
 </symbol>
 
+<!-- Today's box: the lid seated on the body, over the clasp. Not a game glyph —
+     it is the player card's own, and the one symbol here that no registry entry
+     names. Same grid and the same fill-then-stroke as the rest, so it sits
+     beside them without looking borrowed. -->
+<symbol id="st-box" viewBox="0 0 48 48">
+  <rect x="7" y="23" width="34" height="18" rx="3.5" fill="currentColor" opacity=".22"/>
+  <rect x="7" y="23" width="34" height="18" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/>
+  <rect x="21" y="23" width="6" height="7" rx="1.6" fill="currentColor"/>
+  <rect x="4.5" y="14.5" width="39" height="8.5" rx="2.8" fill="currentColor"/>
+</symbol>
+
 <!-- One line, drawn. -->
 <symbol id="st-doodle" viewBox="0 0 48 48">
   <path d="M5 33c4-14 11-18 15-10s9 8 13-6" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>

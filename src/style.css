@@ -325,30 +325,6 @@ button { font: inherit; color: inherit; }
 }
 
 
-@media (min-width: 560px) { .wall { grid-template-columns: repeat(3, 1fr); } }
-@media (min-width: 900px) { .wall { grid-template-columns: repeat(6, 1fr); gap: 20px 16px; } }
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .stk {
-    background: color-mix(in srgb, var(--accent-d, var(--accent)) 13%, var(--card));
-    border-color: color-mix(in srgb, var(--accent-d, var(--accent)) 10%, var(--card));
-    box-shadow: 0 0 0 1.4px color-mix(in srgb, var(--accent-d, var(--accent)) 42%, transparent), var(--shadow-m);
-  }
-}
-
-:root[data-theme="dark"] .stk {
-  background: color-mix(in srgb, var(--accent-d, var(--accent)) 13%, var(--card));
-  border-color: color-mix(in srgb, var(--accent-d, var(--accent)) 10%, var(--card));
-  box-shadow: 0 0 0 1.4px color-mix(in srgb, var(--accent-d, var(--accent)) 42%, transparent), var(--shadow-m);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .stk .ico { color: var(--accent-d, var(--accent)); }
-}
-
-:root[data-theme="dark"] .stk .ico { color: var(--accent-d, var(--accent)); }
-
-
 .honest {
   display: flex;
   align-items: center;
@@ -504,51 +480,6 @@ button { font: inherit; color: inherit; }
 }
 
 
-@media (min-width: 560px) { .book-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (min-width: 900px) { .book-grid { grid-template-columns: repeat(4, 1fr); gap: 20px 16px; } }
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .book-grid .slot--f {
-    background: color-mix(in srgb, var(--accent-d) 13%, var(--card));
-    border-color: color-mix(in srgb, var(--accent-d) 10%, var(--card));
-    box-shadow: 0 0 0 1.4px color-mix(in srgb, var(--accent-d) 42%, transparent), var(--shadow-m);
-  }
-}
-
-:root[data-theme="dark"] .book-grid .slot--f {
-  background: color-mix(in srgb, var(--accent-d) 13%, var(--card));
-  border-color: color-mix(in srgb, var(--accent-d) 10%, var(--card));
-  box-shadow: 0 0 0 1.4px color-mix(in srgb, var(--accent-d) 42%, transparent), var(--shadow-m);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .book-grid .ico { color: var(--accent-d); }
-}
-
-:root[data-theme="dark"] .book-grid .ico { color: var(--accent-d); }
-
-
-@media (hover: hover) and (pointer: fine) {
-  .rows .stk:hover { transform: translateY(-1px); box-shadow: 0 0 0 1.6px var(--accent), var(--shadow-m); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .rows .stk { transition: none; }
-  .rows .stk:hover { transform: none; }
-}
-
-
-
-@media (min-width: 720px) {
-  .wt { display: inline; }
-}
-
-@media (max-width: 420px) {
-  .rows .stk { gap: 9px; padding: 10px 11px 10px 9px; }
-  .wrule { font-size: 10.5px; }
-}
-
-
 /* ---------------------------------------------------------- the cabinets --
  *
  * A shelf card is a machine: a lit marquee in the game's colour over a sunk
@@ -691,6 +622,61 @@ button { font: inherit; color: inherit; }
 }
 
 .hgrid .attract { order: -1; }
+
+/* In one column the roll collapses to its header.
+ *
+ * Ordering it above the shelf is right — a board with somebody's name on it is
+ * the reason to play — but a header, eight 46px rows and a two-line foot is
+ * about 500px, and until a board answers most of it is dashes. Above the shelf
+ * that is the whole first screen spent on nothing. So the rows and the foot go,
+ * the bar becomes a link to the full boards, and the reason to play is still
+ * the first thing on the page at a fourteenth of the height.
+ *
+ * 919/920 is deliberate: it is exactly where .hgrid stops being two columns
+ * just below, so the panel is either a rail or a link and never a slab. The two
+ * blocks have to move together.
+ *
+ * Every selector is scoped to .attract. `/wall/` loads this same stylesheet and
+ * is built from the same .arc-screen-bar and .arc-screen-foot, so an unscoped
+ * rule here would collapse the boards page itself.
+ *
+ * `right now` goes with the rows: with no scores on screen there is nothing for
+ * it to qualify. The foot's honesty line goes for the same reason — it
+ * disclaims scores, and /wall/ still carries its own next to the ones it shows.
+ */
+.roll-now { margin-left: auto; }
+
+/* Hidden by default rather than in a min-width twin, so a fractional viewport
+   between the two queries cannot land on neither. */
+.roll-open { display: none; }
+
+@media (max-width: 919px) {
+  .attract .roll,
+  .attract .arc-screen-foot,
+  .attract .roll-now { display: none; }
+
+  /* 44px because the whole bar is now a tap target and the site has a floor.
+     The border goes because there is no longer anything under it. */
+  .attract .arc-screen-bar {
+    position: relative;
+    min-height: 44px;
+    border-bottom: 0;
+  }
+
+  /* The stretched link, as .back-link and .foot a already do it here: the
+     target grows to the whole bar, the ink stays one chevron. */
+  .attract .roll-open {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 14px;
+    color: #c9c6ff;
+  }
+
+  .attract .roll-open svg { display: block; }
+}
 
 @media (min-width: 920px) {
   .hgrid {
@@ -899,3 +885,219 @@ button { font: inherit; color: inherit; }
 }
 
 .acc-rank { color: var(--ink-dim); font-size: 12.5px; }
+
+/* ------------------------------------------------------- daily stickers --
+ *
+ * Two regions, and they answer different questions. The box says what you
+ * played *today* — eight slots, one per cabinet, empty again at your own
+ * midnight. The wall says what you are *keeping up* — one sticker per cabinet
+ * with a live run, carrying its days-in-a-row count.
+ *
+ * A cabinet's colour is data here as everywhere else (§10): the renderers put
+ * `--accent`/`--accent-d` on each sticker and pip exactly as the build already
+ * does on every card and account row. `--stk-accent` is the one indirection
+ * that picks between them, declared once and remapped twice for dark — the
+ * same trick `.arc` uses for `--arc-accent`, and the reason none of the rules
+ * below are written out a second time.
+ */
+
+/* The rim rides along with the accent, in the same three blocks, because dark
+   needs a different one: the die cut is white paper on a light sheet, but
+   `--card` on `--card-2` is barely a colour change in dark and the sticker
+   silently loses the edge that makes it a sticker. Lifted towards the ink
+   instead, which keeps it neutral rather than tinting it. */
+.stk,
+.stkpip {
+  --stk-accent: var(--accent, var(--arc-accent));
+  --stk-rim: var(--card);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .stk,
+  :root:not([data-theme="light"]) .stkpip {
+    --stk-accent: var(--accent-d, var(--accent));
+    --stk-rim: color-mix(in srgb, var(--card) 88%, var(--ink));
+  }
+}
+
+:root[data-theme="dark"] .stk,
+:root[data-theme="dark"] .stkpip {
+  --stk-accent: var(--accent-d, var(--accent));
+  --stk-rim: color-mix(in srgb, var(--card) 88%, var(--ink));
+}
+
+/* ---- the box, in the player card ---- */
+
+/* A sunk row on the card, sized like .arc-stand so the two read as the same
+   kind of object: a readout pinned into a machine, not a control. */
+.stkbox {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 9px 11px;
+  border-radius: 12px;
+  background: var(--card-2);
+  border: 1.5px solid var(--line);
+}
+
+.stkbox-ico { flex: none; color: var(--arc-accent); }
+.stkbox-ico svg { display: block; width: 38px; height: 38px; }
+
+.stkbox-k {
+  display: block;
+  font-family: var(--font-pix);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 9.5px;
+  color: var(--ink-soft);
+}
+
+.stkbox-v {
+  display: block;
+  font-family: var(--arc-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.stkbox-of { font-size: 12.5px; color: var(--ink-dim); }
+
+.stkbox-chip { margin-left: auto; flex: none; background: var(--arc-gold); }
+
+/* The nudge. One glyph, one keyframe set, no JS — §23 is explicit that a
+   decorative effect needing a script has not earned its place. It moves for
+   about 400ms of every 2.6s and is deliberately the only thing on the card
+   that moves at all.
+
+   It runs only while the box has room: nothing to point at when it is empty,
+   and nothing left to earn when it is full. */
+.stkbox-ico svg { animation: stk-nudge 2.6s var(--ease-out) infinite; }
+
+.stkbox--empty .stkbox-ico { color: var(--ink-dim); }
+.stkbox--full .stkbox-ico { color: var(--arc-gold); }
+
+.stkbox--empty .stkbox-ico svg,
+.stkbox--full .stkbox-ico svg { animation: none; }
+
+@keyframes stk-nudge {
+  0%, 58%, 100% { transform: translateY(0); }
+  66% { transform: translateY(-3px); }
+  74% { transform: translateY(0); }
+  80% { transform: translateY(-1px); }
+  86% { transform: translateY(0); }
+}
+
+/* Gentler, not zero, is the site's rule — but there is no gentler version of a
+   bounce, so this one stops. The count beside it says the same thing. */
+@media (prefers-reduced-motion: reduce) {
+  .stkbox-ico svg { animation: none; }
+}
+
+/* ---- the pip strip, on the homepage rail ---- */
+
+/* The whole box in 147px: which cabinets, not just how many. Its height is
+   reserved so the eight arriving from script cannot shove the button. */
+.stkpips { display: flex; gap: 5px; align-items: center; min-height: 14px; }
+
+.stkpip {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1.5px dashed var(--line-2);
+}
+
+.stkpip--on {
+  border-color: transparent;
+  background: var(--stk-accent);
+  box-shadow: 0 0 0 1.4px color-mix(in srgb, var(--stk-accent) 34%, transparent);
+}
+
+/* ---- the wall, on the player card page ---- */
+
+/* The album page the stickers are stuck to. A white panel would swallow their
+   die-cut rims, so this one is the sunk surface with the same dot the dark
+   cabinet screens carry. */
+.stksheet {
+  background-color: var(--card-2);
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    color-mix(in srgb, var(--ink) 6%, transparent) 1px,
+    transparent 0
+  );
+  background-size: 8px 8px;
+}
+
+.stkwall {
+  --stk-size: 104px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (max-width: 559px) {
+  .stkwall {
+    --stk-size: 84px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.stk { display: grid; justify-items: center; gap: 9px; }
+
+/* The die cut: a white rim around the disc, which is what makes a sticker look
+   like one rather than like another chip. */
+.stk-cut {
+  position: relative;
+  display: block;
+  padding: 3.5px;
+  border-radius: 27px;
+  background: var(--stk-rim);
+  box-shadow: var(--shadow-s);
+}
+
+/* Tilted a degree or two, from a fixed cycle rather than at random: a sheet
+   that re-shuffles itself on every reload reads as a bug. */
+.stk:nth-child(4n + 1) .stk-cut { transform: rotate(-3.5deg); }
+.stk:nth-child(4n + 2) .stk-cut { transform: rotate(2.5deg); }
+.stk:nth-child(4n + 3) .stk-cut { transform: rotate(-1.5deg); }
+.stk:nth-child(4n) .stk-cut { transform: rotate(3deg); }
+
+.stk-face {
+  display: grid;
+  place-items: center;
+  width: var(--stk-size);
+  height: var(--stk-size);
+  border-radius: 23px;
+  color: var(--stk-accent);
+  background: color-mix(in srgb, var(--stk-accent) 16%, var(--card));
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--stk-accent) 34%, transparent);
+}
+
+.stk-face svg { display: block; width: 46%; height: 46%; }
+
+/* The run count, on .arc-medal's geometry — a small pixel badge is exactly
+   what that component is, so this only has to place it, colour it, and let a
+   three-digit run widen it. */
+.stk-run {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: auto;
+  min-width: 24px;
+  padding: 1px 5px 0;
+  background: var(--stk-accent);
+  border: 2.5px solid var(--stk-rim);
+}
+
+.stk-n {
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  text-wrap: pretty;
+}

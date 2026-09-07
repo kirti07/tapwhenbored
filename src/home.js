@@ -13,7 +13,7 @@
  */
 
 import { games } from "./data/games.js";
-import { localBest, wordStepsStreak } from "./shared/ui/progress.js";
+import { localBest, playedToday, wordStepsStreak } from "./shared/ui/progress.js";
 import { signature, UNSIGNED } from "./shared/ui/player.js";
 import { initToggle as initThemeToggle } from "./shared/ui/theme.js";
 import { fetchAllBests, localDay } from "./shared/ui/leaderboard.js";
@@ -80,6 +80,42 @@ function renderPlayer() {
 }
 
 /**
+ * Today's box, and the strip saying which cabinets are in it.
+ *
+ * Local, like the rest of the card: "finished today" is a per-game record in
+ * this browser and never leaves it (§27). A cabinet's colour comes off the
+ * registry onto the pip, which is the same thing the build does to every card
+ * and account row — the alternative is eight colours hardcoded in a stylesheet
+ * that nothing validates.
+ */
+function renderBox() {
+  var box = document.getElementById("p1Box");
+  var pips = document.getElementById("p1Pips");
+  if (!box || !pips) return;
+
+  var got = games.filter(function (g) { return playedToday(g.slug) !== null; });
+
+  document.getElementById("p1BoxN").textContent = String(got.length);
+  box.classList.toggle("stkbox--empty", got.length === 0);
+  box.classList.toggle("stkbox--full", got.length === games.length);
+  document.getElementById("p1BoxFull").hidden = got.length !== games.length;
+
+  for (var i = 0; i < games.length; i++) {
+    var game = games[i];
+    var on = playedToday(game.slug) !== null;
+    var pip = document.createElement("span");
+    pip.className = on ? "stkpip stkpip--on" : "stkpip";
+    pip.style.setProperty("--accent", game.accent);
+    pip.style.setProperty("--accent-d", game.accentDark);
+    /* The strip is eight identical squares, so each has to say which cabinet it
+       is and whether it is filled. Colour alone says neither out loud. */
+    pip.setAttribute("role", "img");
+    pip.setAttribute("aria-label", game.title + (on ? " — played today" : " — not today"));
+    pips.appendChild(pip);
+  }
+}
+
+/**
  * The roll: who holds each record, and what they scored.
  *
  * One request for every board at once. A row whose game has no record keeps its
@@ -119,4 +155,5 @@ async function renderRoll() {
 initThemeToggle(document.getElementById("themeBtn"));
 renderBests();
 renderPlayer();
+renderBox();
 renderRoll();

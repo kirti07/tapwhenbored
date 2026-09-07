@@ -8,7 +8,7 @@
 
 import { test, expect } from "@playwright/test";
 import { games, pages } from "../../src/data/games.js";
-import { stored, withStorage, blockStorage, brokenSpriteRefs } from "../helpers/storage.js";
+import { DAY, playedOn, stored, withStorage, blockStorage, brokenSpriteRefs } from "../helpers/storage.js";
 
 const ACCOUNT = pages.find((p) => p.slug === "account").path;
 const STANDING = "**/rest/v1/rpc/my_standing*";
@@ -188,5 +188,78 @@ test.describe("the address and the preferences", () => {
     await page.locator("#deleteBtn").click();
     await expect(page.locator("#prefStatus")).toHaveText("Deleted.");
     await expect(page.locator("#nameOut")).toHaveText("Unsigned");
+  });
+});
+
+// The streak sheet.
+//
+// The rule under test is "miss a day and it starts over", and the honest way to
+// test that is through storage rather than through the clock: a run stamped
+// three days ago must not render, and one stamped yesterday must — the day is
+// not lost until the player's own midnight.
+//
+// The other thing worth guarding is that a cabinet with no run gets nothing at
+// all. An eight-sticker wall of zeroes is a different, worse page, and it is the
+// one a naive render produces.
+test.describe("the streak sheet", () => {
+  test("shows a sticker per live run, longest first, and none for the rest", async ({
+    browser,
+  }) => {
+    const context = await withStorage(browser, [
+      stored("word-steps.streak", { day: DAY(), run: 5 }),
+      stored("honeycomb.streak", { day: DAY(-1), run: 2 }),
+    ]);
+    const page = await context.newPage();
+    await page.route(STANDING, (route) => rpc(route, null));
+    await page.goto(ACCOUNT);
+
+    await expect(page.locator("#streakWall .stk")).toHaveCount(2);
+    await expect(page.locator("#streakNone")).toBeHidden();
+    await expect(page.locator("#streakWall .stk-run")).toHaveText(["5", "2"]);
+    await expect(page.locator("#streakWall .stk-n")).toHaveText(["Word Steps", "Honeycomb"]);
+
+    // The badge is decorative, so the run has to be in the label as words too.
+    await expect(page.locator("#streakWall .stk").first()).toHaveAttribute(
+      "aria-label",
+      "Word Steps — 5 days in a row",
+    );
+    expect(await brokenSpriteRefs(page)).toEqual([]);
+    await context.close();
+  });
+
+  test("drops a run that missed a day", async ({ browser }) => {
+    const context = await withStorage(browser, [
+      stored("untangle.streak", { day: DAY(-3), run: 9 }),
+    ]);
+    const page = await context.newPage();
+    await page.route(STANDING, (route) => rpc(route, null));
+    await page.goto(ACCOUNT);
+
+    await expect(page.locator("#streakWall .stk")).toHaveCount(0);
+    await expect(page.locator("#streakNone")).toBeVisible();
+    await context.close();
+  });
+
+  test("says so plainly when nothing is running", async ({ page }) => {
+    await page.route(STANDING, (route) => rpc(route, null));
+    await page.goto(ACCOUNT);
+
+    await expect(page.locator("#streakWall")).toBeHidden();
+    await expect(page.locator("#streakNone")).toContainText("No streaks yet");
+  });
+
+  test("counts today's box on this page too", async ({ browser }) => {
+    const context = await withStorage(browser, [
+      playedOn("untangle", 12),
+      playedOn("doodle-on", null),
+    ]);
+    const page = await context.newPage();
+    await page.route(STANDING, (route) => rpc(route, null));
+    await page.goto(ACCOUNT);
+
+    // Both of these keep no board, and both still fill a slot.
+    await expect(page.locator("#youBoxN")).toHaveText("2");
+    await expect(page.locator("#youBox")).not.toHaveClass(/stkbox--empty/);
+    await context.close();
   });
 });

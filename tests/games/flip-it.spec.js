@@ -341,3 +341,29 @@ test("the how-to sheet opens and closes", async ({ page }) => {
   await page.locator("#howtoBackdrop").click();
   await expect(page.locator("#howtoSheet")).not.toHaveClass(/show/);
 });
+
+// Finishing a round is what fills the player card, so the write is worth
+// pinning here rather than only reading it back from seeded storage on the
+// card's own tests. Two keys, one play: the day's slot, and the run.
+//
+// `recordPlay` is shared by all eight games (ui/progress.js), so this stands in
+// for the other seven — flip-it is simply the one with a solver on hand.
+test("clearing a board fills today's slot and starts a run", async ({ page }) => {
+  const { cells: board, n } = await readSizedBoard(page);
+  const answer = solve(n, board);
+  for (const i of answer.picks) await tiles(page).nth(i).click();
+  await expect(page.locator("#overlay")).toHaveClass(/show/, { timeout: 4000 });
+
+  const written = await page.evaluate(() => ({
+    today: JSON.parse(localStorage.getItem("twb:flip-it.today") || "null"),
+    streak: JSON.parse(localStorage.getItem("twb:flip-it.streak") || "null"),
+  }));
+
+  const pad = (x) => String(x).padStart(2, "0");
+  const d = new Date();
+  const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+  expect(written.today, "the day's slot is stamped with the local day").toMatchObject({ day: today });
+  // A run starts at 1 on its first day, not 0.
+  expect(written.streak).toEqual({ day: today, run: 1 });
+});

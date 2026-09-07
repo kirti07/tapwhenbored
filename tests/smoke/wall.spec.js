@@ -206,6 +206,11 @@ test.describe("the arcade", () => {
 test.describe("the homepage", () => {
   test("links to the full boards", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator(`a[href="${WALL}"]`).first()).toBeVisible();
+    /* The homepage carries two of these — the attract panel's and the footer's
+       — and which one is on screen depends on the width: below 920px the panel
+       collapses to its header and that header is the link, above it the panel's
+       foot carries one instead. So this asks for a visible link rather than for
+       the first one in the document, which is a placement detail. */
+    await expect(page.locator(`a[href="${WALL}"]:visible`).first()).toBeVisible();
   });
 });

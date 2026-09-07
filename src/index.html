@@ -105,7 +105,14 @@
     <section class="arc-screen arc attract" id="wall" aria-labelledby="rollH">
       <div class="arc-screen-bar">
         <span class="arc-pix" id="rollH">High score roll</span>
-        <span class="arc-honesty" style="margin-left:auto">right now</span>
+        <span class="arc-honesty roll-now">right now</span>
+        <!-- Below the rail breakpoint the rows and the foot are hidden and this
+             covers the whole bar, so the panel becomes the way to the boards
+             rather than 500px of dashes above the shelf. Nothing on a rail. -->
+        <a class="roll-open" href="/wall/">
+          <span class="sr">See all eight boards</span>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+        </a>
       </div>
       <ol class="roll">
         <!-- wall-tiles -->
@@ -125,6 +132,19 @@
       <div class="youcard-in">
         <p class="youname arc-mono" id="p1Name">Unsigned</p>
         <p class="youmeta" id="p1Meta">Finish anything at all and it lands here.</p>
+        <!-- Today's box, and which cabinets are in it. Both are personal state,
+             so both are filled by script — but the well is here at its final
+             size reading 0 / 8, and the strip's height is reserved, so nothing
+             below them moves when the numbers arrive. -->
+        <div class="stkbox stkbox--empty" id="p1Box">
+          <span class="stkbox-ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-box"/></svg></span>
+          <span>
+            <span class="stkbox-k">Today&rsquo;s box</span>
+            <span class="stkbox-v num"><span id="p1BoxN">0</span><span class="stkbox-of"> / 8</span></span>
+          </span>
+          <span class="arc-chip stkbox-chip" id="p1BoxFull" hidden>Full box</span>
+        </div>
+        <span class="stkpips" id="p1Pips"></span>
         <a class="arc-btn arc-btn--ghost arc-btn--sm" href="/account/">Your player card</a>
       </div>
     </aside>
