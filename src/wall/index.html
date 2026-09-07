@@ -3,16 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f3ece0">
+<meta name="theme-color" content="#f3f2fa">
 <!-- theme-bootstrap -->
-<title>The Wall — Every Game's Best Score — Tap When Bored</title>
-<meta name="description" content="The global best score on every Tap When Bored game, and when it was set. Free browser games, no signup, no account.">
+<title>The Arcade — Every Game's High Scores — Tap When Bored</title>
+<meta name="description" content="High score boards for every Tap When Bored game — today, this week and all time. Free browser games, no signup, no account.">
 <link rel="canonical" href="https://www.tapwhenbored.com/wall/">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="preload" href="/fonts/nunito-latin-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/silkscreen-latin-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/silkscreen-latin-700.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../style.css">
 </head>
 <body>
+<a class="skip" href="#cabinet">Skip to the board</a>
 <!-- sprite -->
 
 <div class="wrap page">
@@ -22,7 +25,7 @@
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
         <span>Games</span>
       </a>
-      <h1 class="brand">The wall</h1>
+      <h1 class="brand">The arcade</h1>
     </div>
     <div class="top-r">
       <!-- theme-btn:iconbtn -->
@@ -30,26 +33,99 @@
   </header>
 
   <main>
-    <div class="hero">
-      <p class="eyebrow">Every game</p>
-      <h2 class="hero-h">The best anyone has managed</h2>
-      <p class="hero-p">One record per game, shared by everyone who plays. Beat one and this page changes for the next person who opens it.</p>
+    <p class="hero-p">Eight cabinets. Ten slots each, plus wherever you happen to be. Nobody pays, nobody queues, and the boards reset often enough that the top is always reachable.</p>
+
+    <!-- The cabinets.
+         One tab per game, names emitted from the registry at build time (§28)
+         so they are indexable and cannot drift from the shelf. The scores in
+         each tab arrive from the board and start as dashes, which is the
+         degraded state and an allowed one. -->
+    <div class="arc-cabrow" role="tablist" aria-label="Cabinets" id="cabrow">
+          <!-- cabinet-tabs -->
     </div>
 
-    <!-- The board.
-         One row per game that keeps a record. The score and the date arrive
-         from the leaderboard; both are rendered here at their final size, so a
-         slow or unreachable network leaves the page exactly as it is rather
-         than growing under the reader.
+    <!-- The panel.
+         Every state of this board lives in one grid cell (#stateSlot), so the
+         page is exactly as tall while it loads, when it is empty, when it
+         errors, and when it is full. `arc-st` children are inerted by
+         showState() rather than hidden, because a state with no height cannot
+         hold the box open. -->
+    <section class="arc-screen arc" id="cabinet" role="tabpanel" aria-labelledby="cab-marble-nostalgia" tabindex="-1">
+      <div class="arc-screen-bar">
+        <span class="arc-pix" id="cabTitle">Marble Nostalgia</span>
+        <span class="arc-honesty" id="cabUnit" style="margin-left:auto"></span>
+      </div>
 
-         The holder reads "Unsigned" because the leaderboard stores a number and
-         nothing else — there is no name to show. The line is here, at its final
-         height, so that when names do exist nothing on this page moves. -->
-    <ul class="rows" id="board">
-        <!-- wall-rows -->
-    </ul>
+      <div class="arc-tabs" role="tablist" aria-label="Time window" id="timeTabs">
+        <button class="arc-tab" role="tab" type="button" id="win-day" aria-controls="stateSlot" data-window="day" aria-selected="true" tabindex="0">Today</button>
+        <button class="arc-tab" role="tab" type="button" id="win-week" aria-controls="stateSlot" data-window="week" aria-selected="false" tabindex="-1">This week</button>
+        <button class="arc-tab" role="tab" type="button" id="win-all" aria-controls="stateSlot" data-window="all" aria-selected="false" tabindex="-1">All-time</button>
+      </div>
 
-    <p class="honest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5" stroke-linecap="round"/><circle cx="12" cy="7.6" r="1.15" fill="currentColor" stroke="none"/></svg><span>Boards are for fun — scores aren't verified.</span></p>
+      <div class="arc-screen-in">
+        <div class="arc-slot" id="stateSlot">
+          <div class="arc-st arc-on" data-state="board">
+            <table class="arc-board">
+              <thead>
+                <tr><th scope="col">#</th><th scope="col">Player</th><th scope="col" class="arc-sc" id="scoreHead">Score</th></tr>
+              </thead>
+              <tbody id="boardBody"></tbody>
+            </table>
+            <div class="arc-stand arc-stand--none" id="stand">
+              <div>
+                <div class="arc-stand-who" id="standWho">Not played yet</div>
+                <div class="arc-stand-lbl" id="standLbl">Finish a run and your row appears here.</div>
+              </div>
+              <div class="arc-stand-val" id="standVal">&mdash;</div>
+            </div>
+          </div>
+
+          <div class="arc-st" data-state="loading">
+            <div class="arc-sk" aria-hidden="true">
+              <div><span class="arc-sk-rk"></span><span class="arc-sk-nm"></span><span class="arc-sk-sc"></span></div>
+              <div><span class="arc-sk-rk"></span><span class="arc-sk-nm"></span><span class="arc-sk-sc"></span></div>
+              <div><span class="arc-sk-rk"></span><span class="arc-sk-nm"></span><span class="arc-sk-sc"></span></div>
+              <div><span class="arc-sk-rk"></span><span class="arc-sk-nm"></span><span class="arc-sk-sc"></span></div>
+              <div><span class="arc-sk-rk"></span><span class="arc-sk-nm"></span><span class="arc-sk-sc"></span></div>
+              <div><span class="arc-sk-rk"></span><span class="arc-sk-nm"></span><span class="arc-sk-sc"></span></div>
+              <div><span class="arc-sk-rk"></span><span class="arc-sk-nm"></span><span class="arc-sk-sc"></span></div>
+              <div><span class="arc-sk-rk"></span><span class="arc-sk-nm"></span><span class="arc-sk-sc"></span></div>
+              <div><span class="arc-sk-rk"></span><span class="arc-sk-nm"></span><span class="arc-sk-sc"></span></div>
+              <div><span class="arc-sk-rk"></span><span class="arc-sk-nm"></span><span class="arc-sk-sc"></span></div>
+            </div>
+          </div>
+
+          <div class="arc-st" data-state="empty">
+            <div class="arc-msg">
+              <span class="arc-pix">Nobody home</span>
+              <p id="emptyMsg">No scores here yet. The cabinet is warm and completely empty — first one up gets the gold.</p>
+            </div>
+          </div>
+
+          <div class="arc-st" data-state="error">
+            <div class="arc-msg">
+              <span class="arc-pix">Cabinet unplugged</span>
+              <p>We couldn&rsquo;t reach the board. Your own bests are safe on this device.</p>
+              <button class="arc-btn arc-btn--ghost arc-btn--sm" type="button" id="retry">Try again</button>
+            </div>
+          </div>
+
+          <div class="arc-st" data-state="noboard">
+            <div class="arc-msg">
+              <span class="arc-pix">No board, on purpose</span>
+              <p id="noboardMsg"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arc-screen-foot">
+        <a class="arc-link" href="/book/">Your player card &rarr;</a>
+        <span class="arc-honesty">Boards are for fun — scores aren&rsquo;t verified.</span>
+      </div>
+    </section>
+
+    <p class="honest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5" stroke-linecap="round"/><circle cx="12" cy="7.6" r="1.15" fill="currentColor" stroke="none"/></svg><span>Scores are sent from your browser, so treat the top of any board as folklore.</span></p>
   </main>
 
   <footer class="foot">
@@ -57,6 +133,8 @@
     <span class="foot-r"><a href="/book/">Your book</a></span>
   </footer>
 </div>
+
+<p class="sr" id="live" aria-live="polite"></p>
 
 <script type="module" src="./wall.js"></script>
 </body>

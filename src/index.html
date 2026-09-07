@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f3ece0">
+<meta name="theme-color" content="#f3f2fa">
 <!-- theme-bootstrap -->
 <title>Tap When Bored — Free Online Games, No Download</title>
 <meta name="description" content="Free browser games for a quick break — pop bubble wrap, jump marbles, slide tiles into order, doodle in one line, solve today's word ladder. No download, no signup.">
@@ -57,9 +57,12 @@
 }
 </script>
 <link rel="preload" href="/fonts/nunito-latin-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/silkscreen-latin-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/silkscreen-latin-700.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<a class="skip" href="#main">Skip to the games</a>
 <!-- sprite -->
 
 <div class="wrap page">
@@ -68,104 +71,69 @@
       <h1 class="brand">Tap <span class="w">When</span> <span class="b">Bored</span></h1>
       <p class="brand-sub">Tiny games. Big breaks.</p>
     </div>
-    <div class="top-r">
+    <div class="top-r arc">
+      <!-- Who this browser is. The name is filled in by script; the chip is
+           here at its final size either way, so it cannot shove the theme
+           button sideways when a name arrives. -->
+      <a class="arc-idchip" href="/account/" id="idchip">
+        <span class="arc-dot" aria-hidden="true"></span>
+        <span class="sr">Your player card, signed as </span>
+        <span class="arc-who" id="idname">Unsigned</span>
+      </a>
       <!-- theme-btn:iconbtn -->
     </div>
   </header>
 
-  <main>
-    <!-- Today's book.
-         A game's sticker lights up when you finish it today, and the book
-         empties at midnight — so there is something to come back for.
-         Rendered empty and honest: with no JavaScript, or before anything has
-         been played today, every slot is an outline and the heading claims no
-         count. Nothing here is a promise the page cannot keep. -->
-    <section class="book" aria-labelledby="bookH">
-      <div class="book-top">
-        <div>
-          <p class="eyebrow">Today</p>
-          <h2 class="book-h" id="bookH">Play a game to start today's book</h2>
-          <p class="book-p">Finish a game and its sticker lights up. The book empties at midnight, and none of it leaves this device.</p>
-        </div>
-        <div class="book-cta"><a class="btn btn--s" href="/book/">Open your book</a></div>
-      </div>
-      <div class="slots" id="bookSlots">
-        <!-- book-slots -->
-      </div>
-      <div class="progress" id="bookProgress" role="img" aria-label="No bests yet"><i style="width:0%"></i></div>
-    </section>
-
-    <section class="sec" aria-labelledby="shelfH">
-      <div class="sec-head">
-        <div>
-          <p class="eyebrow">The shelf</p>
-          <h2 class="sec-t" id="shelfH">Pick one, it opens instantly</h2>
-        </div>
-        <p class="sec-sub">Every game is free, works on a phone, and needs no signup.</p>
-      </div>
-      <div class="shelf">
+  <!-- Two columns on a wide screen, one on a phone. The roll is ordered above
+       the shelf on a phone and beside it on a desktop, because a board with
+       somebody's name on it is the reason to play and it should not be three
+       screens down. -->
+  <div class="hgrid">
+    <main id="main">
+      <h2 class="arc-sect arc-pix" id="cabsH">The cabinets</h2>
+      <div class="shelf" aria-labelledby="cabsH">
     <!-- games-shelf -->
       </div>
-    </section>
+      <p class="intro">Eight cabinets, no coins, no queue. Marble Nostalgia when you want to think, Bubble Tap when you very much do not, Word Steps once a day, and Doodle On for when thirty seconds is genuinely all you have. Nothing here asks you to sign up — the board just wants a name to put next to your score.</p>
+    </main>
 
-    <!-- The wall.
-         Real numbers: one global best per game, read straight from the
-         leaderboard. The signature line is a placeholder for now and holds its
-         height, so when names arrive nothing on this page moves. -->
-    <section class="sec" id="wallSec" aria-labelledby="wallH">
-      <div class="sec-head">
-        <div>
-          <p class="eyebrow">The wall</p>
-          <h2 class="sec-t" id="wallH">Best of everyone, so far</h2>
-        </div>
-        <a class="sec-link" href="/wall/">Full boards &rarr;</a>
-        <div class="sec-tools">
-          <div class="seg" role="group" aria-label="Sort the wall">
-            <button type="button" data-sort="best" aria-pressed="true">Best</button>
-            <button type="button" data-sort="new" aria-pressed="false">Just set</button>
-          </div>
-        </div>
+    <!-- The attract panel.
+         Rows are emitted from the registry so the panel is whole before any
+         request is made; the holders and the scores arrive after, and a board
+         that cannot be reached leaves the dashes exactly where they are. That
+         is the degraded state and it is allowed to be the normal one. -->
+    <section class="arc-screen arc attract" id="wall" aria-labelledby="rollH">
+      <div class="arc-screen-bar">
+        <span class="arc-pix" id="rollH">High score roll</span>
+        <span class="arc-honesty" style="margin-left:auto">right now</span>
       </div>
-      <div class="wall" id="wall">
+      <ol class="roll">
         <!-- wall-tiles -->
+      </ol>
+      <div class="arc-screen-foot">
+        <a class="arc-link" href="/wall/">All eight cabinets &rarr;</a>
+        <span class="arc-honesty">Boards are for fun — scores aren&rsquo;t verified.</span>
       </div>
-      <p class="honest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5" stroke-linecap="round"/><circle cx="12" cy="7.6" r="1.15" fill="currentColor" stroke="none"/></svg><span>Boards are for fun — scores aren't verified.</span></p>
     </section>
 
-    <section class="sec" aria-labelledby="aboutH">
-      <div class="sec-head">
-        <div>
-          <p class="eyebrow">About</p>
-          <h2 class="sec-t" id="aboutH">Questions</h2>
-        </div>
+    <!-- The player, as a ninth machine. -->
+    <aside class="youcard cab arc" aria-labelledby="p1H">
+      <div class="arc-marquee">
+        <span class="arc-pix" id="p1H">Player 1</span>
+        <span class="arc-sub">this device</span>
       </div>
-      <div class="panel">
-        <p class="intro">
-          Tap When Bored is a small shelf of free, single-player browser games for
-          whenever you have a couple of minutes to fill — a queue, a commute, a
-          break between two things. Every game opens straight in the browser with
-          no signup, no download and no account, and each one is built to be
-          understood in a few seconds and played with one thumb.
-        </p>
-        <details class="faq-item">
-          <summary>Are the games on Tap When Bored free?</summary>
-          <p>Yes. Every game is free to play, with no in-app purchases.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Do I need to sign up or download anything?</summary>
-          <p>No. There's no signup and nothing to install — each game opens straight in your browser.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Do the games work on mobile?</summary>
-          <p>Yes. Every game is built for touch and works on phones, tablets, and desktop browsers.</p>
-        </details>
+      <div class="youcard-in">
+        <p class="youname arc-mono" id="p1Name">Unsigned</p>
+        <p class="youmeta" id="p1Meta">Finish anything at all and it lands here.</p>
+        <a class="arc-btn arc-btn--ghost arc-btn--sm" href="/account/">Your player card</a>
       </div>
-    </section>
-  </main>
+    </aside>
+  </div>
 
   <footer class="foot">
     <span>More tiny games coming soon.</span>
-    <span class="foot-r">No account needed. Ever.</span>
+    <a href="/wall/">The Arcade</a>
+    <a href="/account/">Your player card</a>
   </footer>
 </div>
 

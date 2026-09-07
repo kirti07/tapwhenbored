@@ -48,9 +48,8 @@ test.describe("the shelf", () => {
     }
     await expect(page.locator(".shelf > a")).toHaveCount(games.length);
 
-    // The prose either side of it is indexable too.
+    // The prose beside it is indexable too.
     await expect(page.locator(".intro")).toBeVisible();
-    await expect(page.locator(".faq-item")).toHaveCount(3);
     await context.close();
   });
 
@@ -72,52 +71,11 @@ test.describe("the shelf", () => {
   });
 });
 
-test.describe("today's stickers", () => {
-  test("claims nothing before anything is played today", async ({ page }) => {
-    await page.goto(home.path);
-    await expect(page.locator(".slot.is-earned")).toHaveCount(0);
-    await expect(page.locator("#bookProgress")).toHaveAttribute(
-      "aria-label",
-      "Nothing played today",
-    );
-    await expect(page.locator("#bookH")).toHaveText("Play a game to start today's book");
-  });
-
-  test("lights exactly the games finished today", async ({ browser }) => {
-    const context = await withStorage(browser, [
-      playedOn("untangle", 31),
-      playedOn("honeycomb", 56800),
-    ]);
-    const page = await context.newPage();
-    await page.goto(home.path);
-
-    await expect(page.locator(".slot.is-earned")).toHaveCount(2);
-    await expect(page.locator('[data-slot="untangle"]')).toHaveClass(/is-earned/);
-    await expect(page.locator('[data-slot="honeycomb"]')).toHaveClass(/is-earned/);
-    await expect(page.locator('[data-slot="doodle-on"]')).not.toHaveClass(/is-earned/);
-    await expect(page.locator("#bookH")).toHaveText(`2 of ${games.length} played today`);
-    await context.close();
-  });
-
-  test("yesterday's play does not count — the book empties at midnight", async ({
-    browser,
-  }) => {
-    // The rule the whole feature rests on. A record is not deleted at midnight;
-    // it simply stops being today's, which is why nothing has to sweep.
-    const context = await withStorage(browser, [playedOn("untangle", 31, DAY(-1))]);
-    const page = await context.newPage();
-    await page.goto(home.path);
-
-    await expect(page.locator(".slot.is-earned")).toHaveCount(0);
-    await expect(page.locator("#bookH")).toHaveText("Play a game to start today's book");
-    await context.close();
-  });
-
-  test("an all-time best still shows on the card, whatever today holds", async ({
-    browser,
-  }) => {
-    // Two different claims that must not be confused: "Best" is your record
-    // ever, the strip is what you did today. Both true at once.
+test.describe("a cabinet's meta line", () => {
+  test("shows your best at that game, from storage alone", async ({ browser }) => {
+    // The best is local and always has been. What changed is that the line has
+    // three states rather than a badge that appears: a best, "not played yet",
+    // and "no board, on purpose" for the two games that keep no score.
     const context = await browser.newContext();
     await context.addInitScript(() => {
       localStorage.setItem("twb:untangle.best", "31");
@@ -126,38 +84,69 @@ test.describe("today's stickers", () => {
     const page = await context.newPage();
     await page.goto(home.path);
 
-    await expect(page.locator('[data-best="honeycomb"]')).toHaveText("Best 0:56");
-    await expect(page.locator('[data-best="untangle"]')).toHaveText("Best 31 moves");
-    // ...and nothing was played today.
-    await expect(page.locator(".slot.is-earned")).toHaveCount(0);
+    await expect(page.locator('[data-best="honeycomb"]')).toHaveText("0:56 time");
+    // Untangle keeps no board, so its line says so and script must not
+    // overwrite it with a number.
+    await expect(page.locator('[data-best="untangle"]')).toHaveText("no board, on purpose");
+    // A game with a board and no local best says what is true.
+    await expect(page.locator('[data-best="slide-n-order"]')).toHaveText("not played yet");
     await context.close();
   });
 
-  test("links to the book", async ({ page }) => {
+  test("says so, rather than nothing, before anything is played", async ({ page }) => {
     await page.goto(home.path);
-    await expect(page.locator(".book-cta a")).toHaveAttribute("href", "/book/");
+    for (const g of games.filter((x) => x.leaderboard !== false)) {
+      await expect(page.locator(`[data-best="${g.slug}"]`)).toHaveText("not played yet");
+    }
   });
 
-  test("survives storage being blocked", async ({ browser }) => {
-    const context = await browser.newContext();
-    await blockStorage(context);
-    const page = await context.newPage();
+  test("never truncates, at any width", async ({ page }) => {
+    /* A cut-off "no board, on purpo…" explains nothing, and it went unnoticed
+       once because `scrollWidth` rounds: the line needed 121px in a 120px box
+       and reported neither. So measure the text unclipped instead, and check
+       the two breakpoints where the cards are narrowest — just above the
+       four-column switch, and the smallest phone. */
+    for (const width of [1180, 1280, 620, 360, 320]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(home.path);
+      await page.evaluate(() => document.fonts.ready);
+
+      const cut = await page.evaluate(() =>
+        [...document.querySelectorAll(".card-m, .card-t")]
+          .filter((el) => {
+            if (getComputedStyle(el).whiteSpace !== "nowrap") return false;
+            const box = el.clientWidth;
+            const o = el.style.cssText;
+            el.style.position = "absolute";
+            el.style.width = "auto";
+            el.style.overflow = "visible";
+            const real = Math.ceil(el.getBoundingClientRect().width);
+            el.style.cssText = o;
+            return real > box;
+          })
+          .map((el) => el.textContent.trim()),
+      );
+      expect(cut, `truncated at ${width}px`).toEqual([]);
+    }
+  });
+
+  test("survives storage being blocked", async ({ page }) => {
+    await blockStorage(page);
     const errors = [];
     page.on("pageerror", (e) => errors.push(e.message));
     await page.goto(home.path);
     await expect(page.locator(".shelf > a")).toHaveCount(games.length);
     expect(errors).toEqual([]);
-    await context.close();
   });
 });
 
 test.describe("the wall", () => {
   test("shows one tile per game that has a board", async ({ page }) => {
     await page.goto(home.path);
-    await expect(page.locator(".stk")).toHaveCount(boarded.length);
+    await expect(page.locator(".roll-row")).toHaveCount(boarded.length);
     // The two games with no board are absent rather than shown empty.
     for (const g of games.filter((x) => x.leaderboard === false)) {
-      await expect(page.locator(`.stk[data-slug="${g.slug}"]`)).toHaveCount(0);
+      await expect(page.locator(`.roll-row[data-slug="${g.slug}"]`)).toHaveCount(0);
     }
   });
 
@@ -173,9 +162,9 @@ test.describe("the wall", () => {
     await page.goto(home.path);
 
     for (const g of boarded) {
-      const tile = page.locator(`.stk[data-slug="${g.slug}"]`);
+      const tile = page.locator(`.roll-row[data-slug="${g.slug}"]`);
       await expect(tile.locator("[data-score]")).not.toHaveText("—");
-      await expect(tile.locator(".u")).toHaveText(g.scoreUnit);
+      await expect(tile.locator(".roll-u")).toHaveText(g.scoreUnit);
     }
   });
 
@@ -185,63 +174,52 @@ test.describe("the wall", () => {
     await page.route(REST, (route) => route.abort());
     await page.goto(home.path);
 
-    const before = await page.locator(".stk").first().boundingBox();
+    const before = await page.locator(".roll-row").first().boundingBox();
     await page.waitForTimeout(600);
-    const after = await page.locator(".stk").first().boundingBox();
+    const after = await page.locator(".roll-row").first().boundingBox();
 
-    await expect(page.locator(".stk").first().locator("[data-score]")).toHaveText("—");
-    expect(after.height, "a failed fetch must not resize a tile").toBe(before.height);
-    await expect(page.locator("#wallSec")).toBeVisible();
+    await expect(page.locator(".roll-row").first().locator("[data-score]")).toHaveText("—");
+    expect(after.height, "a failed fetch must not resize a row").toBe(before.height);
+    await expect(page.locator("#wall")).toBeVisible();
   });
 
-  test("reserves the signature line before there are any names", async ({ page }) => {
-    // Names are not built yet and will be optional when they are. The line has
-    // to hold its height now so adding one later moves nothing.
-    await page.goto(home.path);
-    const h = await page.locator(".stk .sig").first().evaluate((el) => {
-      const before = el.getBoundingClientRect().height;
-      el.textContent = "Quiet Otter 42";
-      return { before, after: el.getBoundingClientRect().height };
-    });
-    expect(h.after).toBe(h.before);
-  });
-
-  test("sorts, and says which sort is on", async ({ page }) => {
+  test("names the record holder, and is exactly as tall either way", async ({ page }) => {
+    // The signature line held its height reading "Unsigned" from the day this
+    // page was built, so that when names arrived nothing would move. They have
+    // arrived, so both halves of that promise are asserted here.
     const day = today();
+    const withName = games.find((g) => g.leaderboard !== false);
+
     await page.route(REST, (route) =>
       route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(rows(day)),
+        body: JSON.stringify([
+          {
+            game_slug: withName.slug,
+            best_score: 42,
+            period: withName.leaderboard.daily ? day : "all",
+            updated_at: new Date().toISOString(),
+            players: { name: "Nanna June" },
+          },
+        ]),
       }),
     );
+
     await page.goto(home.path);
+    const tile = page.locator(`.roll-row[data-slug="${withName.slug}"]`);
+    const sig = tile.locator(".roll-who");
 
-    const best = page.locator('.seg button[data-sort="best"]');
-    const recent = page.locator('.seg button[data-sort="new"]');
-    await expect(best).toHaveAttribute("aria-pressed", "true");
-    await expect(recent).toHaveAttribute("aria-pressed", "false");
+    const before = await sig.evaluate((el) => el.getBoundingClientRect().height);
+    await expect(sig).toHaveText("Nanna June");
+    const after = await sig.evaluate((el) => el.getBoundingClientRect().height);
+    expect(after, "a name arriving must not change the line's height").toBe(before);
 
-    const order = () =>
-      page.evaluate(() =>
-        [...document.querySelectorAll(".stk")].map((el) => ({
-          slug: el.dataset.slug,
-          order: el.style.order,
-        })),
-      );
-
-    await recent.click();
-    await expect(recent).toHaveAttribute("aria-pressed", "true");
-    await expect(best).toHaveAttribute("aria-pressed", "false");
-    const newest = await order();
-
-    await best.click();
-    const bestOrder = await order();
-
-    expect(newest.map((t) => t.order)).not.toEqual(bestOrder.map((t) => t.order));
-    // Sorting is presentational: no tile is removed or duplicated.
-    expect(newest.map((t) => t.slug).sort()).toEqual(bestOrder.map((t) => t.slug).sort());
+    // A holder who never named themselves still reads Unsigned, which is true.
+    const other = games.find((g) => g.leaderboard !== false && g.slug !== withName.slug);
+    await expect(page.locator(`.roll-row[data-slug="${other.slug}"] .roll-who`)).toHaveText("Unsigned");
   });
+
 });
 
 test.describe("theme", () => {

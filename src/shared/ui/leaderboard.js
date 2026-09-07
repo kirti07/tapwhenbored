@@ -17,7 +17,8 @@
 // them by name through `define`. Always write the full literal: a computed key
 // like import.meta.env[`SUPABASE_${n}`] is NOT replaced, so it works in dev
 // and silently yields undefined in production. See ARCHITECTURE.md §35.
-import { localDay } from "./day.js";
+import { localDay, isoWeek } from "./day.js";
+import { identity, newId } from "./player.js";
 
 /* Re-exported so the callers that already ask this module for the day — and
    the leaderboard's own `period` handling — keep working unchanged. The
@@ -33,7 +34,62 @@ const SUPABASE_ANON_KEY = import.meta.env.SUPABASE_ANON_KEY || "";
 // sit through a long timeout.
 const TIMEOUT_MS = 4000;
 
-const RPC = "submit_game_score";
+const RPC = "submit_game_run";
+
+/** The two headers every request needs, and nothing else. */
+function auth() {
+  return { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` };
+}
+
+/**
+ * POST to a security-definer function. Resolves with the parsed body, or null.
+ *
+ * Never rejects and never throws, which is the whole contract of this module:
+ * a caller sequences this inside a game-over handler with a bare `.then()`,
+ * and an unhandled rejection there would cost the player their overlay.
+ *
+ * `keepalive` because the interesting call happens at game over, which is
+ * exactly when a player is most likely to close the tab or background the app.
+ */
+async function rpc(name, body, { keepalive = false } = {}) {
+  if (!isLeaderboardAvailable()) return null;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+      method: "POST",
+      headers: { ...auth(), "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      keepalive,
+    });
+    if (!res.ok) {
+      // A game with no game_config row raises rather than silently creating
+      // one. That is a wiring mistake, so say so in dev and degrade in prod.
+      if (import.meta.env.DEV) {
+        console.error(`[leaderboard] ${name}: ${res.status}`, await res.text());
+      }
+      return null;
+    }
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+/** GET a table or view. Resolves with an array, or null. */
+async function read(path) {
+  if (!isLeaderboardAvailable()) return null;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      headers: auth(),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return Array.isArray(rows) ? rows : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Whether a leaderboard is configured at all. Internal: a game asks for its
@@ -45,7 +101,7 @@ function isLeaderboardAvailable() {
 }
 
 /**
- * Submits a finished run's score; resolves with the current global best.
+ * Submits a finished run. Resolves with the board's answer, or null.
  *
  * `day` is only for games whose puzzle is the same for everyone each day. Pass
  * the local date the puzzle was chosen from ("YYYY-MM-DD"): the server picks
@@ -54,90 +110,144 @@ function isLeaderboardAvailable() {
  * server clamps it to a day either side of its own date, so it corrects the
  * timezone without letting a caller write into an arbitrary day.
  *
- * Resolves with null — and never rejects — when the leaderboard is
- * unconfigured, unreachable, slow, or answers with anything that is not a
- * number. Callers treat null as "nothing to show" and carry on.
+ * The answer is `{ best, accepted, your_best, rank, total, above }` — the
+ * game-wide record, whether this run was written, and where the player stands
+ * on today's board. One round trip, because the end card wants all of it at
+ * once and the player is waiting.
  *
- * Never rejecting is load-bearing, not defensive: call sites use a bare
- * .then() inside their game-over handler. An unhandled rejection there would
- * abort the rest of that handler, so a leaderboard hiccup would cost the player
- * their overlay, share button and replay control.
+ * `accepted` is false for a duplicate, a throttled caller or an implausible
+ * number, and the function still resolves with the current numbers rather than
+ * an error (§27). A game shows the same end card either way; nothing about a
+ * refused submission is the player's problem.
+ *
+ * The run id is minted per call. It exists so a *resend* of one finished run
+ * cannot be counted twice, which matters the moment there is a retry queue —
+ * the queue will hold the id alongside the score. Until then it dedupes
+ * nothing and costs one uuid.
  */
-async function submitScore(slug, score, day) {
-  if (!isLeaderboardAvailable()) return null;
+async function submitRun(slug, score, day) {
   // A broken timer or counter must not become a 400 the player waits 4s for.
   if (!Number.isFinite(score)) return null;
 
-  const body = { p_slug: slug, p_score: Math.round(score) };
+  const who = identity();
+  const body = {
+    p_slug: slug,
+    p_score: Math.round(score),
+    p_player_id: who.id,
+    p_write_token: who.token,
+    p_run_id: newId(),
+  };
   // Sent only when the game has one; the server ignores it for all-time games.
   if (day) body.p_day = day;
 
-  try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${RPC}`, {
-      method: "POST",
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      // This fires at game over, which is exactly when a player is most likely
-      // to close the tab or background the app. keepalive lets the record land.
-      keepalive: true,
-    });
-    if (!res.ok) {
-      // A game with no row in game_config raises rather than silently creating
-      // one. That is a wiring mistake, so say so in dev and degrade in prod.
-      if (import.meta.env.DEV) {
-        console.error(`[leaderboard] ${slug}: ${res.status}`, await res.text());
-      }
-      return null;
-    }
-    const data = await res.json();
-    return typeof data === "number" ? data : null;
-  } catch {
-    return null;
-  }
+  const data = await rpc(RPC, body, { keepalive: true });
+  return data && typeof data === "object" ? data : null;
 }
 
 /**
  * Every game's current global best, in one request.
  *
- * This is a plain PostgREST read of `game_scores`, not an RPC. The table
- * already carries a public read policy and has insert/update/delete revoked
- * from anon (README-supabase.sql), so this can see every record and change
- * none of them — which is what makes a homepage wall possible with no schema
- * change and no new function.
+ * A plain PostgREST read of `game_scores`, not an RPC. The table carries a
+ * public read policy and has insert/update/delete revoked from anon, so this
+ * can see every record and change none of them — which is what makes the
+ * homepage wall possible with no function of its own.
  *
  * `period` is "all" for an all-time board and the date for a daily one, so
  * both are asked for at once and the caller picks the row its game wants.
+ *
+ * The holder's name rides along, embedded through the foreign key rather than
+ * denormalised onto the record — so renaming yourself changes every board you
+ * are on at once, and this query could never return an address even if it
+ * asked, because `players` grants `select` by column (§27).
  *
  * Resolves with null — and never rejects — when the leaderboard is
  * unconfigured, unreachable or slow. The homepage is not allowed to show an
  * error for this; a wall with no numbers is the degraded state (§27).
  */
-export async function fetchAllBests(day = localDay()) {
-  if (!isLeaderboardAvailable()) return null;
+export function fetchAllBests(day = localDay()) {
+  return read(
+    "game_scores?select=game_slug,best_score,period,updated_at,players(name)" +
+      `&period=in.(all,${encodeURIComponent(day)})`,
+  );
+}
 
-  const query =
-    "select=game_slug,best_score,period,updated_at" +
-    `&period=in.(all,${encodeURIComponent(day)})`;
+/**
+ * One board: the top rows for a game and a period, names included.
+ *
+ * Also a plain read, not a function. `game_leaders` has a public read policy
+ * and a foreign key to `players`, so PostgREST can embed the name — and
+ * because `players` grants `select` by column, that embed can return a name
+ * and could never return an email (§27).
+ *
+ * `period` is "day", "week" or "all". Ordering is the house rule: the better
+ * score first, and a tie goes to whoever posted it first.
+ */
+export function fetchBoard({ slug, period = "day", day = localDay(), lowerIsBetter = true, limit = 10 }) {
+  const key = period === "all" ? "all" : period === "week" ? isoWeek(day) : day;
+  return read(
+    "game_leaders?select=best_score,achieved_at,player_id,players(name)" +
+      `&game_slug=eq.${encodeURIComponent(slug)}` +
+      `&period_kind=eq.${encodeURIComponent(period)}` +
+      `&period_key=eq.${encodeURIComponent(key)}` +
+      `&order=best_score.${lowerIsBetter ? "asc" : "desc"},achieved_at.asc` +
+      `&limit=${Number(limit) | 0}`,
+  );
+}
 
+/**
+ * Where this browser stands on one board: rank, board size, and the score one
+ * place ahead. Resolves with null when there is nothing to say.
+ *
+ * Rank and board size are not columns, which is the only reason this is a
+ * function call and the board above is not.
+ */
+export async function fetchStanding({ slug, period = "day", day = localDay() }) {
+  const data = await rpc("my_standing", {
+    p_slug: slug,
+    p_period_kind: period,
+    p_day: day,
+    p_player_id: identity().id,
+  });
+  return data && typeof data === "object" ? data : null;
+}
+
+/**
+ * Saves any of the name, the email and the notification preferences.
+ *
+ * Resolves true only when the write landed. A wrong token, a name the board
+ * will not take, a malformed address or a throttled caller all resolve false
+ * rather than throwing — the caller is a form on a page that must stay usable.
+ *
+ * Pass `name: ""` to clear a name. Omit a field to leave it alone.
+ */
+export async function savePlayer({ name, email, notifyDisplaced, notifyStreak } = {}) {
+  const who = identity();
+  const body = { p_player_id: who.id, p_write_token: who.token };
+
+  if (name !== undefined) body.p_name = name;
+  if (email !== undefined) body.p_email = email;
+  if (notifyDisplaced !== undefined) body.p_notify_displaced = notifyDisplaced;
+  if (notifyStreak !== undefined) body.p_notify_streak = notifyStreak;
+  // The server nudges a streak reminder at 8pm local, so it needs the zone.
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/game_scores?${query}`, {
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-    if (!res.ok) return null;
-    const rows = await res.json();
-    return Array.isArray(rows) ? rows : null;
-  } catch {
-    return null;
-  }
+    body.p_tz = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch { /* no Intl, no reminder */ }
+
+  return (await rpc("save_player", body)) === true;
+}
+
+/**
+ * Deletes this browser's player: the name, the email, and every board row.
+ *
+ * The game-wide record a player happens to hold survives as a number with no
+ * holder, which is the honest outcome — the score was real, the name is gone.
+ */
+export async function deletePlayer() {
+  const who = identity();
+  return (await rpc("delete_player", {
+    p_player_id: who.id,
+    p_write_token: who.token,
+  })) === true;
 }
 
 /**
@@ -157,12 +267,18 @@ export async function fetchAllBests(day = localDay()) {
  * `el` is the game's `#globalBest` element. Visibility is the `hidden`
  * attribute in every game, so callers must not also toggle a class for it.
  *
- * Returns the submitScore promise, for tests and for callers that want to
- * sequence something after the line resolves. It never rejects.
+ * The line has one more state than it used to. A board now knows where the
+ * player stands, so a run that is neither a record nor nothing can say "3rd
+ * today" instead of only repeating the record. `standing` is the game's
+ * wording for that, and a game that does not pass one keeps the old two-state
+ * behaviour exactly.
+ *
+ * Returns the submission promise, resolving with the board's whole answer for
+ * callers that want the rank as well as the line. It never rejects.
  */
 export function renderGlobalBest(
   el,
-  { slug, score, day, isRecord, label, recordLabel, pending, unavailable },
+  { slug, score, day, isRecord, label, recordLabel, pending, unavailable, standing },
 ) {
   // Nothing to put on the line, so do not show one at all. A build with no
   // credentials must read as a missing line, never as an error (§27).
@@ -176,14 +292,24 @@ export function renderGlobalBest(
   el.classList.remove("new-global");
   el.textContent = pending;
 
-  return submitScore(slug, score, day).then((best) => {
+  return submitRun(slug, score, day).then((answer) => {
+    const best = answer && typeof answer.best === "number" ? answer.best : null;
     if (best === null) {
       el.textContent = unavailable;
       return null;
     }
+
     const record = isRecord(score, best);
-    el.textContent = record ? recordLabel : label(best);
+    if (record) {
+      el.textContent = recordLabel;
+    } else if (standing && typeof answer.rank === "number") {
+      // A place on the board is more interesting than a record you did not
+      // beat, so it wins when the game offers wording for it.
+      el.textContent = standing(answer.rank, answer.total, best);
+    } else {
+      el.textContent = label(best);
+    }
     el.classList.toggle("new-global", record);
-    return best;
+    return answer;
   });
 }

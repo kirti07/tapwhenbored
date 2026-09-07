@@ -1,0 +1,1040 @@
+/* The cabinet chrome: the marquee, the screen panel, the score table, and the
+ * controls that sit with them. ARCHITECTURE.md §16 and §17.
+ *
+ * Two naming rules, and both are load-bearing rather than tidiness.
+ *
+ * 1. Every token here is `--arc-`prefixed. The obvious names — --bg, --ink,
+ *    --line, --card — are already spoken for: each game declares its own
+ *    palette under those names and depends on the values differing. A shared
+ *    colour called --bg would repaint eight playfields.
+ *
+ * 2. Every class here is `.arc-`prefixed, for the same reason one level up.
+ *    This file is @imported by game stylesheets, and the mockups' generic
+ *    names collide with real games: `.board` is honeycomb's hive, `.btn` is
+ *    bubble-tap's buttons, `.slot` is slide-n-order's tile slots *and* the
+ *    sticker book's chips. Porting those names verbatim would have restyled
+ *    three games by accident.
+ *
+ * The one name that crosses the line is `--accent`, because it already
+ * crosses it: a game declares its own, and the build inlines the registry's
+ * onto every element it emits (§10). This file reads that name and never sets
+ * it, so a cabinet takes the colour of whatever it is inside.
+ *
+ * The screen panel is dark in both themes on purpose. A cabinet screen is dark
+ * whatever the room is lit like, which is the one place light mode carries a
+ * large dark block, knowingly.
+ *
+ * Every dark value is written once, in --arc-dark-*, and mapped twice — once
+ * for the OS preference and once for the in-page toggle. The mapping has to be
+ * duplicated because one lives inside @media and the other does not; the
+ * values do not, which is where the mistakes were.
+ */
+
+:root {
+  /* ---- light ---- */
+  --arc-bg: #f3f2fa;
+  --arc-card: #ffffff;
+  --arc-sunk: #f0eefa;
+  --arc-ink: #1b1c33;
+  --arc-ink-soft: #63647f;
+  --arc-ink-dim: #8b8ca6;
+  --arc-line: #e3e1f0;
+  --arc-line-2: #cfcce4;
+  --arc-warm: #e8503d;
+  --arc-cool: #1a8865;
+  --arc-gold: #e0a318;
+  --arc-silver: #9aa0b8;
+  --arc-bronze: #c07a44;
+  --arc-ok: #1a8865;
+  --arc-danger: #c23a26;
+  --arc-focus: #3b5bdb;
+  --arc-shadow: 0 1px 0 rgba(24, 20, 60, 0.05), 0 10px 22px -14px rgba(24, 20, 60, 0.45);
+
+  /* ---- the screen: one palette, both themes ---- */
+  --arc-screen: #1a1c36;
+  --arc-screen-ink: #f0eeff;
+  --arc-screen-soft: #a3a1d4;
+  --arc-screen-line: #31346a;
+
+  /* ---- the dark palette, declared once ---- */
+  --arc-dark-bg: #0b0c18;
+  --arc-dark-card: #15162c;
+  --arc-dark-sunk: #101126;
+  --arc-dark-ink: #f1effb;
+  --arc-dark-ink-soft: #a8a4d2;
+  --arc-dark-ink-dim: #807ca9;
+  --arc-dark-line: #2b2850;
+  --arc-dark-line-2: #3b3770;
+  --arc-dark-warm: #ff5c8a;
+  --arc-dark-cool: #34e19a;
+  --arc-dark-gold: #ffd60a;
+  --arc-dark-silver: #c6cbe0;
+  --arc-dark-bronze: #e19457;
+  --arc-dark-ok: #34e19a;
+  --arc-dark-danger: #ff7a66;
+  --arc-dark-focus: #8ab4ff;
+  --arc-dark-shadow: 0 1px 0 rgba(0, 0, 0, 0.5), 0 12px 26px -16px rgba(0, 0, 0, 0.9);
+  --arc-dark-screen: #080915;
+  --arc-dark-screen-soft: #8f8dc6;
+  --arc-dark-screen-line: #282a58;
+
+  /* Text on an accent surface. Every accent in the registry is bright enough
+   * for this in both themes, which is why it does not flip. */
+  --arc-accent-ink: #141527;
+
+  --arc-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* The neutral cabinet, for chrome that is not inside a game's subtree. */
+  --arc-accent: #8b7fe0;
+}
+
+/* The dark mapping, twice, because @media cannot join a selector list. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --arc-bg: var(--arc-dark-bg);
+    --arc-card: var(--arc-dark-card);
+    --arc-sunk: var(--arc-dark-sunk);
+    --arc-ink: var(--arc-dark-ink);
+    --arc-ink-soft: var(--arc-dark-ink-soft);
+    --arc-ink-dim: var(--arc-dark-ink-dim);
+    --arc-line: var(--arc-dark-line);
+    --arc-line-2: var(--arc-dark-line-2);
+    --arc-warm: var(--arc-dark-warm);
+    --arc-cool: var(--arc-dark-cool);
+    --arc-gold: var(--arc-dark-gold);
+    --arc-silver: var(--arc-dark-silver);
+    --arc-bronze: var(--arc-dark-bronze);
+    --arc-ok: var(--arc-dark-ok);
+    --arc-danger: var(--arc-dark-danger);
+    --arc-focus: var(--arc-dark-focus);
+    --arc-shadow: var(--arc-dark-shadow);
+    --arc-screen: var(--arc-dark-screen);
+    --arc-screen-soft: var(--arc-dark-screen-soft);
+    --arc-screen-line: var(--arc-dark-screen-line);
+  }
+}
+
+:root[data-theme="dark"] {
+  --arc-bg: var(--arc-dark-bg);
+  --arc-card: var(--arc-dark-card);
+  --arc-sunk: var(--arc-dark-sunk);
+  --arc-ink: var(--arc-dark-ink);
+  --arc-ink-soft: var(--arc-dark-ink-soft);
+  --arc-ink-dim: var(--arc-dark-ink-dim);
+  --arc-line: var(--arc-dark-line);
+  --arc-line-2: var(--arc-dark-line-2);
+  --arc-warm: var(--arc-dark-warm);
+  --arc-cool: var(--arc-dark-cool);
+  --arc-gold: var(--arc-dark-gold);
+  --arc-silver: var(--arc-dark-silver);
+  --arc-bronze: var(--arc-dark-bronze);
+  --arc-ok: var(--arc-dark-ok);
+  --arc-danger: var(--arc-dark-danger);
+  --arc-focus: var(--arc-dark-focus);
+  --arc-shadow: var(--arc-dark-shadow);
+  --arc-screen: var(--arc-dark-screen);
+  --arc-screen-soft: var(--arc-dark-screen-soft);
+  --arc-screen-line: var(--arc-dark-screen-line);
+}
+
+/* A cabinet takes the colour of whatever it is inside.
+ *
+ * On a game page `--accent` is the game's own, and its dark override has
+ * already happened, so `--accent-d` is undefined and the fallback is right.
+ * On a page the build drew, both are inlined per element (§10) and the dark
+ * rules below pick the second. One indirection, no per-game CSS, and game #9
+ * needs no edit here. */
+.arc {
+  --arc-accent: var(--accent, #8b7fe0);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .arc {
+    --arc-accent: var(--accent-d, var(--accent, #8b7fe0));
+  }
+}
+
+:root[data-theme="dark"] .arc {
+  --arc-accent: var(--accent-d, var(--accent, #8b7fe0));
+}
+
+/* ---------------------------------------------------------------- type -- */
+
+.arc-pix {
+  font-family: var(--font-pix);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.arc-mono {
+  font-family: var(--arc-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* ------------------------------------------------------------- cabinet -- */
+
+.arc-cab {
+  background: var(--arc-card);
+  border: 2px solid var(--arc-line);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--arc-shadow);
+}
+
+/* The bulbs are one radial-gradient tile, not an image and not a script: a
+ * 1.7px dot with a 2.1px transparent stop for the falloff, centred in a 5px
+ * strip. `--arc-bulb-tile` is the only thing the full-bleed variant changes. */
+.arc-marquee {
+  --arc-bulb-tile: 13px;
+  position: relative;
+  background: var(--arc-accent);
+  color: var(--arc-accent-ink);
+  padding: 11px 14px 9px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  overflow: hidden;
+}
+
+.arc-marquee::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 3px;
+  height: 5px;
+  background-image: radial-gradient(
+    circle at 2.5px 2.5px,
+    rgba(255, 255, 255, 0.92) 1.7px,
+    transparent 2.1px
+  );
+  background-size: var(--arc-bulb-tile) 5px;
+  opacity: 0.85;
+}
+
+.arc-marquee::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.arc-marquee .arc-pix {
+  font-size: 12px;
+  line-height: 1.35;
+  position: relative;
+  top: 2px;
+}
+
+.arc-marquee .arc-sub {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.72;
+  position: relative;
+  top: 2px;
+}
+
+/* Full-bleed, for the top of a page rather than the top of a card. Same
+ * component: the mockups drew this twice and their bulb tiles drifted a pixel
+ * apart, which is exactly the drift one component prevents. */
+.arc-marquee--band {
+  --arc-bulb-tile: 14px;
+  padding-top: calc(10px + env(safe-area-inset-top));
+  padding-bottom: 10px;
+}
+
+.arc-marquee--band::before {
+  top: calc(3px + env(safe-area-inset-top));
+}
+
+.arc-marquee--band::after {
+  height: 4px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+/* -------------------------------------------------------------- screen -- */
+
+.arc-screen {
+  position: relative;
+  background: var(--arc-screen);
+  color: var(--arc-screen-ink);
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid var(--arc-screen-line);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 0 22px 40px -28px rgba(255, 255, 255, 0.35);
+}
+
+/* Scanlines. A 3px-period gradient, non-interactive. */
+.arc-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.045) 0 1px,
+    transparent 1px 3px
+  );
+  opacity: 0.75;
+}
+
+.arc-screen-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--arc-screen-line);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Lifted towards white so a game's colour stays legible on a near-black
+ * panel. Several accents fail contrast against the screen unlifted. */
+.arc-screen-bar .arc-pix {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--arc-accent) 72%, #ffffff);
+}
+
+.arc-screen-in {
+  padding: 10px 12px 12px;
+}
+
+.arc-screen-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--arc-screen-line);
+}
+
+/* 44, not the 32 the prototypes used. The tap-target floor is enforced for
+   every page in the registry, and this link sits in a footer row where the
+   extra height costs nothing. */
+.arc-link {
+  color: #c9c6ff;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.arc-link:hover {
+  text-decoration: underline;
+}
+
+.arc-honesty {
+  color: var(--arc-screen-soft);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.arc-honesty--page {
+  color: var(--arc-ink-dim);
+}
+
+/* --------------------------------------------------------- score table -- */
+
+.arc-board {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.arc-board th {
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--arc-screen-soft);
+  font-weight: 800;
+  text-align: left;
+  padding: 2px 8px 7px;
+  white-space: nowrap;
+}
+
+.arc-board th.arc-sc,
+.arc-board td.arc-sc {
+  text-align: right;
+}
+
+/* A fixed height, not a minimum: every row must be identical so a board does
+ * not change height between five names and ten. */
+.arc-board td {
+  padding: 0 8px;
+  height: 34px;
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.arc-board tbody tr:first-child td {
+  border-top: 0;
+}
+
+.arc-board td.arc-rk {
+  width: 38px;
+  padding-right: 4px;
+}
+
+/* `max-width: 1px` with `width: 99%` is the whole trick: the name column
+ * absorbs every spare pixel and still honours text-overflow, so no length of
+ * name can push the rank or the score around. */
+.arc-board td.arc-nm {
+  font-family: var(--arc-mono);
+  font-size: 13px;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 1px;
+  width: 99%;
+}
+
+.arc-board td.arc-sc {
+  font-family: var(--arc-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13.5px;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.arc-rkn {
+  font-family: var(--arc-mono);
+  color: var(--arc-screen-soft);
+  font-size: 12.5px;
+}
+
+.arc-medal {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  font-family: var(--font-pix);
+  font-size: 11px;
+  color: #17110a;
+  font-weight: 700;
+  padding-top: 1px;
+}
+
+.arc-m1 { background: var(--arc-gold); }
+.arc-m2 { background: var(--arc-silver); color: #1a1b2a; }
+.arc-m3 { background: var(--arc-bronze); color: #241205; }
+
+/* Your row is marked three ways — a wash, a bar, and a chip — so it survives
+ * greyscale, colour-blindness and a screenshot. */
+.arc-board tr.arc-you td {
+  background: color-mix(in srgb, var(--arc-accent) 17%, transparent);
+  border-top-color: transparent;
+}
+
+.arc-board tr.arc-you td.arc-rk {
+  border-left: 3px solid var(--arc-accent);
+  padding-left: 5px;
+}
+
+.arc-board tr.arc-you td.arc-nm {
+  color: #fff;
+  font-weight: 700;
+}
+
+.arc-youchip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px 2px;
+  border-radius: 5px;
+  background: var(--arc-accent);
+  color: var(--arc-accent-ink);
+  font-family: var(--font-pix);
+  font-size: 8.5px;
+  vertical-align: 1px;
+}
+
+.arc-dimname {
+  color: var(--arc-screen-soft);
+  font-family: var(--arc-mono);
+  font-size: 13px;
+}
+
+/* 1.2s, deliberately under 1Hz, and it snaps rather than fades. */
+.arc-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  background: var(--arc-accent);
+  vertical-align: -2px;
+  margin-right: 4px;
+  animation: arc-blink 1.2s steps(1, end) infinite;
+}
+
+@keyframes arc-blink {
+  0%, 55% { opacity: 1; }
+  56%, 100% { opacity: 0; }
+}
+
+/* ------------------------------------------------------------ controls -- */
+
+.arc-btn {
+  min-height: 48px;
+  padding: 0 20px;
+  border-radius: 14px;
+  border: 2px solid transparent;
+  font: inherit;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.arc-btn--primary {
+  background: var(--arc-accent);
+  color: var(--arc-accent-ink);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--arc-accent) 62%, #000);
+}
+
+.arc-btn--primary:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--arc-accent) 62%, #000);
+}
+
+.arc-btn--ghost {
+  background: var(--arc-card);
+  color: var(--arc-ink);
+  border-color: var(--arc-line-2);
+  box-shadow: 0 4px 0 var(--arc-line);
+}
+
+.arc-btn--ghost:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--arc-line);
+}
+
+.arc-btn--sm {
+  min-height: 44px;
+  font-size: 14px;
+  padding: 0 16px;
+  border-radius: 12px;
+}
+
+.arc-btn--wide {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.arc-btn--danger {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--arc-danger) 45%, transparent);
+  color: var(--arc-danger);
+  box-shadow: none;
+}
+
+/* The press is a shadow collapse, not a scale: nothing reflows. */
+@media (prefers-reduced-motion: reduce) {
+  .arc-btn {
+    transition-duration: 0.01ms;
+  }
+}
+
+/* -------------------------------------------------------------- fields -- */
+
+.arc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.arc-label {
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--arc-ink-soft);
+}
+
+/* 16px is not a style choice: anything smaller makes iOS Safari zoom. */
+.arc-input {
+  width: 100%;
+  min-height: 48px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 2px solid var(--arc-line-2);
+  background: var(--arc-card);
+  color: var(--arc-ink);
+}
+
+.arc-input.arc-mono {
+  font-size: 16px;
+}
+
+.arc-input::placeholder {
+  color: var(--arc-ink-dim);
+  font-weight: 600;
+}
+
+.arc-input:focus {
+  border-color: var(--arc-accent);
+}
+
+.arc-hint {
+  font-size: 12.5px;
+  color: var(--arc-ink-soft);
+  font-weight: 600;
+}
+
+.arc-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.arc-row > .arc-grow {
+  flex: 1 1 190px;
+  min-width: 0;
+}
+
+/* --------------------------------------------------------------- chips -- */
+
+.arc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px 4px;
+  border-radius: 7px;
+  font-family: var(--font-pix);
+  font-size: 9.5px;
+  background: var(--arc-accent);
+  color: var(--arc-accent-ink);
+}
+
+.arc-sect {
+  font-size: 12px;
+  color: var(--arc-ink-soft);
+  margin: 26px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.arc-sect::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  background: var(--arc-line);
+  border-radius: 2px;
+}
+
+/* --------------------------------------------------------------- slots -- */
+
+/* Several states, one grid cell, so the region is always as tall as its
+ * tallest state and nothing below it moves when the state changes.
+ *
+ * `visibility: hidden` rather than `display: none`, because a hidden state
+ * still has to contribute its height. `inert` is what takes it out of the tab
+ * order and the accessibility tree, and JS applies that — pointer-events
+ * alone would leave it reachable by keyboard. */
+.arc-slot {
+  display: grid;
+}
+
+.arc-slot > .arc-st {
+  grid-area: 1/1;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.arc-slot > .arc-st.arc-on {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* Reduced motion, scoped. Deliberately not the global
+ * `*{animation-duration:.001ms!important}` the mockups carry: it would
+ * out-specify every game's own reduced-motion rules, and the site's rule is
+ * gentler, not zero. */
+@media (prefers-reduced-motion: reduce) {
+  .arc-cursor {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* ------------------------------------------------------------ skeletons -- */
+
+/* A skeleton's row count and row height match the real content exactly. That
+ * is the whole point of it: if the placeholder is a different size, the slot
+ * above still holds its height but the content inside it jumps. */
+.arc-sk {
+  display: grid;
+  padding: 8px 0 0;
+}
+
+.arc-sk div {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
+}
+
+.arc-sk span {
+  display: block;
+  height: 11px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.11);
+  animation: arc-pulse 1.6s ease-in-out infinite;
+}
+
+.arc-sk .arc-sk-rk { width: 20px; }
+.arc-sk .arc-sk-nm { flex: 1; }
+.arc-sk .arc-sk-sc { width: 52px; }
+
+@keyframes arc-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* A skeleton on a light surface rather than on the screen. */
+.arc-sk--page span {
+  background: var(--arc-sunk);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arc-sk span {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+/* ------------------------------------------------- empty / error states -- */
+
+/* One component for empty, error and score-free, each carrying the board's
+ * own height so the panel does not resize when the state changes. */
+.arc-msg {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 44px 18px;
+}
+
+.arc-msg .arc-pix {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--arc-accent) 74%, #ffffff);
+}
+
+.arc-msg p {
+  font-size: 14px;
+  color: var(--arc-screen-soft);
+  max-width: 34ch;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* The same message on a light surface. */
+.arc-msg--page .arc-pix { color: var(--arc-ink-soft); }
+.arc-msg--page p { color: var(--arc-ink-soft); }
+
+/* ---------------------------------------------------------- cabinet row -- */
+
+/* Each tab is a small cabinet in its own right: a marquee in the game's colour
+ * over its current top score. Selection is opacity plus a lift plus an accent
+ * border — never colour alone, since eight accents cannot all be told apart
+ * and one of them is whatever the selected tab happens to be. */
+.arc-cabrow {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 6px 0 14px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.arc-cabtab {
+  flex: 0 0 127px;
+  scroll-snap-align: start;
+  border: 2px solid var(--arc-line);
+  border-radius: 15px;
+  overflow: hidden;
+  background: var(--arc-card);
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  box-shadow: var(--arc-shadow);
+  opacity: 0.74;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.arc-cabtab[aria-selected="true"] {
+  opacity: 1;
+  transform: translateY(-3px);
+  border-color: var(--arc-accent);
+  box-shadow:
+    0 7px 0 -3px color-mix(in srgb, var(--arc-accent) 55%, transparent),
+    var(--arc-shadow);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .arc-cabtab:hover { opacity: 0.92; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arc-cabtab { transition: opacity 0.01ms; }
+  .arc-cabtab[aria-selected="true"] { transform: none; }
+}
+
+/* Two lines of room whether the name needs one or two, so every tab in the
+   row is the same height. */
+.arc-cabtab .arc-marquee {
+  min-height: 44px;
+  padding: 9px 10px 8px;
+  align-items: flex-start;
+}
+
+.arc-cabtab .arc-marquee .arc-pix {
+  font-size: 9.5px;
+  line-height: 1.4;
+  min-height: 2.8em;
+  display: flex;
+  align-items: center;
+}
+
+.arc-cabtab-foot {
+  display: block;
+  padding: 7px 10px 9px;
+  background: var(--arc-sunk);
+  min-height: 50px;
+}
+
+.arc-cabtab-k {
+  display: block;
+  font-size: 8.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--arc-ink-dim);
+}
+
+.arc-cabtab-v {
+  display: block;
+  font-family: var(--arc-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 700;
+  min-height: 1.2em;
+}
+
+.arc-cabtab-w {
+  display: block;
+  font-family: var(--arc-mono);
+  font-size: 10.5px;
+  color: var(--arc-ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 1.2em;
+}
+
+@media (min-width: 1000px) {
+  .arc-cabrow {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    overflow: visible;
+  }
+  .arc-cabtab { flex: none; }
+}
+
+/* -------------------------------------------------------- period tabs --- */
+
+.arc-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 10px 12px;
+}
+
+.arc-tab {
+  flex: 1;
+  min-height: 44px;
+  border-radius: 11px;
+  border: 1.5px solid var(--arc-screen-line);
+  background: transparent;
+  color: var(--arc-screen-soft);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0 6px;
+}
+
+.arc-tab[aria-selected="true"] {
+  background: var(--arc-accent);
+  color: var(--arc-accent-ink);
+  border-color: var(--arc-accent);
+}
+
+/* ------------------------------------------------------ your standing --- */
+
+/* Pinned below the board, in every state, so "where am I" has one place to be
+   and the answer "not on this board" does not resize the page. */
+.arc-stand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 0;
+  padding: 9px 11px;
+  border-radius: 12px;
+  min-height: 56px;
+  background: color-mix(in srgb, var(--arc-accent) 18%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--arc-accent) 45%, transparent);
+}
+
+.arc-stand--none {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--arc-screen-line);
+}
+
+.arc-stand-who {
+  font-family: var(--arc-mono);
+  font-size: 13px;
+  color: #fff;
+  font-weight: 700;
+}
+
+.arc-stand-lbl {
+  font-size: 11px;
+  color: var(--arc-screen-soft);
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+.arc-stand-val {
+  margin-left: auto;
+  font-family: var(--arc-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* ---------------------------------------------------------- preferences -- */
+
+/* The whole 52px row is the label, so the hit area is the sentence and not
+   just the 22px box. */
+.arc-pref {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  padding: 9px 0;
+  min-height: 52px;
+  cursor: pointer;
+}
+
+.arc-pref input {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  margin: 2px 0 0;
+  accent-color: var(--arc-accent);
+}
+
+.arc-pref .arc-pref-t {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.arc-pref .arc-pref-d {
+  display: block;
+  font-size: 12.5px;
+  color: var(--arc-ink-soft);
+  font-weight: 600;
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
+/* A card on a light surface, for the parts of the player card that are not a
+   screen: the claim block and the preferences. */
+.arc-panel {
+  background: var(--arc-card);
+  border: 2px solid var(--arc-line);
+  border-radius: 16px;
+  box-shadow: var(--arc-shadow);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+/* Reserved so a status line appearing does not push the buttons down. */
+.arc-status {
+  min-height: 1.35em;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--arc-ok);
+}
+
+.arc-status--bad { color: var(--arc-danger); }
+
+/* ------------------------------------------------------------- identity -- */
+
+/* Who this browser is, in the top bar. A link rather than a label, because the
+   only thing to do with it is go and change it. */
+.arc-idchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 2px solid var(--arc-line-2);
+  border-radius: 999px;
+  background: var(--arc-card);
+  color: inherit;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: var(--arc-shadow);
+}
+
+.arc-idchip .arc-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--arc-cool);
+  flex: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--arc-cool) 22%, transparent);
+}
+
+/* Reserved width, so the name arriving does not shove the theme button. */
+.arc-idchip .arc-who {
+  font-family: var(--arc-mono);
+  font-size: 12.5px;
+  letter-spacing: -0.02em;
+  min-width: 5ch;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 12ch;
+}

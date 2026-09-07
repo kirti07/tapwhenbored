@@ -225,9 +225,9 @@ export const games = [
  * an index.html under src/ belongs in `games`, in `pages`, or nowhere. */
 export const pages = [
   {
-    slug: "book",
-    title: "Your sticker book",
-    path: "/book/",
+    slug: "account",
+    title: "Your player card",
+    path: "/account/",
     updated: "2026-09-05",
     changefreq: "monthly",
     priority: "0.5",

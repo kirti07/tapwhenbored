@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f3f2fa">
+<!-- theme-bootstrap -->
+<title>Your player card — Tap When Bored</title>
+<meta name="description" content="Your name, your best on every cabinet, and where you stand. Stored on this device — no account, no password.">
+<meta name="robots" content="noindex, follow">
+<link rel="canonical" href="https://www.tapwhenbored.com/account/">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preload" href="/fonts/nunito-latin-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/silkscreen-latin-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/silkscreen-latin-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<a class="skip" href="#card">Skip to your card</a>
+<!-- sprite -->
+
+<div class="wrap page">
+  <header class="top">
+    <div>
+      <a class="back-link" href="/">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+        <span>Games</span>
+      </a>
+      <h1 class="brand">Your player card</h1>
+    </div>
+    <div class="top-r">
+      <!-- theme-btn:iconbtn -->
+    </div>
+  </header>
+
+  <main>
+    <p class="hero-p">One name, eight cabinets, stored on this device. Nothing here is a profile — it&rsquo;s the sticker on the side of the machine with your name on it.</p>
+
+    <!-- The player card.
+         The name is local and always has been; what is new is that it travels
+         with a score when you post one. The editor keeps the Enter/Escape and
+         focus-return behaviour it already had. -->
+    <section class="youcard cab arc" id="card" aria-labelledby="youH">
+      <div class="arc-marquee">
+        <span class="arc-pix" id="youH">Player 1</span>
+        <span class="arc-sub">this device</span>
+      </div>
+      <div class="youcard-in">
+        <div class="arc-slot" id="nameSlot">
+          <div class="arc-st arc-on" data-state="view">
+            <p class="youname arc-mono" id="nameOut">Unsigned</p>
+            <p class="youmeta" id="youMeta">Not on any board yet.</p>
+            <button class="arc-btn arc-btn--ghost arc-btn--sm" id="editBtn" type="button">Change name</button>
+          </div>
+          <div class="arc-st" data-state="edit">
+            <label class="arc-field" for="nameInp">
+              <span class="arc-label">Your name on every board</span>
+              <input class="arc-input arc-mono" id="nameInp" type="text" maxlength="12"
+                     autocomplete="nickname" autocapitalize="off" autocorrect="off"
+                     spellcheck="false" enterkeyhint="done" placeholder="Unsigned">
+            </label>
+            <p class="arc-hint" id="nameHint">12 characters max. It goes on a board only when you post a score.</p>
+            <div class="arc-row">
+              <button class="arc-btn arc-btn--primary arc-btn--sm" id="saveBtn" type="button">Save name</button>
+              <button class="arc-btn arc-btn--ghost arc-btn--sm" id="cancelBtn" type="button">Not now</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Your bests.
+         The Best column is local and the Rank column is not. That split is the
+         whole point of the page, and the error copy says so out loud rather
+         than pretending a missing rank is a broken page. -->
+    <h2 class="arc-sect arc-pix" id="bestsH">Your bests</h2>
+    <div class="arc-panel">
+      <table class="acc-table" aria-labelledby="bestsH">
+        <thead>
+          <tr>
+            <th scope="col">Cabinet</th>
+            <th scope="col">Best</th>
+            <th scope="col">Rank</th>
+          </tr>
+        </thead>
+        <tbody id="bestsBody">
+          <!-- account-rows -->
+        </tbody>
+      </table>
+      <p class="arc-hint" id="bestsNote">Your bests are stored on this device. The ranks come from the boards.</p>
+    </div>
+
+    <!-- Optional, and it stays optional.
+         Nothing here is needed to play, to keep a best, or to appear on a
+         board. There is one reason to leave an address and the heading says
+         what it is; the preferences are the complete list. Nothing sends mail
+         yet, so this stores an address and no more. -->
+    <h2 class="arc-sect arc-pix" id="pingH">Ping me when someone knocks me off</h2>
+    <div class="arc-panel">
+      <label class="arc-field" for="emailInp">
+        <span class="arc-label">Email</span>
+        <input class="arc-input" id="emailInp" type="email" placeholder="you@example.com"
+               autocomplete="email" inputmode="email" enterkeyhint="done" spellcheck="false">
+      </label>
+      <p class="arc-hint">No password, no profile, no newsletter. One email, only when you lose a top-ten slot.</p>
+
+      <div>
+        <label class="arc-pref" for="prefDisplaced">
+          <input type="checkbox" id="prefDisplaced" checked>
+          <span>
+            <span class="arc-pref-t">Tell me when I lose a top-ten slot</span>
+            <span class="arc-pref-d">One email, only when it happens. This is the whole pitch.</span>
+          </span>
+        </label>
+        <label class="arc-pref" for="prefStreak">
+          <input type="checkbox" id="prefStreak">
+          <span>
+            <span class="arc-pref-t">Nudge me if my Word Steps streak is about to break</span>
+            <span class="arc-pref-d">One reminder, at 8pm your time, only on a day you haven&rsquo;t played.</span>
+          </span>
+        </label>
+        <p class="arc-hint">That&rsquo;s the complete list. There is no newsletter and there never will be.</p>
+      </div>
+
+      <div class="arc-row">
+        <button class="arc-btn arc-btn--primary arc-btn--sm" type="button" id="savePrefs">Save</button>
+        <button class="arc-btn arc-btn--danger arc-btn--sm" type="button" id="deleteBtn">Delete my data</button>
+      </div>
+      <p class="arc-status" id="prefStatus" role="status" aria-live="polite"></p>
+      <p class="arc-hint">Deleting removes your name, your email address and every board row, everywhere, immediately. Your bests on this device are untouched.</p>
+    </div>
+  </main>
+
+  <footer class="foot">
+    <span>More tiny games coming soon.</span>
+    <a href="/wall/">The Arcade</a>
+  </footer>
+</div>
+
+<script type="module" src="./account.js"></script>
+</body>
+</html>

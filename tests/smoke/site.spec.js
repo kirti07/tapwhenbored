@@ -335,6 +335,19 @@ test.describe("font preloads match what the page renders", () => {
           ? `${name} renders the display font at 800, so it must preload it`
           : `${name} never renders weight 800 — the preload is dead weight`,
       ).toBe(uses800);
+
+      // The pixel face, same rule in both directions. It has two static
+      // weights and the chrome uses both, so one token settles the pair:
+      // a page that speaks --font-pix paints marquees and medals in it.
+      const usesPix = css.includes("var(--font-pix)");
+      for (const weight of [400, 700]) {
+        expect(
+          preloaded.has(`/fonts/silkscreen-latin-${weight}.woff2`),
+          usesPix
+            ? `${name} renders the pixel font, so it must preload ${weight}`
+            : `${name} never uses the pixel font, so it must not preload it`,
+        ).toBe(usesPix);
+      }
     });
   }
 });

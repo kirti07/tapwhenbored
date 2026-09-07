@@ -15,13 +15,21 @@
  * shipped in the fallback purple. Both accents now come from the registry as
  * inline custom properties, and the validator checks them.
  *
- * The one shared file the homepage takes is still tokens.css — the self-hosted
- * Nunito faces and the token that names them. Body copy stays on the system
- * stack: only weight 700 is on the homepage's critical path, and headings are
- * the only place a display face earns it.
+ * The shared files these pages take are tokens.css — the self-hosted faces and
+ * the tokens that name them — and base.css, for the resets and the two
+ * accessibility utilities that must exist on every page in the site: the
+ * `hidden` guard and the skip link — and arcade.css, the cabinet chrome the
+ * board and the player card are built from. Body copy stays on the system
+ * stack: only
+ * weight 700 is on the homepage's critical path, and headings are the only
+ * place a display face earns it.
+ *
+ * Shared first, so the rules below can still override them.
  */
 
 @import "shared/css/tokens.css";
+@import "shared/css/base.css";
+@import "shared/css/arcade.css";
 
 /* ---------------------------------------------------------------- tokens --
  * Three states, in this order, deliberately: the bare :root is the complete
@@ -33,23 +41,31 @@
 :root {
   color-scheme: light;
 
-  --paper: #f3ece0;
-  --card: #fffdf8;
-  --card-2: #faf4e7;
-  --ink: #282218;
-  --ink-soft: #776d5d;
-  --ink-dim: #9d9382;
-  --line: #e3d8c4;
-  --line-2: #d4c6ab;
-  --brand: #c9432f;
-  --cool: #17805f;
+  /* The page palette is the cabinet palette.
+   *
+   * These names are what the three shared pages were written against, and they
+   * stay — but the values are no longer a second set. They point at the
+   * --arc-* tokens in arcade.css, which are the arcade's own and already flip
+   * with the theme, so light and dark are declared once each in one file
+   * rather than three times across two.
+   *
+   * The ground is a cool near-white rather than the warm paper the sticker
+   * design used, and it is flat: an arcade is a room with machines in it, not
+   * a sheet of paper, and the previous grain fought the cabinets sitting on it.
+   */
+  --paper: var(--arc-bg);
+  --card: var(--arc-card);
+  --card-2: var(--arc-sunk);
+  --ink: var(--arc-ink);
+  --ink-soft: var(--arc-ink-soft);
+  --ink-dim: var(--arc-ink-dim);
+  --line: var(--arc-line);
+  --line-2: var(--arc-line-2);
+  --brand: var(--arc-warm);
+  --cool: var(--arc-cool);
 
-  /* The paper grain. One radial-gradient tile, not an image. */
-  --dot: rgba(40, 34, 24, 0.06);
-  --slot: rgba(40, 34, 24, 0.16);
-
-  --shadow-s: 0 1px 0 rgba(40, 34, 24, 0.05), 0 4px 10px -6px rgba(40, 34, 24, 0.32);
-  --shadow-m: 0 1px 0 rgba(40, 34, 24, 0.05), 0 10px 22px -14px rgba(40, 34, 24, 0.5);
+  --shadow-s: var(--arc-shadow);
+  --shadow-m: var(--arc-shadow);
 
   --r-m: 14px;
   --r-l: 20px;
@@ -57,43 +73,14 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
+/* Only `color-scheme` needs saying twice now — the colours come from tokens
+   that already know which theme is on. It matters because it is what makes UA
+   form controls and scrollbars dark, and it is not a custom property. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --paper: #0f0e18;
-    --card: #1a1928;
-    --card-2: #211f31;
-    --ink: #f1ecdf;
-    --ink-soft: #a79eb8;
-    --ink-dim: #867d99;
-    --line: #2c2942;
-    --line-2: #3b3757;
-    --brand: #ff8a72;
-    --cool: #34e19a;
-    --dot: rgba(255, 252, 240, 0.05);
-    --slot: rgba(241, 236, 223, 0.18);
-    --shadow-s: 0 1px 0 rgba(0, 0, 0, 0.4), 0 4px 12px -6px rgba(0, 0, 0, 0.7);
-    --shadow-m: 0 1px 0 rgba(0, 0, 0, 0.4), 0 12px 26px -16px rgba(0, 0, 0, 0.9);
-  }
+  :root:not([data-theme="light"]) { color-scheme: dark; }
 }
 
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --paper: #0f0e18;
-  --card: #1a1928;
-  --card-2: #211f31;
-  --ink: #f1ecdf;
-  --ink-soft: #a79eb8;
-  --ink-dim: #867d99;
-  --line: #2c2942;
-  --line-2: #3b3757;
-  --brand: #ff8a72;
-  --cool: #34e19a;
-  --dot: rgba(255, 252, 240, 0.05);
-  --slot: rgba(241, 236, 223, 0.18);
-  --shadow-s: 0 1px 0 rgba(0, 0, 0, 0.4), 0 4px 12px -6px rgba(0, 0, 0, 0.7);
-  --shadow-m: 0 1px 0 rgba(0, 0, 0, 0.4), 0 12px 26px -16px rgba(0, 0, 0, 0.9);
-}
+:root[data-theme="dark"] { color-scheme: dark; }
 
 /* ----------------------------------------------------------------- base -- */
 
@@ -105,8 +92,6 @@ body {
   margin: 0;
   min-height: 100%;
   background-color: var(--paper);
-  background-image: radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 0);
-  background-size: 22px 22px;
   color: var(--ink);
   font-family: -apple-system, "Segoe UI", sans-serif;
   font-size: 15px;
@@ -245,67 +230,12 @@ button { font: inherit; color: inherit; }
 :root[data-theme="dark"] .iconbtn [data-theme-icon="light"] { display: block; }
 :root[data-theme="dark"] .iconbtn [data-theme-icon="dark"] { display: none; }
 
-/* -------------------------------------------------------------- sections -- */
-
-.sec { margin-top: 30px; }
-
-.sec-head {
-  display: flex;
-  align-items: baseline;
-  gap: 10px 12px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-
-.eyebrow {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-}
-
-.sec-t {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-}
-
-.sec-sub { color: var(--ink-soft); font-size: 13.5px; width: 100%; }
-
-.sec-tools { margin-left: auto; }
-
 /* On a phone the segmented control does not fit beside the heading without
    squeezing it, so it takes its own line and starts at the left margin like
    everything else in the section. */
 @media (max-width: 559px) {
   .sec-tools { margin-left: 0; width: 100%; }
 }
-
-/* --------------------------------------------------------------- sticker --
- * One glyph on a tinted rounded square, ringed twice: once in the card colour
- * so it reads as a die-cut sticker, once in the surface colour so the ring
- * itself has a paper edge. --accent and --accent-d come from the registry.
- */
-.sb {
-  --sz: 56px;
-  width: var(--sz);
-  height: var(--sz);
-  flex: none;
-  display: grid;
-  place-items: center;
-  border-radius: 32%;
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 13%, var(--card));
-  box-shadow:
-    0 0 0 2.5px var(--card),
-    0 0 0 3.9px color-mix(in srgb, var(--accent) 34%, transparent),
-    var(--shadow-s);
-  transform: rotate(var(--rot, 0deg));
-}
-
-.sb svg { width: 64%; height: 64%; display: block; }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .sb {
@@ -325,76 +255,6 @@ button { font: inherit; color: inherit; }
     0 0 0 2.5px color-mix(in srgb, var(--accent-d, var(--accent)) 12%, var(--card)),
     0 0 0 3.9px color-mix(in srgb, var(--accent-d, var(--accent)) 42%, transparent),
     var(--shadow-s);
-}
-
-/* ------------------------------------------------------------ your bests -- */
-
-.book {
-  position: relative;
-  background: var(--card);
-  border: 1.5px solid var(--line);
-  border-radius: var(--r-x);
-  padding: 18px 18px 16px;
-  box-shadow: var(--shadow-m);
-  background-image: radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 0);
-  background-size: 20px 20px;
-}
-
-.book-top { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
-
-.book-h {
-  font-family: var(--font-display);
-  font-size: 19px;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  /* Two lines' worth, reserved. The heading is rewritten by home.js once the
-     local bests are read; without this the strip grows after first paint and
-     takes the shelf down the page with it. */
-  min-height: 1.35em;
-}
-
-.book-p { font-size: 13.5px; color: var(--ink-soft); margin-top: 3px; max-width: 44ch; }
-
-.slots { display: flex; gap: 8px; margin-top: 16px; }
-
-.slot {
-  flex: 1;
-  max-width: 56px;
-  aspect-ratio: 1;
-  border-radius: 32%;
-  display: grid;
-  place-items: center;
-  position: relative;
-}
-
-/* Empty is the default, so a first-time visitor and a no-JavaScript visitor
-   see the same honest thing. */
-.slot--e { border: 2px dashed var(--slot); color: var(--ink-dim); }
-.slot--e > svg { width: 52%; height: 52%; opacity: 0.34; }
-
-.slot-fill { display: none; }
-.slot .sb { width: 100%; height: 100%; }
-
-.slot.is-earned { border: 0; }
-.slot.is-earned > svg { display: none; }
-.slot.is-earned .slot-fill { display: block; width: 100%; height: 100%; }
-
-.progress {
-  margin-top: 14px;
-  max-width: 504px;
-  height: 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--ink) 10%, transparent);
-  overflow: hidden;
-}
-
-.progress i {
-  display: block;
-  height: 100%;
-  width: 0;
-  border-radius: 999px;
-  background: var(--brand);
-  transition: width 0.24s var(--ease-out);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -435,16 +295,6 @@ button { font: inherit; color: inherit; }
   .card:hover { transform: none; }
 }
 
-.card-art {
-  height: 96px;
-  display: grid;
-  place-items: center;
-  background-color: color-mix(in srgb, var(--accent) 11%, var(--card-2));
-  border-bottom: 1.5px solid color-mix(in srgb, var(--accent) 18%, var(--line));
-  background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--accent) 22%, transparent) 1px, transparent 0);
-  background-size: 16px 16px;
-}
-
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .card-art {
     background-color: color-mix(in srgb, var(--accent-d) 10%, var(--card-2));
@@ -471,87 +321,12 @@ button { font: inherit; color: inherit; }
 
 .card-t { font-size: 12.5px; color: var(--ink-soft); }
 
-/* Always present, always this tall. The best line is filled in after the local
-   store is read, and the row must not appear from nowhere and push the card. */
-.card-f { margin-top: 9px; display: flex; align-items: center; gap: 8px; min-height: 26px; }
-
-.card-best { font-size: 11.5px; font-weight: 700; color: var(--ink-soft); }
-.card-best em { font-style: normal; color: var(--ink); font-variant-numeric: tabular-nums; }
-
-.card-go {
-  margin-left: auto;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  flex: none;
-  background: var(--accent);
-  color: #fff;
-}
-
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .card-go { background: var(--accent-d); color: #0f0e18; }
 }
 
-:root[data-theme="dark"] .card-go { background: var(--accent-d); color: #0f0e18; }
-
-/* ----------------------------------------------------------------- wall -- */
-
-.seg {
-  display: inline-flex;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 999px;
-  background: var(--card-2);
-  border: 1.5px solid var(--line);
-}
-
-.seg button {
-  min-height: 44px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 0;
-  background: transparent;
-  color: var(--ink-soft);
-  font-weight: 700;
-  font-size: 13px;
-  cursor: pointer;
-  touch-action: manipulation;
-  transition: background-color 0.14s ease, color 0.14s ease;
-}
-
-.seg button[aria-pressed="true"] {
-  background: var(--card);
-  color: var(--ink);
-  box-shadow: var(--shadow-s);
-}
-
-.wall {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px 12px;
-  padding: 6px 4px;
-}
 
 @media (min-width: 560px) { .wall { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 900px) { .wall { grid-template-columns: repeat(6, 1fr); gap: 20px 16px; } }
-
-.stk {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  margin: 0;
-  padding: 12px 10px 10px;
-  border-radius: var(--r-l);
-  text-align: center;
-  background: color-mix(in srgb, var(--accent) 10%, var(--card));
-  border: 2.5px solid var(--card);
-  box-shadow: 0 0 0 1.4px color-mix(in srgb, var(--accent) 32%, transparent), var(--shadow-m);
-  transform: rotate(var(--rot, 0deg));
-}
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .stk {
@@ -567,56 +342,12 @@ button { font: inherit; color: inherit; }
   box-shadow: 0 0 0 1.4px color-mix(in srgb, var(--accent-d, var(--accent)) 42%, transparent), var(--shadow-m);
 }
 
-.stk .ico { width: 34px; height: 34px; color: var(--accent); margin-bottom: 2px; }
-.stk .ico svg { width: 100%; height: 100%; display: block; }
-
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .stk .ico { color: var(--accent-d, var(--accent)); }
 }
 
 :root[data-theme="dark"] .stk .ico { color: var(--accent-d, var(--accent)); }
 
-.stk .g {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-
-/* The score arrives from the network. Its height is reserved here so a tile
-   that resolves late does not grow and shuffle the grid. */
-.stk .s {
-  font-family: var(--font-display);
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  min-height: 1.15em;
-}
-
-.stk .u { font-size: 11px; font-weight: 700; color: var(--ink-soft); line-height: 1.2; }
-
-/* The signature.
- *
- * There are no player names yet — the leaderboard stores one number per game
- * and nothing else. Rather than leave the line out and have every tile grow
- * when identity ships, the line is here now with a placeholder and its final
- * height. Adding a name later is a text change, not a layout change. */
-.stk .sig {
-  margin-top: 8px;
-  padding-top: 6px;
-  width: 100%;
-  border-top: 1.5px dashed color-mix(in srgb, var(--ink) 22%, transparent);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1.3;
-  min-height: 1.3em;
-  color: var(--ink-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 
 .honest {
   display: flex;
@@ -630,44 +361,8 @@ button { font: inherit; color: inherit; }
 
 .honest svg { width: 14px; height: 14px; flex: none; }
 
-/* ---------------------------------------------------------------- about -- */
-
-.panel {
-  background: var(--card);
-  border: 1.5px solid var(--line);
-  border-radius: var(--r-x);
-  padding: 18px;
-  box-shadow: var(--shadow-s);
-}
 
 .intro { font-size: 13.5px; line-height: 1.6; color: var(--ink-soft); max-width: 68ch; }
-
-.faq-item { border-top: 1.5px solid var(--line); margin-top: 14px; }
-
-.faq-item summary {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 700;
-  list-style: none;
-}
-
-.faq-item summary::-webkit-details-marker { display: none; }
-
-.faq-item summary::before {
-  content: "+";
-  width: 16px;
-  flex: none;
-  color: var(--brand);
-  font-weight: 700;
-}
-
-.faq-item[open] summary::before { content: "–"; }
-
-.faq-item p { margin: 0 0 12px 24px; font-size: 13px; line-height: 1.6; color: var(--ink-soft); }
 
 /* --------------------------------------------------------------- footer -- */
 
@@ -709,82 +404,9 @@ button { font: inherit; color: inherit; }
   .foot a:hover { color: var(--ink); text-decoration: underline; }
 }
 
-/* ============================================================ the book page ==
- *
- * /book/ shares this stylesheet with the homepage on purpose — same tokens,
- * same sticker, same card treatment — so the two read as one product rather
- * than two designs that happen to be adjacent.
- *
- * Ported from research/ux-versions/v2-sticker/account.html with one deliberate
- * omission: every Caveat rule. The reference sets signatures and the big name
- * in a handwriting face, which is a webfont on the critical path of a page
- * whose whole job is to show eight glyphs. Names use the display face here.
- */
 
-.hero { margin-top: 10px; }
-
-/* Reserved: script rewrites this once it has read the day's records, and the
-   slots sit directly underneath. */
-.hero-h {
-  font-family: var(--font-display);
-  font-size: clamp(22px, 6vw, 27px);
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  line-height: 1.15;
-  min-height: 1.15em;
-  margin-top: 2px;
-}
 
 .hero-p { color: var(--ink-soft); font-size: 13.5px; margin-top: 5px; max-width: 48ch; }
-
-/* ---- the name ---- */
-
-.namecard {
-  margin-top: 16px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-  background: var(--card);
-  border: 1.5px solid var(--line);
-  border-radius: var(--r-x);
-  padding: 16px 18px;
-  box-shadow: var(--shadow-s);
-}
-
-.namecard .av {
-  width: 56px;
-  height: 56px;
-  flex: none;
-  border-radius: 32%;
-  display: grid;
-  place-items: center;
-  background: color-mix(in srgb, var(--brand) 18%, var(--card));
-  color: var(--brand);
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 24px;
-  border: 2px solid color-mix(in srgb, var(--brand) 38%, transparent);
-  transform: rotate(-4deg);
-}
-
-.namecard .who { min-width: 0; flex: 1 1 140px; }
-
-/* The name as it appears on a sticker. Reserved height so switching between
-   "Unsigned" and a name moves nothing. */
-.sig-big {
-  font-family: var(--font-display);
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 1.15;
-  min-height: 1.15em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.nameedit { width: 100%; display: flex; gap: 9px; flex-wrap: wrap; align-items: flex-end; }
-.nameedit .field { flex: 1; min-width: 190px; }
 
 .field { display: block; }
 
@@ -877,59 +499,13 @@ button { font: inherit; color: inherit; }
   .btn--p:hover, .btn--s:hover, .btn--p:active, .btn--s:active { transform: none; }
 }
 
-.sec-link {
-  margin-left: auto;
-  font-size: 13.5px;
-  font-weight: 700;
-  color: var(--brand);
-  text-decoration: none;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-}
-
 @media (hover: hover) and (pointer: fine) {
   .sec-link:hover { text-decoration: underline; }
 }
 
-/* ---- the slot grid ----
- *
- * Bigger than the homepage's chip row: these carry a name, a number and a
- * signature. Every slot is the same height in both states so the grid does not
- * reflow as the day fills up.
- */
-.book-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px 12px;
-  padding: 6px 4px;
-}
 
 @media (min-width: 560px) { .book-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 900px) { .book-grid { grid-template-columns: repeat(4, 1fr); gap: 20px 16px; } }
-
-.book-grid .slot {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 3px;
-  min-height: 186px;
-  max-width: none;
-  aspect-ratio: auto;
-  padding: 13px 10px 11px;
-  border-radius: var(--r-l);
-  transform: rotate(var(--rot, 0deg));
-}
-
-.book-grid .slot--f {
-  justify-content: flex-start;
-  border: 2.5px solid var(--card);
-  background: color-mix(in srgb, var(--accent) 10%, var(--card));
-  box-shadow: 0 0 0 1.4px color-mix(in srgb, var(--accent) 32%, transparent), var(--shadow-m);
-}
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .book-grid .slot--f {
@@ -945,174 +521,381 @@ button { font: inherit; color: inherit; }
   box-shadow: 0 0 0 1.4px color-mix(in srgb, var(--accent-d) 42%, transparent), var(--shadow-m);
 }
 
-.book-grid .slot--e {
-  border: 2px dashed var(--slot);
-  background: transparent;
-  gap: 7px;
-}
-
-.book-grid .ico { width: 36px; height: 36px; color: var(--accent); margin-bottom: 3px; }
-.book-grid .ico svg { width: 100%; height: 100%; display: block; }
-.book-grid .slot--e .ico { opacity: 0.3; }
-
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .book-grid .ico { color: var(--accent-d); }
 }
 
 :root[data-theme="dark"] .book-grid .ico { color: var(--accent-d); }
 
-.book-grid .g {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-
-.book-grid .s {
-  font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-}
-
-.book-grid .u { font-size: 11px; font-weight: 700; color: var(--ink-soft); }
-.book-grid .lab { font-size: 12.5px; font-weight: 700; color: var(--ink-dim); }
-
-/* The signature. Not a handwriting face — see the note at the top of this
-   section — but still set apart from the rest of the card by the dashed rule
-   above it, the way a signed sticker is. */
-.book-grid .sig {
-  margin-top: 8px;
-  padding-top: 6px;
-  width: 100%;
-  border-top: 1.5px dashed color-mix(in srgb, var(--ink) 22%, transparent);
-  font-family: var(--font-display);
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.25;
-  min-height: 1.25em;
-  color: var(--ink-soft);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.book-grid .btn { min-height: 44px; padding: 0 14px; font-size: 13px; margin-top: 4px; }
-
-/* The other half of the card's footer row.
- *
- * That row has a fixed height so a best arriving from storage cannot shift the
- * card. It used to hold nothing at all until you had a best, which meant every
- * card on a first visit reserved 26px for empty space. It now always holds one
- * of the two: your best, or an invitation to make one. */
-.card-new {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-  border: 1.5px dashed var(--line-2);
-  border-radius: 999px;
-  padding: 2px 7px;
-}
-
-/* ============================================================== the wall ==
- *
- * One row per game, showing the best anyone has managed.
- *
- * The row body is the sticker card from the homepage wall — `.stk` and its
- * `.ico` / `.g` / `.s` / `.u` children — turned on its side. That is the whole
- * trick, and it is why this section is short: the reference's `.strip` is a
- * near-copy of `.stk` with a different flex-direction, so it does not need to
- * exist as its own component.
- *
- * Not ported from the reference, because the data does not exist: rank
- * numerals and their gold/silver/bronze seals, the "YOU" pill, the "N more"
- * gap, the game-picker strip and the Today/This week tabs. The leaderboard
- * stores one anonymous number per game, so all of those would be furniture
- * around nothing.
- */
-
-.rows {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 18px 0 0;
-  padding: 0;
-  list-style: none;
-  max-width: 760px;
-}
-
-.wrow { display: flex; }
-
-/* The sticker card, on its side. */
-.rows .stk {
-  flex: 1;
-  min-width: 0;
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px 10px 10px;
-  border-radius: 16px;
-  text-align: left;
-  text-decoration: none;
-  color: inherit;
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
-}
 
 @media (hover: hover) and (pointer: fine) {
   .rows .stk:hover { transform: translateY(-1px); box-shadow: 0 0 0 1.6px var(--accent), var(--shadow-m); }
 }
-
-.rows .stk:active { transform: translateY(0); }
 
 @media (prefers-reduced-motion: reduce) {
   .rows .stk { transition: none; }
   .rows .stk:hover { transform: none; }
 }
 
-.rows .ico { width: 30px; height: 30px; flex: none; margin-bottom: 0; }
 
-/* Game name over the scoring direction. */
-.wg { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
-.rows .g { text-align: left; }
-.wrule { font-size: 11px; font-weight: 700; color: var(--ink-dim); }
-
-/* Who holds it.
- *
- * "Unsigned" until names exist. It is a column of its own, at its final width
- * and height, so that adding a name later is a text change rather than a
- * layout change — the same reservation the homepage tiles already make. */
-.wn {
-  flex: none;
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--ink-soft);
-  /* Wide enough for "Unsigned" at every size — truncating the placeholder to
-     "Unsign…" would be a worse thing to look at than the name it stands in
-     for. Real names are capped at 16 characters and may still ellipsis. */
-  max-width: 12ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* When it was set. The least important column, so it is the one that goes
-   when there is no room for it. */
-.wt { display: none; flex: none; font-size: 11.5px; font-weight: 700; color: var(--ink-dim); }
 
 @media (min-width: 720px) {
   .wt { display: inline; }
 }
 
-.wv { flex: none; display: flex; flex-direction: column; align-items: flex-end; min-width: 4.5em; }
-.rows .s { font-size: 18px; line-height: 1.15; }
-.rows .u { font-size: 10.5px; }
-
 @media (max-width: 420px) {
   .rows .stk { gap: 9px; padding: 10px 11px 10px 9px; }
   .wrule { font-size: 10.5px; }
 }
+
+
+/* ---------------------------------------------------------- the cabinets --
+ *
+ * A shelf card is a machine: a lit marquee in the game's colour over a sunk
+ * screen holding its glyph. The card keeps the sticker it always had — the
+ * glyph is the game's identity and eight pieces of unrelated artwork is the
+ * thing this page deliberately does not do — and gains the frame around it.
+ *
+ * The marquee, its bulbs and its accent all come from arcade.css. The only
+ * thing here is how a card is put together.
+ */
+.card .arc-marquee {
+  min-height: 40px;
+  padding: 10px 12px 8px;
+}
+
+.card .arc-marquee .arc-pix {
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+/* Square corners where the marquee meets the frame, so the band reads as
+   part of the cabinet rather than a sticker laid on top. */
+.card {
+  border-radius: var(--r-l);
+}
+
+.card .card-art {
+  border-radius: 0;
+  background: var(--card-2);
+}
+
+/* The heading lives inside the marquee — one title, announced once. Its own
+   size and weight come from .arc-pix, so this only has to undo the margin an
+   h2 carries by default. */
+.card .card-n {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+
+/* ------------------------------------------------------- the attract panel --
+ *
+ * The roll sits on a cabinet screen, so its colours come from the screen
+ * tokens rather than the page's paper ones — this is the one block of the
+ * homepage that is dark in both themes, for the same reason a real cabinet's
+ * screen is.
+ *
+ * Every row holds the height of its filled state from first paint: the score
+ * and the holder are the two things that arrive late, and the panel must not
+ * grow under the reader when they do.
+ */
+/* A flex column, not a block one: the sort reorders these with `order`, which
+   a block child ignores. Nothing is ever removed from the DOM, so a row keeps
+   its identity for a screen reader across a re-sort. */
+.roll {
+  margin: 0;
+  padding: 6px 6px 8px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.roll-row {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  grid-template-areas: "ico game value" "ico who value";
+  align-items: center;
+  gap: 0 10px;
+  min-height: 46px;
+  padding: 5px 10px;
+  border-top: 1px solid var(--arc-screen-line);
+}
+
+.roll-row:first-child { border-top: 0; }
+
+.roll-ico {
+  grid-area: ico;
+  display: block;
+  color: color-mix(in srgb, var(--arc-accent) 78%, #ffffff);
+}
+
+.roll-ico svg { display: block; width: 26px; height: 26px; fill: currentColor; }
+
+.roll-g {
+  grid-area: game;
+  font-family: var(--font-pix);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 9.5px;
+  color: color-mix(in srgb, var(--arc-accent) 74%, #ffffff);
+}
+
+.roll-who {
+  grid-area: who;
+  font-family: var(--arc-mono);
+  font-size: 12.5px;
+  color: var(--arc-screen-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 1.3em;
+}
+
+.roll-v {
+  grid-area: value;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  text-align: right;
+}
+
+.roll-s {
+  font-family: var(--arc-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--arc-screen-ink);
+  min-width: 3ch;
+}
+
+.roll-u {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--arc-screen-soft);
+}
+
+
+/* ------------------------------------------------------------ the arcade --
+ *
+ * Two columns on a wide screen, one on a phone. On a phone the roll is ordered
+ * above the shelf: a board with somebody's name on it is the reason to play,
+ * and it should not be three screens down.
+ */
+.hgrid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hgrid .attract { order: -1; }
+
+@media (min-width: 920px) {
+  .hgrid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 348px;
+    align-items: start;
+    gap: 18px;
+  }
+  .hgrid > main { grid-row: 1 / 3; }
+  .hgrid .attract { order: 0; }
+}
+
+/* A rule-line heading: the label, then a rule filling what is left. Replaces
+   the three-part eyebrow/title/subtitle head the previous design used. */
+.arc-sect {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 22px 0 12px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.arc-sect::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.intro {
+  max-width: 62ch;
+  margin: 22px 0 0;
+  font-size: 14.5px;
+  color: var(--ink-soft);
+}
+
+/* ---- a cabinet ---- */
+
+.shelf {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (min-width: 620px) { .shelf { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; } }
+
+/* Four columns only once the shelf is genuinely wide enough for them.
+ *
+ * The rail arrives at 920px and takes 348px with it, so a fourth column
+ * between there and ~1180px leaves each card too narrow for its own meta line
+ * — "no board, on purpose" was being cut to "no board, on pur…", which
+ * explains nothing. Three wide cards beat four cropped ones. */
+@media (min-width: 1180px) { .shelf { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.cab,
+.card {
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: var(--shadow-s);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .card:hover {
+    transform: translateY(-3px);
+    box-shadow:
+      0 10px 0 -4px color-mix(in srgb, var(--arc-accent) 40%, transparent),
+      var(--shadow-m);
+  }
+}
+
+.card:active { transform: translateY(0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .card { transition: none; }
+  .card:hover { transform: none; }
+}
+
+.card .arc-marquee { min-height: 40px; padding: 10px 12px 8px; }
+.card .card-n { margin: 0; font-size: 10px; line-height: 1.3; }
+
+/* The glyph well: sunk, wide, and tinted with the game's own accent. */
+.arc-mini {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 92px;
+  padding: 12px;
+  background: var(--card-2);
+  color: var(--arc-accent);
+}
+
+.arc-mini > svg { width: 58px; height: 58px; display: block; }
+
+.card-b { padding: 10px 12px 12px; display: grid; gap: 3px; }
+.card-t { font-size: 12.5px; color: var(--ink-soft); }
+
+/* One line, three states, all of them true: a best, "not played yet", or
+   "no board, on purpose". Fixed height so none of them resizes the card. */
+.card-m {
+  font-family: var(--arc-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+  font-weight: 700;
+  min-height: 1.3em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-m--none,
+.card-m--dim { color: var(--ink-dim); font-weight: 600; }
+
+/* "no board, on purpose" is the longest thing this line ever says and it is
+   the one that must not be cut off — a truncated explanation explains nothing.
+   Smaller and tighter, which fits it at the four-column breakpoint where the
+   cards are narrowest. */
+.card-m--none { font-size: 10px; letter-spacing: -0.04em; }
+
+/* On the narrowest phones two columns leave about 110px, and the explanation
+   needs 120. Let it wrap there — and reserve the second line on every card, so
+   the shelf stays a grid of equal cabinets rather than a ragged one. */
+@media (max-width: 360px) {
+  .card-m {
+    white-space: normal;
+    line-height: 1.3;
+    min-height: 2.6em;
+  }
+}
+
+/* ---- the player, as a ninth machine ---- */
+
+.youcard { align-self: start; }
+.youcard-in { padding: 14px; display: grid; gap: 9px; justify-items: start; }
+
+.youname {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.youmeta {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  line-height: 1.45;
+  min-height: 2.9em;
+}
+
+/* ---- the roll's row number ---- */
+
+.roll-no {
+  grid-area: ico;
+  font-family: var(--arc-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--arc-screen-soft);
+  text-align: center;
+}
+
+/* ---- the player card's bests table ---- */
+
+.acc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.acc-table th[scope="col"] {
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 800;
+  text-align: left;
+  padding: 0 8px 8px;
+}
+
+.acc-table td,
+.acc-table th[scope="row"] {
+  height: 44px;
+  padding: 0 8px;
+  border-top: 1.5px solid var(--line);
+  text-align: left;
+}
+
+.acc-g { font-weight: 700; display: flex; align-items: center; gap: 9px; }
+
+.acc-ico { color: var(--arc-accent); flex: none; }
+.acc-ico svg { width: 22px; height: 22px; display: block; }
+
+.acc-best,
+.acc-rank {
+  font-family: var(--arc-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.acc-rank { color: var(--ink-dim); font-size: 12.5px; }

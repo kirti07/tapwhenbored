@@ -73,3 +73,52 @@ summary,
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* `hidden` must actually hide.
+ *
+ * The attribute is only a UA rule of `display: none`, so any rule that sets
+ * its own `display` on the same element silently outranks it — and plenty do,
+ * since a button is `inline-flex` and a field is `flex`. Visibility across the
+ * site is the `hidden` attribute (ARCHITECTURE.md §27), so it has to be the
+ * thing that wins.
+ *
+ * This lived only in src/style.css, which meant it protected the three shell
+ * pages and none of the games. */
+[hidden] { display: none !important; }
+
+/* Text for screen readers only. Not `display: none`, which would remove it
+   from the accessibility tree along with everything else. */
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip to the content. Off-screen until focused, which is the one thing that
+   must not be done with `display: none` — an unfocusable skip link is no skip
+   link. It is the first control on the page, so it is the first Tab stop. */
+.skip {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 99;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 0 0 10px 0;
+  background: var(--card, var(--paper, #fff));
+  color: inherit;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.skip:focus {
+  left: 0;
+}

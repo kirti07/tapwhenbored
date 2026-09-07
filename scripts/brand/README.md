@@ -51,7 +51,7 @@ transparency for iOS to mishandle on the apple-touch-icon, and no
 double-rounding when the OS applies its own mask.
 
 Note that the icon canvas is *not* the manifest's `background_color`. That is
-`#f3ece0`, the homepage's paper ground, because Android holds the launch screen
+`#f3f2fa`, the homepage's own ground, because Android holds the launch screen
 in `background_color` and then cross-fades to the page — so it has to match the
 page, not the icon. `npm run validate` pins it to the homepage's `theme-color`
 meta tag.

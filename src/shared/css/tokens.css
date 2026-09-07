@@ -31,6 +31,14 @@
  * hand — a rule can say 800 and mean the *system* font, as word-steps' tiles
  * and bubble-tap's record line do, and those consume nothing from here.
  *
+ * The pixel display face, Silkscreen, is the arcade chrome's face: marquees,
+ * page headings, section eyebrows, medals, chips and the one big result number.
+ * Never body copy and never below 8.5px, which is why two static weights are
+ * enough — and why its fallback is the body face rather than a generic, so a
+ * failed load degrades to the site's own display font and not to Times.
+ * Latin subset, 3.5 kB + 3.2 kB. Also SIL OFL 1.1; see
+ * public/fonts/Silkscreen-OFL.txt.
+ *
  * A game's palette is part of its identity and lives in its own style.css.
  * This file must never set --bg, --ink, --line, --accent, or any other colour a
  * game defines for itself: the token NAMES agree across games but the VALUES
@@ -58,6 +66,26 @@
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
+@font-face {
+  font-family: "Silkscreen";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/silkscreen-latin-400.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Silkscreen";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/silkscreen-latin-700.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
   --font-display: "Nunito", ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif;
+  /* Falls back to the display face, deliberately: see the note above. */
+  --font-pix: "Silkscreen", "Nunito", ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif;
 }

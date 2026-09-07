@@ -108,7 +108,7 @@ function vercelInsights() {
  * to be an exact comparison.
  */
 const isHomepage = (ctx) => ctx.path === "/index.html" || ctx.path === "/";
-const isBook = (ctx) => ctx.path === "/book/index.html" || ctx.path === "/book/";
+const isAccount = (ctx) => ctx.path === "/account/index.html" || ctx.path === "/account/";
 const isWall = (ctx) => ctx.path === "/wall/index.html" || ctx.path === "/wall/";
 
 const escapeHtml = (v) =>
@@ -118,7 +118,7 @@ const escapeHtml = (v) =>
   );
 
 // The homepage's dark theme-color. Games carry their own in the registry.
-const HOME_DARK_THEME_COLOR = "#0f0e18";
+const HOME_DARK_THEME_COLOR = "#0b0c18";
 
 /**
  * Inlines the theme bootstrap into every page in place of its
@@ -224,64 +224,57 @@ function sharedMarkup() {
  * is what ships.
  */
 function homepageFromRegistry() {
-  /* A small deterministic tilt per card. Decoration, so it is derived from
-     position rather than stored in the registry — a field nothing but a
-     rotation reads would be a field nobody maintains. */
-  const TILT = [2.6, -3, 1.2, -1.8, 2.2, -2.6, 1.5, -0.9];
-  const tilt = (i) => TILT[i % TILT.length];
-
   const vars = (g) => `--accent:${g.accent};--accent-d:${g.accentDark}`;
 
-  const sticker = (g, size, rot) =>
-    `<span class="sb" style="${vars(g)};--sz:${size};--rot:${rot}deg" aria-hidden="true">` +
-    `<svg viewBox="0 0 48 48"><use href="#${g.sticker}"/></svg></span>`;
-
-  const card = (g, i) => `        <a class="card" href="${g.path}" style="${vars(g)}">
-          <span class="card-art">${sticker(g, "64px", tilt(i))}</span>
+  /* A cabinet.
+   *
+   * marquee -> glyph well -> body. The title lives in the marquee, which is why
+   * the h2 is in there: one heading announced once, rather than a pixel label
+   * beside a hidden real one.
+   *
+   * The meta line has three states and each is true rather than decorative: the
+   * player's best, "not played yet" for a board they have not reached, and
+   * "no board, on purpose" for the two games that keep no score. The last is
+   * emitted final; home.js fills the others, and every state is one line tall
+   * so the card never grows under the reader. */
+  const card = (g) => {
+    const scoreless = g.leaderboard === false;
+    return `        <a class="card arc" href="${g.path}" style="${vars(g)}">
+          <span class="arc-marquee"><h2 class="card-n arc-pix">${escapeHtml(g.title)}</h2></span>
+          <span class="arc-mini" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#${g.sticker}"/></svg></span>
           <span class="card-b">
-            <h2 class="card-n">${escapeHtml(g.title)}</h2>
             <span class="card-t">${escapeHtml(g.tagline)}</span>
-            <span class="card-f">
-              <span class="card-best" data-best="${g.slug}" hidden></span>
-              <span class="card-new" data-new="${g.slug}">New sticker</span>
-              <span class="card-go" aria-hidden="true"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M8.5 5.6 18 12l-9.5 6.4z"/></svg></span>
-            </span>
+            <span class="card-m ${scoreless ? "card-m--none" : "card-m--dim"}" data-best="${g.slug}">${
+              scoreless ? "no board, on purpose" : "not played yet"
+            }</span>
           </span>
         </a>`;
+  };
 
-  /* One outline per game, in shelf order. home.js swaps a slot to its filled
-     sticker when that game has a local best. Rendered here rather than in JS so
-     the strip has its final height on the first frame. */
-  const slot = (g) => `        <span class="slot slot--e" data-slot="${g.slug}" title="${escapeHtml(g.title)}">` +
-    `<svg viewBox="0 0 48 48" aria-hidden="true"><use href="#${g.sticker}"/></svg>` +
-    `<span class="slot-fill">${sticker(g, "100%", 0)}</span></span>`;
+  /* The high score roll.
+   *
+   * Names and units are emitted here because they are indexable content (§28);
+   * the holder and the score arrive from the board and start as "Unsigned" and
+   * a dash, both already at their final size so neither arrival moves the
+   * panel. The row number is baked in now that the roll has no sort able to
+   * reorder it. */
+  const rollRow = (g, i) => `        <li class="roll-row arc" data-slug="${g.slug}" style="${vars(g)}">
+          <span class="roll-no" aria-hidden="true">${i + 1}</span>
+          <span class="roll-g">${escapeHtml(g.title)}</span>
+          <span class="roll-who" data-sig>Unsigned</span>
+          <span class="roll-v"><span class="roll-s num" data-score>&mdash;</span><span class="roll-u">${escapeHtml(g.scoreUnit)}</span></span>
+        </li>`;
 
-  /* The wall, one tile per game that actually has a board. The number and the
-     signature arrive from the network; both are rendered as placeholders that
-     already occupy their final height, so the tile never grows under the
-     reader. `unit` finally has a consumer. */
-  const tile = (g, i) => `        <figure class="stk" data-slug="${g.slug}" style="${vars(g)};--rot:${tilt(i)}deg">
-          <span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#${g.sticker}"/></svg></span>
-          <figcaption class="g">${escapeHtml(g.title)}</figcaption>
-          <p class="s num" data-score>&mdash;</p>
-          <p class="u">${escapeHtml(g.scoreUnit)}</p>
-          <p class="sig" data-sig>Unsigned</p>
-        </figure>`;
-
-  /* The book page's full-size slots. Same registry, same sprite, but a card
-     rather than a chip: each one carries the game's name and has room for
-     today's score. Rendered at build time so the grid has its final height on
-     the first frame — the counts arrive from script a moment later, and nothing
-     may move underneath the reader when they do. */
-  const bookSlot = (g, i) => `        <div class="slot slot--e" data-slot="${g.slug}" style="${vars(g)};--rot:${tilt(i)}deg">
-          <span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#${g.sticker}"/></svg></span>
-          <p class="g">${escapeHtml(g.title)}</p>
-          <p class="lab" data-lab>Not played today</p>
-          <p class="s num" data-score hidden></p>
-          <p class="u" data-unit hidden>${escapeHtml(g.scoreUnit || "")}</p>
-          <p class="sig" data-sig hidden></p>
-          <a class="btn btn--s" href="${g.path}">Play</a>
-        </div>`;
+  /* One row of the player card's bests table.
+   *
+   * The best is local and the rank is not — that split is the whole design of
+   * the page, and its error copy says so. Both cells are emitted at their final
+   * height, so a board that never answers leaves the table exactly as it is. */
+  const accountRow = (g) => `          <tr data-slot="${g.slug}" style="${vars(g)}">
+            <th scope="row" class="acc-g"><span class="acc-ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#${g.sticker}"/></svg></span>${escapeHtml(g.title)}</th>
+            <td class="acc-best num" data-score>&mdash;</td>
+            <td class="acc-rank" data-rank>${g.leaderboard === false ? "no board" : ""}</td>
+          </tr>`;
 
   /* The wall, one row per game that has a board.
      Same read as the homepage tiles, laid out as a list so each record has room
@@ -289,46 +282,57 @@ function homepageFromRegistry() {
      and when the record was set. Rendered here rather than in script so the
      list has its final height on the first frame — the numbers arrive from the
      network a moment later and must not push anything down. */
-  const wallRow = (g) => `        <li class="wrow" data-slug="${g.slug}">
-          <a class="stk" href="${g.path}" style="${vars(g)}">
-            <span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#${g.sticker}"/></svg></span>
-            <span class="wg">
-              <span class="g">${escapeHtml(g.title)}</span>
-              <span class="wrule">${g.leaderboard.lowerIsBetter ? "fewer is better" : "higher is better"}</span>
+
+  /* One tab per cabinet, all eight of them.
+   *
+   * The two games with no board are here too, labelled as such: the arcade
+   * says so out loud rather than leaving a gap somebody has to interpret.
+   * Untangle draws a different puzzle every run and Doodle On has no score by
+   * design, so neither has a game_config row and neither ever will (§27).
+   *
+   * Emitted at build time because the names are indexable content (§28); the
+   * scores are not, and arrive from the board. `--accent` comes from the
+   * registry the same way every other emitted element gets it, so adding
+   * game #9 needs no CSS and no edit here. */
+  const cabinetTab = (g, i) => {
+    const board = g.leaderboard !== false;
+    const first = i === 0;
+    return `          <button class="arc-cabtab arc" role="tab" type="button"
+            id="cab-${g.slug}" data-slug="${g.slug}" data-board="${board}"
+            aria-controls="cabinet" aria-selected="${first}" tabindex="${first ? 0 : -1}"
+            style="${vars(g)}">
+            <span class="arc-marquee"><span class="arc-pix">${escapeHtml(g.title)}</span></span>
+            <span class="arc-cabtab-foot">
+              <span class="arc-cabtab-k">${board ? "Today&rsquo;s best" : "No board"}</span>
+              <span class="arc-cabtab-v" data-top>${board ? "&mdash;" : "&mdash;"}</span>
+              <span class="arc-cabtab-w" data-holder>${board ? "" : "just for the doing"}</span>
             </span>
-            <span class="wn" data-holder>Unsigned</span>
-            <span class="wt" data-when></span>
-            <span class="wv">
-              <span class="s num" data-score>&mdash;</span>
-              <span class="u">${escapeHtml(g.scoreUnit)}</span>
-            </span>
-          </a>
-        </li>`;
+          </button>`;
+  };
 
   return {
     name: "twb:homepage-from-registry",
     transformIndexHtml: {
       order: "pre",
       handler(html, ctx) {
-        if (isBook(ctx)) {
+        if (isAccount(ctx)) {
           return html.replace(
-            "        <!-- book-slots -->",
-            games.map(bookSlot).join("\n"),
+            "          <!-- account-rows -->",
+            games.map(accountRow).join("\n"),
           );
         }
         if (isWall(ctx)) {
           return html.replace(
-            "        <!-- wall-rows -->",
-            games.filter((g) => g.leaderboard !== false).map(wallRow).join("\n"),
+            "          <!-- cabinet-tabs -->",
+            games.map(cabinetTab).join("\n"),
           );
         }
         // Homepage only; every other page is served untouched.
         if (!isHomepage(ctx)) return html;
 
         const shelf = games.map(card).join("\n");
-        const slots = games.map(slot).join("\n");
         const boarded = games.filter((g) => g.leaderboard !== false);
-        const tiles = boarded.map(tile).join("\n");
+        const roll = boarded.map(rollRow).join("\n");
         const hasPart = games
           .map(
             (g) =>
@@ -339,8 +343,7 @@ function homepageFromRegistry() {
 
         return html
           .replace("    <!-- games-shelf -->", shelf)
-          .replace("        <!-- book-slots -->", slots)
-          .replace("        <!-- wall-tiles -->", tiles)
+          .replace("        <!-- wall-tiles -->", roll)
           .replace('  "hasPart": []', `  "hasPart": [\n${hasPart}\n  ]`);
       },
     },
