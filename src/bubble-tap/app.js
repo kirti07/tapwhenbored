@@ -629,27 +629,31 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     syncToggle(soundToggle, state.soundOn);
     syncToggle(motionToggle, state.calmMode);
   }
-  // ---------- how to play ----------
-  initHowto({
-    btn: howtoBtn,
-    sheet: howtoSheet,
-    backdrop: howtoBackdrop,
-    // No .stage on this page; .app is the whole thing behind the sheet, and
-    // the sheet itself lives outside it.
-    inertRoot: document.querySelector('.app'),
-  });
-  initThemeToggle(themeBtn);
-
-  // The overlays sit *inside* .app rather than beside it, so the things to
-  // freeze are named individually instead of one wrapper.
+  // The overlays and the sheet sit *inside* .app rather than beside it, so the
+  // things to freeze are named individually instead of one wrapper.
+  //
+  // The top bar is deliberately NOT in this list. It holds the "Games" link,
+  // which is the only way off the page, and freezing it left a card with no
+  // exit on a phone — no Escape key, and none of the cards has a close button.
+  // This used to name `.topbar` first, and `initHowto` was handed `.app`, which
+  // contains it. Both are fixed by the same list. The shared default in
+  // shell.js does the same thing for the seven games that have a `.stage`.
   const behindOverlay = [
-    document.querySelector(".topbar"),
     document.querySelector(".hud"),
     document.getElementById("playfield"),
     document.querySelector(".legend"),
     howtoBtn,
     document.querySelector(".seo-info"),
   ];
+
+  // ---------- how to play ----------
+  initHowto({
+    btn: howtoBtn,
+    sheet: howtoSheet,
+    backdrop: howtoBackdrop,
+    inertRoot: behindOverlay,
+  });
+  initThemeToggle(themeBtn);
 
   bindOverlay(gameOverOverlay, {
     primary: restartBtn,

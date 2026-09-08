@@ -23,7 +23,14 @@ import { fetchStanding, savePlayer, deletePlayer } from "../shared/ui/leaderboar
 var body = document.getElementById("bestsBody");
 var nameSlot = document.getElementById("nameSlot");
 var nameOut = document.getElementById("nameOut");
+var nameStatus = document.getElementById("nameStatus");
 var youMeta = document.getElementById("youMeta");
+
+/* What the boards accept, mirroring players_name_shape and save_player() in
+   README-supabase.sql. Only ever used to explain a refusal after the fact —
+   `clean()` deliberately does not enforce it, so nothing is rewritten under
+   somebody as they type. */
+var BOARD_NAME = /^[A-Za-z0-9 _'-]+$/;
 
 var boarded = games.filter(function (g) { return g.leaderboard !== false; });
 
@@ -158,6 +165,43 @@ async function renderRanks() {
 
 // ---------- the name editor ----------
 
+function sayName(text, bad) {
+  if (!nameStatus) return;
+  nameStatus.textContent = text;
+  nameStatus.classList.toggle("arc-status--bad", Boolean(bad));
+}
+
+/**
+ * Send the name to the boards. Never awaited, never throws.
+ *
+ * `savePlayer()` resolves false for a refused name, a wrong token, a throttled
+ * caller and an unreachable board alike, so the likely cause is worked out here
+ * the same way the email field already does it (`initPrefs` below): test the
+ * value against what the boards accept, and only blame the network when the
+ * name itself is fine.
+ *
+ * The second sentence of the failure copy is the important one. The name is
+ * still saved on this device — a player who is told "couldn't save" and nothing
+ * else has no way to know whether they have lost it.
+ */
+function pushName() {
+  var name = getName();
+  sayName("Saving…");
+
+  savePlayer({ name: name }).then(function (ok) {
+    if (ok) {
+      sayName(name ? "Saved. It shows on every board you’re on." : "Name cleared.");
+      return;
+    }
+    sayName(
+      name && !BOARD_NAME.test(name)
+        ? "That name can’t go on a board — letters, numbers, spaces, hyphen and ' only."
+        : "Couldn’t save your name to the boards. It’s still on this device — try again in a minute.",
+      true,
+    );
+  });
+}
+
 function initNameEditor() {
   var edit = document.getElementById("editBtn");
   var input = document.getElementById("nameInp");
@@ -179,11 +223,25 @@ function initNameEditor() {
     edit.focus();
   }
 
+  /**
+   * Save locally, close, then tell the board — in that order, and deliberately.
+   *
+   * The name used to stop at `setName()`, so `players.name` was never written
+   * and every board read it back as null: the card said "Kirti" and the wall
+   * said "no name yet", for the same person, forever.
+   *
+   * `pushName()` is not awaited. The local write is the one the player is
+   * looking at, so the editor closes on the frame they press Save and the
+   * network catches up underneath — a slow board costs a status line arriving
+   * late, never a UI that waits. The local name is authoritative either way,
+   * so a failed save loses nothing but the trip.
+   */
   function commit() {
     setName(input.value);
     renderName();
     renderMeta();
     close();
+    pushName();
   }
 
   edit.addEventListener("click", open);
@@ -253,6 +311,9 @@ function initPrefs() {
     setName("");
     renderName();
     renderMeta();
+    // And drop whatever the name editor last reported: it described a name that
+    // no longer exists anywhere.
+    sayName("");
     body.querySelectorAll("[data-rank]").forEach(function (cell) {
       if (cell.textContent.charAt(0) === "#") cell.textContent = "";
     });

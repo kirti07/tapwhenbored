@@ -93,6 +93,13 @@ test.describe("the bests table", () => {
 });
 
 test.describe("the name", () => {
+  /* Saving a name now talks to the board, so every spec here needs the route --
+     without it the call goes to an unresolvable host and burns the client's 4s
+     timeout before landing in #nameStatus as a failure. */
+  test.beforeEach(async ({ page }) => {
+    await page.route(SAVE, (route) => rpc(route, true));
+  });
+
   test("reads Unsigned until one is set", async ({ page }) => {
     await page.route(STANDING, (route) => rpc(route, null));
     await page.goto(ACCOUNT);
@@ -104,11 +111,13 @@ test.describe("the name", () => {
     await page.goto(ACCOUNT);
     await page.locator("#editBtn").click();
     // Padded, internally spaced, and far too long.
-    await page.locator("#nameInp").fill("   a   very   long   name   indeed   ");
+    await page.locator("#nameInp").fill(
+      "   a   very   long   name   indeed   that   keeps   going   ",
+    );
     await page.locator("#saveBtn").click();
 
     const shown = await page.locator("#nameOut").textContent();
-    expect(shown.length).toBeLessThanOrEqual(12);
+    expect(shown.length).toBeLessThanOrEqual(24);
     expect(shown).toBe(shown.trim());
     expect(shown).not.toMatch(/\s{2}/);
   });
@@ -122,6 +131,86 @@ test.describe("the name", () => {
 
     await expect(page.locator("#nameOut")).toHaveText("<b>hi</b>");
     expect(await page.locator("#nameOut b").count()).toBe(0);
+  });
+
+  test("a saved name is sent to the board, and every board row gets it", async ({ page }) => {
+    const sent = [];
+    await page.route(STANDING, (route) => rpc(route, null));
+    await page.route(SAVE, (route) => {
+      sent.push(JSON.parse(route.request().postData() || "{}"));
+      return rpc(route, true);
+    });
+    await page.goto(ACCOUNT);
+
+    await page.locator("#editBtn").click();
+    await page.locator("#nameInp").fill("Kirti");
+    await page.locator("#saveBtn").click();
+
+    await expect(page.locator("#nameStatus")).toHaveText(/Saved/);
+    // The whole defect: this used to write localStorage and nothing else, so
+    // the card said "Kirti" and every board said "no name yet", forever.
+    expect(sent.length, "the name reached the board").toBe(1);
+    expect(sent[0].p_name).toBe("Kirti");
+    // A rename is authorised by the token, never by the public player id.
+    expect(sent[0].p_write_token).toBeTruthy();
+    expect(sent[0].p_write_token).not.toBe(sent[0].p_player_id);
+  });
+
+  test("the editor closes without waiting for the board", async ({ page }) => {
+    let release;
+    const held = new Promise((resolve) => (release = resolve));
+    await page.route(STANDING, (route) => rpc(route, null));
+    await page.route(SAVE, async (route) => {
+      await held;
+      return rpc(route, true);
+    });
+    await page.goto(ACCOUNT);
+
+    await page.locator("#editBtn").click();
+    await page.locator("#nameInp").fill("Kirti");
+    await page.locator("#saveBtn").click();
+
+    /* The request is still in flight and the editor is already gone. This is
+       the constraint the whole design is built around: saving to the database
+       must never be something the player waits on. */
+    await expect(page.locator("#nameOut")).toHaveText("Kirti");
+    await expect(page.locator("#editBtn")).toBeFocused();
+    await expect(page.locator("#nameStatus")).toHaveText(/Saving/);
+
+    release();
+    await expect(page.locator("#nameStatus")).toHaveText(/Saved/);
+  });
+
+  test("a name the board refuses says why, and is still kept here", async ({ page }) => {
+    await page.route(STANDING, (route) => rpc(route, null));
+    await page.route(SAVE, (route) => rpc(route, false));
+    await page.goto(ACCOUNT);
+
+    await page.locator("#editBtn").click();
+    // Nothing is rewritten as you type, so the field can hold this.
+    await page.locator("#nameInp").fill("Kirti.");
+    await page.locator("#saveBtn").click();
+
+    const status = page.locator("#nameStatus");
+    await expect(status).toHaveClass(/arc-status--bad/);
+    await expect(status).toContainText(/can.t go on a board/);
+    // And it must say the local copy survived, or the player cannot tell.
+    await expect(page.locator("#nameOut")).toHaveText("Kirti.");
+  });
+
+  test("an unreachable board blames the network, not the name", async ({ page }) => {
+    await page.route(STANDING, (route) => rpc(route, null));
+    await page.route(SAVE, (route) => route.abort());
+    await page.goto(ACCOUNT);
+
+    await page.locator("#editBtn").click();
+    await page.locator("#nameInp").fill("Kirti");
+    await page.locator("#saveBtn").click();
+
+    const status = page.locator("#nameStatus");
+    await expect(status).toHaveClass(/arc-status--bad/);
+    await expect(status).toContainText(/still on this device/);
+    await expect(page.locator("#nameOut")).toHaveText("Kirti");
   });
 
   test("Escape leaves the edit without saving, and gives focus back", async ({ page }) => {

@@ -37,8 +37,6 @@
   --tile-drop: rgba(60, 55, 40, 0.16);
   --pulse: rgba(255, 206, 51, 0.55);
 
-  --peach: #ffb4a2;
-  --peach-ink: #a8452c;
   --scrim: rgba(40, 32, 20, 0.35);
 
   color-scheme: light;
@@ -506,8 +504,6 @@ html, body {
   --tile-drop: rgba(0, 0, 0, 0.5);
   --pulse: rgba(34, 211, 238, 0.6);
 
-  --peach: rgba(255, 77, 157, 0.16);
-  --peach-ink: #ff4d9d;
   --scrim: rgba(0, 0, 0, 0.6);
 
   color-scheme: dark;

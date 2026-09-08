@@ -59,8 +59,6 @@ html, body {
 /* ---- top bar ---- */
 
 
-
-
 .title {
   margin: 0;
   font-family: var(--font-display);
@@ -69,8 +67,6 @@ html, body {
   letter-spacing: 0.02em;
   color: var(--ink);
 }
-
-
 
 
 .icon-btn:active {
@@ -368,15 +364,6 @@ html, body {
   line-height: 1.5;
   text-align: left;
 }
-
-/* ---- how to play (bottom sheet, matches the rest of the collection) ---- */
-
-
-
-
-
-
-
 
 /* ---- overlay ---- */
 

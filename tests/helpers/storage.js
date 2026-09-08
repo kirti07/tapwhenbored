@@ -1,7 +1,7 @@
 // Shared fixtures for the specs that seed or block browser storage.
 //
 // These were three differently-shaped copies across home.spec.js,
-// book.spec.js and a11y.spec.js, and one of them carried a real bug: the
+// account.spec.js and a11y.spec.js, and one of them carried a real bug: the
 // date helpers built their day with `toISOString().slice(0, 10)`, which is
 // **UTC**, while the code under test uses the player's local date
 // (src/shared/ui/day.js). In any timezone that is not UTC the two disagree for

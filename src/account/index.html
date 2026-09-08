@@ -37,9 +37,13 @@
     <p class="hero-p">One name, eight cabinets, stored on this device. Nothing here is a profile — it&rsquo;s the sticker on the side of the machine with your name on it.</p>
 
     <!-- The player card.
-         The name is local and always has been; what is new is that it travels
-         with a score when you post one. The editor keeps the Enter/Escape and
-         focus-return behaviour it already had. -->
+         The name is held on this device and also sent to the boards, by two
+         paths that cover for each other: saving here writes it straight away,
+         and every finished run carries it along on a request it was making
+         anyway. So a rename that happened offline still lands the next time you
+         play. The editor keeps the Enter/Escape and focus-return behaviour it
+         already had, and closes on the local write rather than waiting for the
+         network. -->
     <section class="youcard cab arc" id="card" aria-labelledby="youH">
       <div class="arc-marquee">
         <span class="arc-pix" id="youH">Player 1</span>
@@ -60,15 +64,19 @@
               <span class="arc-chip stkbox-chip" id="youBoxFull" hidden>Full box</span>
             </div>
             <button class="arc-btn arc-btn--ghost arc-btn--sm" id="editBtn" type="button">Change name</button>
+            <!-- The editor closes on the local write and this fills in a moment
+                 later, so a name the boards refuse is never silently dropped. -->
+            <p class="arc-status" id="nameStatus" role="status" aria-live="polite"></p>
           </div>
           <div class="arc-st" data-state="edit">
             <label class="arc-field" for="nameInp">
               <span class="arc-label">Your name on every board</span>
-              <input class="arc-input arc-mono" id="nameInp" type="text" maxlength="12"
+              <input class="arc-input arc-mono" id="nameInp" type="text" maxlength="24"
                      autocomplete="nickname" autocapitalize="off" autocorrect="off"
-                     spellcheck="false" enterkeyhint="done" placeholder="Unsigned">
+                     spellcheck="false" enterkeyhint="done" placeholder="Unsigned"
+                     aria-describedby="nameHint">
             </label>
-            <p class="arc-hint" id="nameHint">12 characters max. It goes on a board only when you post a score.</p>
+            <p class="arc-hint" id="nameHint">Letters, numbers, spaces, hyphen and &#39; &mdash; 24 characters max. Saved to the boards straight away, and it shows on every board you&rsquo;re already on.</p>
             <div class="arc-row">
               <button class="arc-btn arc-btn--primary arc-btn--sm" id="saveBtn" type="button">Save name</button>
               <button class="arc-btn arc-btn--ghost arc-btn--sm" id="cancelBtn" type="button">Not now</button>
@@ -100,7 +108,7 @@
          than pretending a missing rank is a broken page. -->
     <h2 class="arc-sect arc-pix" id="bestsH">Your bests</h2>
     <div class="arc-panel">
-      <table class="acc-table" aria-labelledby="bestsH">
+      <table class="acc-table" aria-labelledby="bestsH" aria-describedby="bestsNote">
         <thead>
           <tr>
             <th scope="col">Cabinet</th>
@@ -121,7 +129,7 @@
          what it is; the preferences are the complete list. Nothing sends mail
          yet, so this stores an address and no more. -->
     <h2 class="arc-sect arc-pix" id="pingH">Ping me when someone knocks me off</h2>
-    <div class="arc-panel">
+    <div class="arc-panel" aria-labelledby="pingH">
       <label class="arc-field" for="emailInp">
         <span class="arc-label">Email</span>
         <input class="arc-input" id="emailInp" type="email" placeholder="you@example.com"

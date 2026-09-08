@@ -34,26 +34,6 @@ export function formatDuration(ms) {
   return m + ":" + (s < 10 ? "0" : "") + s;
 }
 
-/**
- * When a record was set, in words.
- *
- * Relative for the fortnight where "how long ago" is the useful reading, then a
- * plain date, where it stops being. A record nobody has beaten in three months
- * is more interesting as a date than as "94 days ago".
- */
-export function formatWhen(iso) {
-  if (!iso) return "";
-  var then = new Date(iso);
-  if (Number.isNaN(then.getTime())) return "";
-
-  var startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  var days = Math.round((startOfDay(new Date()) - startOfDay(then)) / 86400000);
-
-  if (days <= 0) return "set today";
-  if (days === 1) return "set yesterday";
-  if (days < 14) return "set " + days + " days ago";
-  return "set " + then.toLocaleDateString(undefined, { day: "numeric", month: "short" });
-}
 
 /**
  * A registry score, formatted by its own `scoreFormat`.

@@ -52,8 +52,6 @@ html, body {
 /* ---- top bar ---- */
 
 
-
-
 .title {
   margin: 0;
   font-family: var(--font-display);
@@ -69,7 +67,6 @@ html, body {
   background-clip: text;
   color: transparent;
 }
-
 
 
 .icon-btn {
@@ -380,8 +377,7 @@ html, body {
   transform: translate(-50%, -50%) scale(1);
 }
 
-/* ---- how to play ---- */
-
+/* ---- seo info ---- */
 
 .seo-info summary {
   cursor: pointer;
@@ -397,12 +393,6 @@ html, body {
   line-height: 1.5;
   text-align: left;
 }
-
-
-
-
-
-
 
 
 /* ---- solved overlay ---- */

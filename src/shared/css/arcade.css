@@ -47,7 +47,6 @@
   --arc-bronze: #c07a44;
   --arc-ok: #1a8865;
   --arc-danger: #c23a26;
-  --arc-focus: #3b5bdb;
   --arc-shadow: 0 1px 0 rgba(24, 20, 60, 0.05), 0 10px 22px -14px rgba(24, 20, 60, 0.45);
 
   /* ---- the screen: one palette, both themes ---- */
@@ -72,7 +71,6 @@
   --arc-dark-bronze: #e19457;
   --arc-dark-ok: #34e19a;
   --arc-dark-danger: #ff7a66;
-  --arc-dark-focus: #8ab4ff;
   --arc-dark-shadow: 0 1px 0 rgba(0, 0, 0, 0.5), 0 12px 26px -16px rgba(0, 0, 0, 0.9);
   --arc-dark-screen: #080915;
   --arc-dark-screen-soft: #8f8dc6;
@@ -106,7 +104,6 @@
     --arc-bronze: var(--arc-dark-bronze);
     --arc-ok: var(--arc-dark-ok);
     --arc-danger: var(--arc-dark-danger);
-    --arc-focus: var(--arc-dark-focus);
     --arc-shadow: var(--arc-dark-shadow);
     --arc-screen: var(--arc-dark-screen);
     --arc-screen-soft: var(--arc-dark-screen-soft);
@@ -130,7 +127,6 @@
   --arc-bronze: var(--arc-dark-bronze);
   --arc-ok: var(--arc-dark-ok);
   --arc-danger: var(--arc-dark-danger);
-  --arc-focus: var(--arc-dark-focus);
   --arc-shadow: var(--arc-dark-shadow);
   --arc-screen: var(--arc-dark-screen);
   --arc-screen-soft: var(--arc-dark-screen-soft);
@@ -174,14 +170,6 @@
 }
 
 /* ------------------------------------------------------------- cabinet -- */
-
-.arc-cab {
-  background: var(--arc-card);
-  border: 2px solid var(--arc-line);
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: var(--arc-shadow);
-}
 
 /* The bulbs are one radial-gradient tile, not an image and not a script: a
  * 1.7px dot with a 2.1px transparent stop for the falloff, centred in a 5px
@@ -246,21 +234,6 @@
 /* Full-bleed, for the top of a page rather than the top of a card. Same
  * component: the mockups drew this twice and their bulb tiles drifted a pixel
  * apart, which is exactly the drift one component prevents. */
-.arc-marquee--band {
-  --arc-bulb-tile: 14px;
-  padding-top: calc(10px + env(safe-area-inset-top));
-  padding-bottom: 10px;
-}
-
-.arc-marquee--band::before {
-  top: calc(3px + env(safe-area-inset-top));
-}
-
-.arc-marquee--band::after {
-  height: 4px;
-  background: rgba(0, 0, 0, 0.18);
-}
-
 /* -------------------------------------------------------------- screen -- */
 
 .arc-screen {
@@ -340,10 +313,6 @@
   color: var(--arc-screen-soft);
   font-size: 11.5px;
   font-weight: 600;
-}
-
-.arc-honesty--page {
-  color: var(--arc-ink-dim);
 }
 
 /* --------------------------------------------------------- score table -- */
@@ -468,21 +437,6 @@
 }
 
 /* 1.2s, deliberately under 1Hz, and it snaps rather than fades. */
-.arc-cursor {
-  display: inline-block;
-  width: 8px;
-  height: 14px;
-  background: var(--arc-accent);
-  vertical-align: -2px;
-  margin-right: 4px;
-  animation: arc-blink 1.2s steps(1, end) infinite;
-}
-
-@keyframes arc-blink {
-  0%, 55% { opacity: 1; }
-  56%, 100% { opacity: 0; }
-}
-
 /* ------------------------------------------------------------ controls -- */
 
 .arc-btn {
@@ -530,11 +484,6 @@
   font-size: 14px;
   padding: 0 16px;
   border-radius: 12px;
-}
-
-.arc-btn--wide {
-  flex: 1 1 0;
-  min-width: 0;
 }
 
 .arc-btn--danger {
@@ -606,11 +555,6 @@
   flex-wrap: wrap;
 }
 
-.arc-row > .arc-grow {
-  flex: 1 1 190px;
-  min-width: 0;
-}
-
 /* --------------------------------------------------------------- chips -- */
 
 .arc-chip {
@@ -666,17 +610,6 @@
   pointer-events: auto;
 }
 
-/* Reduced motion, scoped. Deliberately not the global
- * `*{animation-duration:.001ms!important}` the mockups carry: it would
- * out-specify every game's own reduced-motion rules, and the site's rule is
- * gentler, not zero. */
-@media (prefers-reduced-motion: reduce) {
-  .arc-cursor {
-    animation: none;
-    opacity: 1;
-  }
-}
-
 /* ------------------------------------------------------------ skeletons -- */
 
 /* A skeleton's row count and row height match the real content exactly. That
@@ -713,10 +646,6 @@
 }
 
 /* A skeleton on a light surface rather than on the screen. */
-.arc-sk--page span {
-  background: var(--arc-sunk);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .arc-sk span {
     animation: none;
@@ -1028,6 +957,14 @@
 }
 
 /* Reserved width, so the name arriving does not shove the theme button. */
+/* The chip sits in the header beside the theme button, so the name has to give
+   way rather than push it off. `24ch` is the name cap, and the `vw` term is what
+   keeps a long one from eating a narrow header — whichever is smaller wins, and
+   anything past it ellipsises.
+
+   This was a flat `12ch`, which was the old cap written into the layout. Left
+   alone it would have quietly truncated every name over twelve characters at
+   exactly the point the cap used to be. */
 .arc-idchip .arc-who {
   font-family: var(--arc-mono);
   font-size: 12.5px;
@@ -1036,5 +973,5 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 12ch;
+  max-width: min(24ch, 42vw);
 }

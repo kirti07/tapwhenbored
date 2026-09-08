@@ -26,10 +26,14 @@ import { getJSON, setJSON } from "./prefs.js";
 
 var KEY = "player";
 
-/* Twelve, matching what the boards accept. The database rejects longer, so a
-   larger cap here would only let the field promise something the board then
-   refuses. `clean()` is exported so an input can show what will be saved. */
-var MAX = 12;
+/* Twenty-four, matching what the boards accept. The database rejects longer, so
+   a larger cap here would only let the field promise something the board then
+   refuses -- and worse than refuses: a name that passes this and fails the
+   `players_name_shape` constraint raises inside submit_game_run and costs the
+   player the score it was submitting. Keep this, player_name_ok() and that
+   constraint in step. `clean()` is exported so an input can show what will be
+   saved. */
+var MAX = 24;
 
 /**
  * A v4 UUID. Exported because a finished run needs one too, and two
@@ -134,8 +138,3 @@ export function setName(name) {
   return setJSON(KEY, player);
 }
 
-/** The single letter an avatar shows. "?" when there is no name. */
-export function initial() {
-  var name = getName();
-  return name ? name.charAt(0).toUpperCase() : "?";
-}

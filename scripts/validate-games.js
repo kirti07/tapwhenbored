@@ -26,6 +26,8 @@ const RESERVED = new Set([
   "shared",
   "api",
   "_vercel",
+  // public/fonts/ is served at /fonts/.
+  "fonts",
   // Non-game pages. A game may not claim one of these slugs. "book" stays
   // reserved after that page was retired: the URL was indexed, and a game
   // claiming it would start serving something else at a remembered address.
@@ -212,8 +214,26 @@ for (const g of games) {
   if (ogUrl && ogUrl !== expected)
     err(`src/${g.slug}/index.html: og:url "${ogUrl}" should be "${expected}"`);
 
-  for (const tag of ["<title>", 'name="description"']) {
-    if (!html.includes(tag)) err(`src/${g.slug}/index.html: missing ${tag}`);
+  if (!html.includes("<title>")) err(`src/${g.slug}/index.html: missing <title>`);
+
+  /* The registry's `description` is compared to the shipped meta tag, not
+     merely counted as present.
+     It used to be checked only by REQUIRED_FIELDS -- i.e. its sole consumer was
+     the assertion that it existed. Nothing interpolated it: each page
+     hand-writes its own meta description, and this loop only checked that
+     *some* description tag was there. So eight multi-line strings could drift
+     from the eight tags they duplicate with nothing noticing, which is the
+     exact failure ARCHITECTURE.md §10 records for the deleted `unit` field.
+     Either the field earns its place or it goes; this is it earning it. */
+  const meta = html.match(/<meta name="description" content="([^"]*)"/)?.[1];
+  if (!meta) {
+    err(`src/${g.slug}/index.html: missing name="description"`);
+  } else if (decodeEntities(meta) !== decodeEntities(g.description)) {
+    err(
+      `src/${g.slug}/index.html: the meta description does not match ` +
+        `src/data/games.js (${g.slug}).description — they are the same text ` +
+        "in two places and must not drift",
+    );
   }
 
   // Every /assets/... reference must resolve, whether written absolute or as a
@@ -443,9 +463,25 @@ for (const p of pages) {
   }
 }
 
+/* Enough HTML entity decoding to compare a meta tag to a JS string. The pages
+   write &amp; and the odd &rsquo;/&mdash;; the registry writes the characters. */
+function decodeEntities(text) {
+  return String(text ?? "")
+    .replace(/&rsquo;/g, "\u2019")
+    .replace(/&lsquo;/g, "\u2018")
+    .replace(/&mdash;/g, "\u2014")
+    .replace(/&ndash;/g, "\u2013")
+    .replace(/&hellip;/g, "\u2026")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // ---------- registry vs. the database's game_config ----------
 //
-// Direction and daily-ness are enforced by submit_game_score() from
+// Direction and daily-ness are enforced by submit_game_run() from
 // game_config, not by the client (ARCHITECTURE.md §27). The registry keeps its
 // own copy so a reader can see how a game is scored without opening the SQL —
 // which is only worth having if the two cannot disagree. So parse the seed
@@ -472,10 +508,13 @@ for (const p of pages) {
       /\(\s*'([^']+)'\s*,\s*(true|false)\s*,\s*(true|false)\s*,\s*'([^']*)'\s*\)/gi;
     let m;
     while ((m = row.exec(block[1])) !== null) {
+      /* `label` is the fourth positional value and is deliberately not kept:
+         nothing reads it, in the client or in the SQL functions. The regex
+         still requires it, which is the point -- it is what makes this parse
+         fail loudly if a column is ever added to the seed INSERT. */
       config.set(m[1], {
         lowerIsBetter: m[2].toLowerCase() === "true",
         daily: m[3].toLowerCase() === "true",
-        label: m[4],
       });
     }
 
@@ -489,7 +528,7 @@ for (const p of pages) {
       if (g.leaderboard && !cfg) {
         err(
           `${where}: leaderboard is enabled but ${g.slug} has no game_config ` +
-            "row in README-supabase.sql, so submit_game_score() would raise",
+            "row in README-supabase.sql, so submit_game_run() would raise",
         );
         continue;
       }

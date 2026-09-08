@@ -69,7 +69,6 @@
 
   --r-m: 14px;
   --r-l: 20px;
-  --r-x: 26px;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
@@ -123,10 +122,10 @@ button { font: inherit; color: inherit; }
 /* `hidden` must actually hide.
  *
  * The attribute is only a UA rule of `display: none`, so any class that sets
- * its own `display` silently outranks it — and this stylesheet sets `display`
- * on `.btn` (inline-flex) and `.nameedit` (flex), both of which script hides
- * with `el.hidden`. The result was a book showing its name-edit form and a
- * "Play" button on stickers already earned. */
+ * its own `display` silently outranks it. The two rules that used to do that
+ * here — `.btn` and `.nameedit`, from the retired `/book/` page — are gone, but
+ * this stays: script hides things with `el.hidden` all over the site, and the
+ * next `display` rule added above would quietly break it again. */
 [hidden] { display: none !important; }
 
 .wrap { max-width: 1060px; margin: 0 auto; padding: 0 16px; }
@@ -230,36 +229,6 @@ button { font: inherit; color: inherit; }
 :root[data-theme="dark"] .iconbtn [data-theme-icon="light"] { display: block; }
 :root[data-theme="dark"] .iconbtn [data-theme-icon="dark"] { display: none; }
 
-/* On a phone the segmented control does not fit beside the heading without
-   squeezing it, so it takes its own line and starts at the left margin like
-   everything else in the section. */
-@media (max-width: 559px) {
-  .sec-tools { margin-left: 0; width: 100%; }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .sb {
-    color: var(--accent-d, var(--accent));
-    background: color-mix(in srgb, var(--accent-d, var(--accent)) 17%, var(--card));
-    box-shadow:
-      0 0 0 2.5px color-mix(in srgb, var(--accent-d, var(--accent)) 12%, var(--card)),
-      0 0 0 3.9px color-mix(in srgb, var(--accent-d, var(--accent)) 42%, transparent),
-      var(--shadow-s);
-  }
-}
-
-:root[data-theme="dark"] .sb {
-  color: var(--accent-d, var(--accent));
-  background: color-mix(in srgb, var(--accent-d, var(--accent)) 17%, var(--card));
-  box-shadow:
-    0 0 0 2.5px color-mix(in srgb, var(--accent-d, var(--accent)) 12%, var(--card)),
-    0 0 0 3.9px color-mix(in srgb, var(--accent-d, var(--accent)) 42%, transparent),
-    var(--shadow-s);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .progress i { transition: none; }
-}
 
 /* ---------------------------------------------------------------- shelf -- */
 
@@ -295,19 +264,6 @@ button { font: inherit; color: inherit; }
   .card:hover { transform: none; }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .card-art {
-    background-color: color-mix(in srgb, var(--accent-d) 10%, var(--card-2));
-    border-bottom-color: color-mix(in srgb, var(--accent-d) 26%, var(--line));
-    background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--accent-d) 26%, transparent) 1px, transparent 0);
-  }
-}
-
-:root[data-theme="dark"] .card-art {
-  background-color: color-mix(in srgb, var(--accent-d) 10%, var(--card-2));
-  border-bottom-color: color-mix(in srgb, var(--accent-d) 26%, var(--line));
-  background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--accent-d) 26%, transparent) 1px, transparent 0);
-}
 
 .card-b { padding: 11px 12px 12px; display: flex; flex-direction: column; gap: 1px; flex: 1; }
 
@@ -381,103 +337,7 @@ button { font: inherit; color: inherit; }
 }
 
 
-
 .hero-p { color: var(--ink-soft); font-size: 13.5px; margin-top: 5px; max-width: 48ch; }
-
-.field { display: block; }
-
-.lbl {
-  display: block;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-  margin-bottom: 6px;
-}
-
-/* 16px is not a style choice: anything smaller makes iOS Safari zoom the page
-   when the field takes focus, and it does not zoom back out. */
-.inp {
-  width: 100%;
-  min-height: 48px;
-  font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 700;
-  padding: 10px 14px;
-  border-radius: var(--r-m);
-  background: var(--card);
-  border: 2px solid var(--line-2);
-  color: var(--ink);
-}
-
-.inp::placeholder { color: var(--ink-dim); font-weight: 600; }
-
-.inp:focus {
-  outline: none;
-  border-color: var(--ink-soft);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 26%, transparent);
-}
-
-.hint { width: 100%; font-size: 12px; color: var(--ink-dim); line-height: 1.45; }
-
-/* ---- buttons ---- */
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  min-height: 44px;
-  padding: 0 18px;
-  border-radius: 999px;
-  font-weight: 700;
-  font-size: 14px;
-  border: 2px solid transparent;
-  cursor: pointer;
-  text-decoration: none;
-  touch-action: manipulation;
-  transition: transform 0.12s var(--ease-out), box-shadow 0.12s var(--ease-out),
-    border-color 0.14s ease, color 0.14s ease;
-}
-
-/* The paper button pressed onto its ink edge. */
-.btn--p {
-  background: var(--ink);
-  color: var(--card);
-  box-shadow: 0 3px 0 color-mix(in srgb, var(--ink) 42%, var(--paper));
-}
-
-.btn--p:active {
-  transform: translateY(1px);
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 42%, var(--paper));
-}
-
-.btn--s {
-  background: var(--card);
-  color: var(--ink);
-  border-color: var(--line-2);
-  box-shadow: var(--shadow-s);
-}
-
-.btn--s:active { transform: translateY(1px); }
-
-@media (hover: hover) and (pointer: fine) {
-  .btn--p:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 0 color-mix(in srgb, var(--ink) 42%, var(--paper));
-  }
-  .btn--s:hover { border-color: var(--ink-soft); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .btn { transition: border-color 0.14s ease, color 0.14s ease; }
-  .btn--p:hover, .btn--s:hover, .btn--p:active, .btn--s:active { transform: none; }
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .sec-link:hover { text-decoration: underline; }
-}
 
 
 /* ---------------------------------------------------------- the cabinets --
@@ -504,11 +364,6 @@ button { font: inherit; color: inherit; }
    part of the cabinet rather than a sticker laid on top. */
 .card {
   border-radius: var(--r-l);
-}
-
-.card .card-art {
-  border-radius: 0;
-  background: var(--card-2);
 }
 
 /* The heading lives inside the marquee — one title, announced once. Its own
@@ -555,14 +410,6 @@ button { font: inherit; color: inherit; }
 }
 
 .roll-row:first-child { border-top: 0; }
-
-.roll-ico {
-  grid-area: ico;
-  display: block;
-  color: color-mix(in srgb, var(--arc-accent) 78%, #ffffff);
-}
-
-.roll-ico svg { display: block; width: 26px; height: 26px; fill: currentColor; }
 
 .roll-g {
   grid-area: game;

@@ -105,7 +105,6 @@ import { recordPlay } from "../shared/ui/progress.js";
   var pauseCount = 0, pausedAt = 0;
   var finishTimer = null, resizeTimer = null;
 
-  // ---------- tiny procedural audio, no assets ----------
   // ---------- audio ----------
   // Same adapter as word-steps: this game's helper was tone(freq, dur, gain),
   // with the waveform always a sine.

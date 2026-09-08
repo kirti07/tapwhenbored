@@ -24,9 +24,16 @@ const RESERVED = new Set([
   "shared",
   "api",
   "_vercel",
-  // Non-game pages (src/data/games.js `pages`).
-  "book",
+  // public/fonts/ is served at /fonts/.
+  "fonts",
+  // Non-game pages (src/data/games.js `pages`). Keep this in step with the
+  // same list in scripts/validate-games.js.
+  "account",
   "wall",
+  // `book` stays reserved after that page was retired and became `account`:
+  // the URL was indexed, and a game claiming it would start serving something
+  // else at a remembered address.
+  "book",
 ]);
 
 const slug = process.argv[2];
@@ -39,6 +46,13 @@ if (!slug) die("usage: npm run game:new <slug>");
 if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug))
   die(`"${slug}" must be lowercase kebab-case, e.g. "tile-flip"`);
 if (RESERVED.has(slug)) die(`"${slug}" is reserved and would collide with a build path`);
+
+/* The description is written in two places -- the page's meta tag and the
+   registry -- and `npm run validate` compares them, so the scaffold writes one
+   string to both. Editing it means editing it twice; the validator is what
+   stops you doing only one. */
+const DESCRIPTION =
+  "TODO: one sentence on what the player does, ending in no signup.";
 
 const gameDir = path.join(srcDir, slug);
 if (existsSync(gameDir)) die(`src/${slug}/ already exists`);
@@ -64,7 +78,7 @@ const html = `<!doctype html>
 <meta name="theme-color" content="#f6f6fb">
 <!-- theme-bootstrap -->
 <title>${title} — Free Online Game</title>
-<meta name="description" content="TODO: one sentence on what the player does. No signup, no download.">
+<meta name="description" content="${DESCRIPTION}">
 <link rel="canonical" href="https://www.tapwhenbored.com/${slug}/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="${title} — Free Online Game">
@@ -250,6 +264,12 @@ html, body {
 
 .icon-btn:active { background: rgba(139, 127, 224, 0.12); }
 
+/* The card is a full-viewport scrim, so what takes pointer events matters. The
+   overlay stays none even when shown, and only the card inside it becomes
+   clickable -- which is what every shipped game does, and what leaves the top
+   bar tappable behind an open card. Setting pointer-events: auto on the overlay
+   itself instead makes the scrim swallow the tap on "Games", and since no end
+   card has a close button, that leaves a phone with no way off the page. */
 .overlay {
   position: fixed;
   inset: 0;
@@ -261,7 +281,10 @@ html, body {
   transition: opacity 0.2s ease;
 }
 
-.overlay.show { opacity: 1; pointer-events: auto; }
+.overlay.show { opacity: 1; }
+
+.overlay-content { pointer-events: none; }
+.overlay.show .overlay-content { pointer-events: auto; }
 `;
 
 const js = `// ${title}
@@ -271,7 +294,7 @@ const js = `// ${title}
 // (ARCHITECTURE.md §13).
 
 import { initHowto, initShare, createNote, bindOverlay } from "../shared/ui/shell.js";
-import { tone, toggle as toggleSound, onChange as onSoundChange } from "../shared/ui/audio.js";
+import { tone, initSoundToggle } from "../shared/ui/audio.js";
 import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
 
@@ -336,21 +359,16 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
   // Focus lands on Play again, so finishing and pressing Enter replays.
   bindOverlay(overlayEl, {
     primary: againBtn,
-    inertRoot: document.querySelector(".stage"),
+    // No inertRoot: the default freezes the stage *except* its top bar, so the
+    // "Games" link still works while the card is up. Naming the stage itself
+    // here is what used to leave a phone with no way off the page.
     label: "Round over",
   });
 
   initThemeToggle(themeBtn);
 
-  onSoundChange(function (on) {
-    soundBtn.classList.toggle("is-off", !on);
-    soundBtn.setAttribute("aria-pressed", on ? "true" : "false");
-    soundBtn.setAttribute("aria-label", on ? "Sound on" : "Sound off");
-  });
-  soundBtn.addEventListener("click", function () {
-    // TODO: play this game's own confirmation note on unmute.
-    if (toggleSound()) tone(660, 0.08, "sine", 0.05);
-  });
+  // TODO: replace the note with this game's own confirmation sound.
+  initSoundToggle(soundBtn, function () { tone(660, 0.08, "sine", 0.05); });
 
   restartBtn.addEventListener("click", start);
   againBtn.addEventListener("click", start);
@@ -369,8 +387,7 @@ const entry = `  {
     slug: ${JSON.stringify(slug)},
     title: ${JSON.stringify(title)},
     tagline: "TODO · TODO",
-    description:
-      "TODO: one sentence for search results, ending in no signup.",
+    description: ${JSON.stringify(DESCRIPTION)},
     path: ${JSON.stringify(`/${slug}/`)},
     ogImage: ${JSON.stringify(`/assets/${slug}-og.jpg`)},
     // The homepage card's colour, light and dark. These used to be a pair of
@@ -419,6 +436,8 @@ Still to do:
   2. A <symbol id="st-${slug}"> in the sprite at the top of src/index.html,
      then set sticker: "st-${slug}" in the registry entry
   3. Replace every TODO in src/${slug}/ and in the registry entry, including
+     the description, which is in BOTH the meta tag and the registry and must
+     match in both -- npm run validate compares them. Also
      accent / accentDark / scoreUnit
   4. Replace the three TODO bullets in the "How to play" sheet
   5. Build the mechanic in src/${slug}/game.js

@@ -140,12 +140,3 @@ export function getInt(key, fallback = null) {
   return Number.isFinite(n) ? n : fallback;
 }
 
-/** Remove a preference, and the legacy key it may have been migrated from. */
-export function remove(key) {
-  if (!usable()) return;
-  try {
-    window.localStorage.removeItem(PREFIX + key);
-    var legacy = LEGACY_KEYS[key];
-    if (legacy) window.localStorage.removeItem(legacy);
-  } catch (e) { /* ignore */ }
-}

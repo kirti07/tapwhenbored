@@ -259,17 +259,26 @@ function selectWindow(tab) {
 // ---------- the tabs' own numbers ----------
 
 /**
- * Today's top score in each tab, from the one request the homepage already
- * makes. A tab with no number keeps its dash.
+ * Each cabinet's record, from the one request the homepage already makes. A tab
+ * with no number keeps its dash.
+ *
+ * The tab says "All-time best" and this is the all-time record, which took some
+ * getting to. It used to be labelled "Today's best" and filled from the same
+ * `game_scores` read — where, for the five games that are not daily, the only
+ * row is `period='all'`. So the number under "Today's best" was the all-time
+ * record for six of the eight cabinets, and matched the panel's *All-time*
+ * board rather than the Today one directly beneath the label.
+ *
+ * The number is the record; the board below is the top ten named players. Those
+ * are the same thing whenever the record holder has a name — which, now that a
+ * run carries one, is from here on.
  */
 async function fillTabs() {
   var rows = await fetchAllBests();
   if (!rows) return;
 
-  var today = localDay();
   for (var i = 0; i < rows.length; i++) {
     var row = rows[i];
-    if (row.period !== "all" && row.period !== today) continue;
     var game = bySlug[row.game_slug];
     var tab = game && document.getElementById("cab-" + game.slug);
     if (!tab) continue;

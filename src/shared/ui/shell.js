@@ -64,6 +64,38 @@ function trap(root, e) {
   }
 }
 
+/**
+ * Everything in the stage except the top bar.
+ *
+ * The default used to be `.stage` itself, and the top bar lives inside it in
+ * seven of the eight games — so opening an end card took the only way out of
+ * the page with it. The link stayed painted at full opacity (the card's
+ * backdrop is a gradient that reaches transparency well above it) and did
+ * nothing. word-steps made that permanent rather than momentary: it re-opens
+ * its card on load for a puzzle already solved, so for the rest of the day
+ * every visit — including a shared link — landed on a page whose "Games" link
+ * was dead. On a phone, with no Escape key and no close control on the card,
+ * the only way out was to reload.
+ *
+ * `inert` cannot be undone on a descendant, so the bar cannot be exempted by
+ * marking the stage and then unmarking the bar; the children have to be marked
+ * one at a time. bubble-tap already passed exactly this shape by hand.
+ *
+ * Captured once, at bind time, like the `inertRoot` it replaces — no game
+ * mutates `.stage`'s children after load.
+ */
+function stageBehindTopbar() {
+  var stage = document.querySelector(".stage");
+  if (!stage) return null;
+
+  var out = [];
+  for (var i = 0; i < stage.children.length; i++) {
+    var el = stage.children[i];
+    if (!el.classList.contains("topbar")) out.push(el);
+  }
+  return out;
+}
+
 /* `inert` removes a subtree from hit-testing, the tab order and the
    accessibility tree in one attribute — which is exactly the set of things the
    old opacity-plus-pointer-events overlays got wrong. Baseline since 2023;
@@ -71,9 +103,10 @@ function trap(root, e) {
    screen reader, and the overlay's own backdrop still covers it visually. */
 function setInert(target, value) {
   if (!target) return;
-  /* Accepts one element or several. Most games can make a single `.stage`
-     inert because the end card is its sibling; bubble-tap keeps its overlays
-     *inside* the page wrapper, so it names the siblings to freeze instead. */
+  /* Accepts one element or several, and it is always several now: the top bar
+     has to stay live, so the stage is frozen child by child rather than whole
+     (see stageBehindTopbar). bubble-tap has no `.stage` at all and names its
+     own list for the same reason. */
   var list = target.length !== undefined && !target.tagName ? target : [target];
   for (var i = 0; i < list.length; i++) {
     var el = list[i];
@@ -95,7 +128,8 @@ function setInert(target, value) {
  *
  *   bindOverlay(document.getElementById("overlay"), {
  *     primary: againBtn,          // where focus lands, and what Enter activates
- *     inertRoot: document.querySelector(".stage"),
+ *     inertRoot: [board, banner],  // optional; defaults to the stage
+ *                                  // minus its top bar
  *     label: "Puzzle complete",
  *   });
  *
@@ -106,7 +140,7 @@ export function bindOverlay(el, opts) {
   if (!el) return { isOpen: function () { return false; } };
   opts = opts || {};
 
-  var inertRoot = opts.inertRoot || document.querySelector(".stage");
+  var inertRoot = opts.inertRoot || stageBehindTopbar();
   var openWhen = opts.openWhen || function () { return el.classList.contains("show"); };
   var open = false;
   var returnTo = null;
@@ -128,8 +162,9 @@ export function bindOverlay(el, opts) {
     if (!open) return;
     if (e.key === "Escape") {
       /* Dismiss the card, not the game. The board underneath is a finished
-         puzzle worth looking at, and the topbar controls come back live —
-         which is why this is not a trap even though nothing else closes it. */
+         puzzle worth looking at. The top bar is never frozen in the first
+         place, so this is a convenience rather than the only way out — which
+         matters on a phone, where there is no Escape key to press. */
       if (opts.onEscape) opts.onEscape();
       else close();
       return;
@@ -200,7 +235,7 @@ export function initHowto(opts) {
   /* Same treatment as the end card. The backdrop already blocks pointers and
      the trap already holds Tab, but neither stops a screen reader swiping
      through the board behind an open sheet. */
-  var inertRoot = opts.inertRoot || document.querySelector(".stage");
+  var inertRoot = opts.inertRoot || stageBehindTopbar();
 
   sheet.setAttribute("role", "dialog");
   sheet.setAttribute("aria-modal", "true");

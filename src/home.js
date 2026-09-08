@@ -16,7 +16,7 @@ import { games } from "./data/games.js";
 import { localBest, playedToday, wordStepsStreak } from "./shared/ui/progress.js";
 import { signature, UNSIGNED } from "./shared/ui/player.js";
 import { initToggle as initThemeToggle } from "./shared/ui/theme.js";
-import { fetchAllBests, localDay } from "./shared/ui/leaderboard.js";
+import { fetchAllBests } from "./shared/ui/leaderboard.js";
 import { formatScore } from "./shared/ui/format.js";
 
 var boarded = games.filter(function (g) { return g.leaderboard !== false; });
@@ -121,18 +121,20 @@ function renderBox() {
  * One request for every board at once. A row whose game has no record keeps its
  * dash and its "Unsigned", both of which were already the right size — this is
  * the whole reason the panel is emitted full and filled in afterwards.
+ *
+ * Every row means the same thing now: the best anyone has ever managed. It used
+ * to mean "all time" for five games and "today" for word-steps, because the
+ * read asked for both periods and this loop took whichever row came last — and
+ * the response has no ordering, so for a daily game it was genuinely arbitrary
+ * which of the two you saw. `fetchAllBests()` returns exactly one row per game,
+ * so there is nothing left to pick between.
  */
 async function renderRoll() {
   var rows = await fetchAllBests();
   if (!rows) return;
 
-  var today = localDay();
   var byGame = Object.create(null);
-  for (var i = 0; i < rows.length; i++) {
-    var row = rows[i];
-    // A daily game files its record under the date; everything else under "all".
-    if (row.period === "all" || row.period === today) byGame[row.game_slug] = row;
-  }
+  for (var i = 0; i < rows.length; i++) byGame[rows[i].game_slug] = rows[i];
 
   for (var g = 0; g < boarded.length; g++) {
     var game = boarded[g];
