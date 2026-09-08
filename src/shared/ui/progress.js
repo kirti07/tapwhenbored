@@ -114,7 +114,7 @@ function bumpStreak(slug, day) {
  * midnight, and a card that wrote a run off at breakfast would be wrong for
  * most of the day it was wrong on.
  */
-export function streak(slug) {
+function streak(slug) {
   var record = getJSON(streakKey(slug), null);
   if (!record || typeof record !== "object" || !Number.isFinite(record.run)) return 0;
 

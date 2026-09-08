@@ -217,7 +217,7 @@ import { recordPlay } from "../shared/ui/progress.js";
 
   function beginDrag(e, tileEl, i) {
     var r = Math.floor(i / SIZE), c = i % SIZE;
-    var br = Math.floor(blankIndex / SIZE), bc = blankIndex % SIZE;
+    var br = Math.floor(blankIndex / SIZE);
     var axis = (r === br) ? "x" : "y";
     var fromRect = tileCellEl(i).getBoundingClientRect();
     var toRect = tileCellEl(blankIndex).getBoundingClientRect();

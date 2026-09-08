@@ -24,9 +24,16 @@ const RESERVED = new Set([
   "shared",
   "api",
   "_vercel",
-  // Non-game pages (src/data/games.js `pages`).
-  "book",
+  // public/fonts/ is served at /fonts/.
+  "fonts",
+  // Non-game pages (src/data/games.js `pages`). Keep this in step with the
+  // same list in scripts/validate-games.js.
+  "account",
   "wall",
+  // `book` stays reserved after that page was retired and became `account`:
+  // the URL was indexed, and a game claiming it would start serving something
+  // else at a remembered address.
+  "book",
 ]);
 
 const slug = process.argv[2];
@@ -271,7 +278,7 @@ const js = `// ${title}
 // (ARCHITECTURE.md §13).
 
 import { initHowto, initShare, createNote, bindOverlay } from "../shared/ui/shell.js";
-import { tone, toggle as toggleSound, onChange as onSoundChange } from "../shared/ui/audio.js";
+import { tone, initSoundToggle } from "../shared/ui/audio.js";
 import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
 
@@ -336,21 +343,16 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
   // Focus lands on Play again, so finishing and pressing Enter replays.
   bindOverlay(overlayEl, {
     primary: againBtn,
-    inertRoot: document.querySelector(".stage"),
+    // No inertRoot: the default freezes the stage *except* its top bar, so the
+    // "Games" link still works while the card is up. Naming `.stage` here is
+    // what used to leave a phone with no way off the page.
     label: "Round over",
   });
 
   initThemeToggle(themeBtn);
 
-  onSoundChange(function (on) {
-    soundBtn.classList.toggle("is-off", !on);
-    soundBtn.setAttribute("aria-pressed", on ? "true" : "false");
-    soundBtn.setAttribute("aria-label", on ? "Sound on" : "Sound off");
-  });
-  soundBtn.addEventListener("click", function () {
-    // TODO: play this game's own confirmation note on unmute.
-    if (toggleSound()) tone(660, 0.08, "sine", 0.05);
-  });
+  // TODO: replace the note with this game's own confirmation sound.
+  initSoundToggle(soundBtn, function () { tone(660, 0.08, "sine", 0.05); });
 
   restartBtn.addEventListener("click", start);
   againBtn.addEventListener("click", start);

@@ -41,9 +41,3 @@ export function showState(slot, name) {
   }
 }
 
-/** Which state is showing, or "" when none is. */
-export function currentState(slot) {
-  if (!slot) return "";
-  var on = slot.querySelector(":scope > .arc-st.arc-on");
-  return on ? on.dataset.state || "" : "";
-}

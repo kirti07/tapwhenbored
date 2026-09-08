@@ -203,6 +203,95 @@ test.describe("the arcade", () => {
   });
 });
 
+test.describe("the record means one thing", () => {
+  /* The roll on the homepage, the cabinet tabs here, and the All-time board
+     used to be three different answers to "what is the record".
+     `game_scores` holds `period='all'` for every game and the date as well for
+     a daily one, so a read that asked for both and took the last row got the
+     all-time record for five games and *today's* for word-steps — under one
+     heading, arbitrarily, because the response has no ordering. And the tab
+     saying "Today's best" was filled from that same read, so for six of eight
+     cabinets the number under it was the all-time record and matched the
+     All-time board rather than the Today one right beneath the label. */
+  const RECORD = 4210;
+
+  const record = (slug, name = "AllTimeAce", score = RECORD) => ({
+    game_slug: slug,
+    best_score: score,
+    updated_at: new Date().toISOString(),
+    players: name === null ? null : { name },
+  });
+
+  test("the tab says All-time, reads the record, and matches the All-time board", async ({
+    page,
+  }) => {
+    const asked = [];
+    await page.route(BESTS, (route) => {
+      asked.push(decodeURIComponent(route.request().url()));
+      return json(route, [record("flip-it")]);
+    });
+    await page.route(STANDING, (route) => json(route, null));
+    // The day board is a different, worse number; the All-time board is the record.
+    await page.route(BOARD, (route) => {
+      const url = decodeURIComponent(route.request().url());
+      const kind = /period_kind=eq\.(\w+)/.exec(url)?.[1];
+      return json(route, [
+        {
+          best_score: kind === "all" ? RECORD : 31500,
+          achieved_at: new Date().toISOString(),
+          player_id: "00000000-0000-4000-8000-000000000001",
+          players: { name: kind === "all" ? "AllTimeAce" : "TodayTina" },
+        },
+      ]);
+    });
+
+    await page.goto(WALL);
+    const tab = page.locator("#cab-flip-it");
+    await expect(tab.locator(".arc-cabtab-k")).toHaveText(/All-time best/);
+    await expect(tab.locator("[data-top]")).toHaveText("0:04");
+    await expect(tab.locator("[data-holder]")).toHaveText("AllTimeAce");
+
+    // One row per game is asked for, by period, rather than two and a guess.
+    expect(asked.some((u) => u.includes("period=eq.all"))).toBe(true);
+
+    await tab.click();
+    await page.locator("#win-all").click();
+    await expect(page.locator("#boardBody tr").first()).toContainText("0:04");
+
+    // And the Today board is its own, different number — no longer conflated.
+    await page.locator("#win-day").click();
+    await expect(page.locator("#boardBody tr").first()).toContainText("0:31");
+  });
+
+  test("a record with no holder keeps its placeholder rather than blanking", async ({ page }) => {
+    /* A real and permanent state: bubble-tap's record was carried over from
+       the pre-board table and has no player_id, and "delete my data"
+       deliberately leaves a record standing with its holder nulled. The number
+       is real either way, so it is shown; the name is not, so the emitted
+       placeholder is left exactly where it is. */
+    await page.route(BESTS, (route) => json(route, [record("flip-it", null)]));
+    await page.route(STANDING, (route) => json(route, null));
+    await page.route(BOARD, (route) => json(route, []));
+
+    await page.goto(WALL);
+    const tab = page.locator("#cab-flip-it");
+    await expect(tab.locator("[data-top]")).toHaveText("0:04");
+    await expect(tab.locator("[data-holder]")).toHaveText("");
+  });
+
+  test("the homepage roll shows the same number under the same meaning", async ({ page }) => {
+    await page.route(BESTS, (route) => json(route, [record("flip-it")]));
+    await page.route(STANDING, (route) => json(route, null));
+    await page.route(BOARD, (route) => json(route, []));
+
+    await page.goto("/");
+    await expect(page.locator(".roll-now")).toHaveText("all time");
+    const row = page.locator('.roll-row[data-slug="flip-it"]');
+    await expect(row.locator("[data-score]")).toHaveText("0:04");
+    await expect(row.locator("[data-sig]")).toHaveText("AllTimeAce");
+  });
+});
+
 test.describe("the homepage", () => {
   test("links to the full boards", async ({ page }) => {
     await page.goto("/");

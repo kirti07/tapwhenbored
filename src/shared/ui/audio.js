@@ -50,7 +50,7 @@ function ctx() {
 /* Nudge a suspended context back to life. Safe to call when there is no
    context yet — it deliberately does not create one, so a page the player
    never interacts with audibly still constructs nothing. */
-export function resume() {
+function resume() {
   if (!actx) return;
   if (actx.state === "suspended") {
     try { actx.resume(); } catch (e) { /* ignore */ }
@@ -79,7 +79,7 @@ export function isOn() {
 }
 
 /** Set the site-wide sound preference and notify any UI bound to it. */
-export function setOn(value) {
+function setOn(value) {
   on = !!value;
   set(SOUND_KEY, on ? "true" : "false");
   if (on) resume();
@@ -90,7 +90,7 @@ export function setOn(value) {
 }
 
 /** Flip the preference. Returns the new value. */
-export function toggle() {
+function toggle() {
   return setOn(!on);
 }
 
@@ -118,7 +118,7 @@ export function initSoundToggle(btn, onEnable) {
 }
 
 /** Subscribe to preference changes. Fires immediately with the current value. */
-export function onChange(fn) {
+function onChange(fn) {
   listeners.push(fn);
   try { fn(on); } catch (e) { /* ignore */ }
 }

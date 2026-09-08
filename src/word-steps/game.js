@@ -1,5 +1,5 @@
 import * as DATA from "./data.js";
-import { localDay, renderGlobalBest } from "../shared/ui/leaderboard.js";
+import { renderGlobalBest } from "../shared/ui/leaderboard.js";
 import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
 import { tone as playTone, initSoundToggle } from "../shared/ui/audio.js";
 import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
@@ -115,7 +115,6 @@ import { recordPlay } from "../shared/ui/progress.js";
     hintTimer = setTimeout(function () { hintMsg.classList.remove("show"); }, 1600);
   }
 
-  // ---------- tiny procedural audio, no assets ----------
   // ---------- audio ----------
   // This game's tone() never took a waveform — every note is a sine — so its
   // call sites read tone(freq, dur, gain, delay). Adapting here keeps those
@@ -451,14 +450,14 @@ import { recordPlay } from "../shared/ui/progress.js";
     countdownEl.textContent = pad(h) + ":" + pad(m) + ":" + pad(s);
   }
 
-  // Fewest steps for TODAY's puzzle. The day is sent from the player's local
-  // date because that is what chose the puzzle; the server picks its own day in
-  // UTC and would otherwise file a late-night score against a different puzzle.
+  // Fewest steps for TODAY's puzzle. The local date goes with every submission
+  // now — renderGlobalBest sends it for every game rather than trusting each one
+  // to remember — which is what keeps a late-night score from being filed
+  // against a different day's puzzle than the one it was played on.
   function showGlobalBest(steps) {
     renderGlobalBest(globalBest, {
       slug: "word-steps",
       score: steps,
-      day: localDay(),
       isRecord: function (score, best) { return score <= best; },
       label: function (best) { return "Best today, worldwide: " + stepLabel(best); },
       recordLabel: "\u2605 Best today, worldwide \u2605",
@@ -491,7 +490,6 @@ import { recordPlay } from "../shared/ui/progress.js";
     if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
   }
 
-  // ---------- share ----------
   // ---------- wiring ----------
   undoBtn.addEventListener("click", undo);
   restartBtn.addEventListener("click", restart);

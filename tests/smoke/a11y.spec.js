@@ -26,6 +26,24 @@ const allPages = ["/", ...pages.map((p) => p.path), ...paths];
    worse bug than the one it fixes. Phone keyboards make the same trade. */
 const NARROW_BY_DESIGN = ["letter-btn", "swatch", "tool"];
 
+/* Is this element out of reach? `inert` is inherited, so an ancestor carrying
+   it counts -- which is exactly what `closest` answers.
+
+   These used to ask whether `.stage` itself had the attribute, and that was an
+   assertion about the implementation rather than the contract. The stage is now
+   frozen child by child so the top bar can stay live, and `.stage[inert]` is
+   false while the board behind a card is still perfectly unreachable. Asking
+   about the board and the exit separately says what actually matters. */
+const BOARD = ".play-area, .board-area, .canvas-area, #playfield";
+const EXIT = ".back-link";
+
+function unreachable(page, selector) {
+  return page.evaluate((sel) => {
+    const el = document.querySelector(sel);
+    return el ? Boolean(el.closest("[inert]")) : null;
+  }, selector);
+}
+
 test.describe("tap targets", () => {
   for (const path of allPages) {
     test(`${path} has no control under 44px`, async ({ page }) => {
@@ -73,13 +91,13 @@ test.describe("the how-to sheet is a dialog", () => {
       await expect(sheet).toHaveClass(/show/);
       await expect(opener).toHaveAttribute("aria-expanded", "true");
 
-      // The page behind an open sheet is out of reach for everyone, not just
+      // The board behind an open sheet is out of reach for everyone, not just
       // for a pointer that the backdrop happens to block.
-      const behindInert = await page.evaluate(() => {
-        const root = document.querySelector(".stage") || document.querySelector(".app");
-        return root ? root.hasAttribute("inert") : null;
-      });
-      expect(behindInert, "the page behind the sheet is inert").toBe(true);
+      expect(await unreachable(page, BOARD), "the board behind the sheet is inert").toBe(true);
+      // But the way out of the page is never taken away. Freezing the top bar
+      // is what left a phone with no exit at all: no Escape key, and no card
+      // in any game has a close button.
+      expect(await unreachable(page, EXIT), "the Games link stays reachable").toBe(false);
 
       await page.keyboard.press("Escape");
       await expect(sheet).not.toHaveClass(/show/);
@@ -88,11 +106,10 @@ test.describe("the how-to sheet is a dialog", () => {
       // Focus goes back where it came from, not to the top of the document.
       await expect(opener).toBeFocused();
 
-      const stillInert = await page.evaluate(() => {
-        const root = document.querySelector(".stage") || document.querySelector(".app");
-        return root ? root.hasAttribute("inert") : null;
-      });
-      expect(stillInert, "the page is reachable again once the sheet closes").toBe(false);
+      expect(
+        await unreachable(page, BOARD),
+        "the board is reachable again once the sheet closes",
+      ).toBe(false);
     });
   }
 });
@@ -132,18 +149,13 @@ test.describe("the end card is a dialog", () => {
     // again — with no dismissal step in between.
     await expect(page.locator("#againBtn")).toBeFocused();
 
-    const inert = await page.evaluate(() =>
-      document.querySelector(".stage").hasAttribute("inert"),
-    );
-    expect(inert, "the board behind the end card is inert").toBe(true);
+    expect(await unreachable(page, BOARD), "the board behind the end card is inert").toBe(true);
+    expect(await unreachable(page, EXIT), "the Games link stays reachable").toBe(false);
 
     await page.keyboard.press("Enter");
     await expect(overlay).not.toHaveClass(/show/);
 
-    const after = await page.evaluate(() =>
-      document.querySelector(".stage").hasAttribute("inert"),
-    );
-    expect(after, "the board is playable again").toBe(false);
+    expect(await unreachable(page, BOARD), "the board is playable again").toBe(false);
   });
 
   test("Escape dismisses the card and gives the page back", async ({ page }) => {
@@ -152,9 +164,7 @@ test.describe("the end card is a dialog", () => {
 
     await page.keyboard.press("Escape");
     await expect(overlay).not.toHaveClass(/show/);
-    expect(
-      await page.evaluate(() => document.querySelector(".stage").hasAttribute("inert")),
-    ).toBe(false);
+    expect(await unreachable(page, BOARD), "the board is given back").toBe(false);
   });
 });
 

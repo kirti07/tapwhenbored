@@ -31,7 +31,7 @@ function root() {
 }
 
 /** The theme currently applied to the document. */
-export function current() {
+function current() {
   return root().getAttribute("data-theme") === DARK ? DARK : LIGHT;
 }
 
@@ -48,7 +48,7 @@ function syncMetaColor() {
 }
 
 /** Apply and persist a theme. */
-export function set(theme) {
+function set(theme) {
   var next = theme === DARK ? DARK : LIGHT;
   root().setAttribute("data-theme", next);
   try { localStorage.setItem("theme", next); } catch (e) { /* private mode */ }
@@ -57,7 +57,7 @@ export function set(theme) {
 }
 
 /** Flip the theme. Returns the new value. */
-export function toggle() {
+function toggle() {
   return set(current() === DARK ? LIGHT : DARK);
 }
 

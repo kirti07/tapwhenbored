@@ -130,7 +130,7 @@ reader who does not know that will look for the missing content in vain.
 | `trailingSlashParity()` | Dev/preview middleware redirecting `/foo` to `/foo/`, so local URLs match production exactly (§5). |
 | `themeBootstrap()` | Inlines `scripts/theme-bootstrap.js` at the `<!-- theme-bootstrap -->` marker. Runs `"pre"` so Vite still sees a plain `<head>` when it injects preloads. |
 | `sharedMarkup()` | Substitutes `scripts/sprite.svg` and `scripts/theme-button.html` at their markers (§9). |
-| `homepageFromRegistry()` | Emits the shelf, the wall, the book slots and the JSON-LD from the registry, at build time (§28). This is the plugin a visual change touches most. |
+| `homepageFromRegistry()` | Emits the shelf, the high-score roll, the player-card rows, the cabinet tabs and the JSON-LD from the registry, at build time (§28). This is the plugin a visual change touches most. |
 | `vercelInsights()` | Adds the analytics tag. |
 | `sitemap()` | Emits `sitemap.xml` from the registry; a dev middleware and a build emit (§28). |
 | `pwa()` | Injects the manifest and icon links, and inlines the worker-cleanup snippet (§18, §19). |
@@ -315,9 +315,9 @@ tap-when-bored/
 │   │                         Every one of these replaced eight hand-maintained
 │   │                         copies; none of them holds game rules.
 │   │
-│   ├── book/                 →  /book/    the player card
+│   ├── account/              →  /account/ the player card
 │   │   ├── index.html                     noindex: it is personal, not content
-│   │   └── book.js
+│   │   └── account.js
 │   │
 │   ├── wall/                 →  /wall/    the boards
 │   │   ├── index.html                     indexed: this is public content
@@ -506,7 +506,7 @@ export const games = [
 
 // Pages that are neither the homepage nor a game.
 export const pages = [
-  { slug: "book", title: "Your sticker book", path: "/book/", ... },
+  { slug: "account", title: "Your player card", path: "/account/", ... },
 ];
 
 // The homepage is not a game, but it has metadata of its own.
@@ -565,7 +565,9 @@ before editing either.
 
 Reserved slugs, which would collide with build output, a `public/` directory or
 a platform path: `assets`, `static`, `icons`, `data`, `shared`, `api`,
-`_vercel`, `fonts`, plus the slug of every non-game page — `book` and `wall`.
+`_vercel`, `fonts`, plus the slug of every non-game page — `account` and
+`wall`, and `book`, which stays reserved because that page was retired after
+its URL had been indexed.
 `scripts/validate-games.js` holds the list; a new non-game page must be added to
 it, or a future game could claim the same URL.
 
@@ -585,7 +587,7 @@ Adding a game should normally require adding one registry entry rather than manu
 
 ## Pages that are not games
 
-`book` and `wall` are real pages with real URLs, and the registry's `pages`
+`account` and `wall` are real pages with real URLs, and the registry's `pages`
 array is what makes them visible to everything that is registry-driven — the
 sitemap, validation, the bundle check and the accessibility suite. A directory
 under `src/` with an `index.html` that appears in neither `games` nor `pages`
@@ -593,16 +595,16 @@ fails `npm run validate`, which gates the deploy.
 
 ```text
 /wall/    the boards. Public content, indexed, changes whenever a record does.
-/book/    the player card. Personal, `noindex, follow`, and mostly local data.
+/account/ the player card. Personal, `noindex, follow`, and mostly local data.
 ```
 
 Their field contract is smaller than a game's: `slug`, `title`, `path`,
 `updated`, `changefreq` and `priority`. They have no `accent`, no `sticker`, no
 `ogImage` and no `leaderboard`, because nothing draws a card for them.
 
-Both are built from the registry the same way a game's card is — `wallRow()` and
-`bookSlot()` in `homepageFromRegistry()` emit their rows at build time, so a new
-game appears on both pages without either page being edited.
+Both are built from the registry the same way a game's card is — `cabinetTab()`
+and `accountRow()` in `homepageFromRegistry()` emit their rows at build time, so
+a new game appears on both pages without either page being edited.
 
 One consequence, and the exception to §1's rule that a new page needs no build
 config: that plugin recognises these pages **by path**. Adding a *third*
@@ -1390,7 +1392,7 @@ A player is a `player_id` the browser generates for itself and keeps in
 no password, no email login and no sign-in. Every board says so out loud:
 "scores aren't verified".
 
-* **The name is optional, and it is not unique.** Up to twelve characters,
+* **The name is optional, and it is not unique.** Up to 24 characters,
   mixed case, nullable — the score row is written before the name exists,
   because the end card shows your row already ranked with a cursor blinking in
   the name column. Uniqueness was considered and rejected: "name taken" would
@@ -1455,8 +1457,8 @@ do.
 
 `is_daily` no longer selects a period. It now records only that everyone plays
 the same puzzle that day — which is what makes word-steps' day board
-like-for-like — and it still chooses the `period` that `game_scores` files a
-game's record under.
+like-for-like — and it decides whether `game_scores` gets a *second*, day-keyed
+row for that game alongside the `'all'` one every game has.
 
 ### One row per player per board, not one per run
 
@@ -1476,15 +1478,26 @@ over the board, and a rank is computed on read.
 
 ### The game-wide record is kept, and kept small
 
-`game_scores` is unchanged from the pre-board shape apart from a nullable
-`player_id`, because the homepage reads it: one row per game, the best anyone
-has managed. It is maintained by the same function in the same transaction as
-`game_leaders`, so the two cannot disagree.
+`game_scores` holds the record: one row per game under `period = 'all'`, the
+best anyone has managed, which is what the homepage roll and the wall's cabinet
+tabs read. A daily game keeps one row per calendar day as well, because "best
+today, worldwide" is a different number from the record and its end card says
+so; `prune_leaderboards()` ages those out after 90 days.
+
+It is maintained by the same function in the same transaction as `game_leaders`,
+so a new record lands in both. They can still differ in one direction, and
+deliberately: a record whose holder is gone — `delete_player()` nulls
+`player_id` rather than dropping the score — or which predates the boards has no
+`game_leaders` row at all, so `game_scores` can be better than the top of the
+All-time board. **The roll is the record; the board is the top ten named
+players.** Nothing reconciles them downwards, because every write path here only
+ever moves a record the improving way.
 
 ## The write path
 
 ```text
-submit_game_run(p_slug, p_score, p_day, p_player_id, p_write_token, p_run_id)
+submit_game_run(p_slug, p_score, p_day, p_player_id, p_write_token, p_run_id,
+                p_name)
   → json { best, accepted, your_best, rank, total, above }
 ```
 
@@ -1527,9 +1540,12 @@ read — `game_leaders` has a public read policy and a foreign key to `players`,
 so ordering, `limit` and an embedded `players(name)` give the top ten with names
 in one request and no function at all.
 
-`submit_game_score(p_slug, p_score, p_day) returns int` survives as a
-three-argument wrapper so a deployed page keeps working through a rollout. Drop
-it once nothing calls it.
+`p_name` is optional and advisory. The POST already happens at game over, so a
+run can put a name on the board without a second request — but a wrong write
+token, a blocked player or a name the board will not take all mean "no name was
+written", never "the score was lost". It can only *set* a name, never clear one:
+clearing is `save_player()`'s job, from the player card, so one stale read in a
+game cannot unsign somebody from every board at once.
 
 ## What stops it being abused
 
@@ -1544,9 +1560,12 @@ platform's problem; application-level abuse is this section's.
   ever moves a row the improving way — a bogus record is unbeatable and there is
   no revert path. `best_score >= 0` is a table constraint as well.
 * **Bounded growth**: one row per player per board, plus `prune_leaderboards()`
-  on a nightly `pg_cron` job — old day and week boards, everything below the top
-  200, spent rate-limit buckets, run ids past a week, and players who left no
-  board row and no email.
+  on a nightly `pg_cron` job — old day and week boards, a daily game's
+  `game_scores` rows past 90 days, everything below the top 200, spent
+  rate-limit buckets, run ids past a week, and players who left no board row,
+  no game-wide record and no email. That last clause matters: without it the
+  prune would delete a player still named on a record and the `on delete set
+  null` foreign key would quietly turn a signed record into an unsigned one.
 * **Emails are not readable by any browser, ever.** Not a policy that could be
   mis-edited: `select` is granted on `players` *by column*, and `email`, `tz`,
   the preferences and `write_token` are not among them. `select=email` is a 403
@@ -1678,7 +1697,7 @@ Three layers:
   invariants are pinned: `site.spec.js` (heads, the sitemap, and font preloads
   matched to real usage), `a11y.spec.js` (tap-target floor, dialog semantics,
   focus return, reduced motion, pre-paint theme), plus `home.spec.js`,
-  `wall.spec.js` and `book.spec.js` for the three pages that are not games.
+  `wall.spec.js` and `account.spec.js` for the three pages that are not games.
 * **Game-specific** — core mechanic, win and loss conditions, restart. Only for
   games whose complexity earns it.
 * **PWA** — manifest and icons, and the absence of any worker, cache or

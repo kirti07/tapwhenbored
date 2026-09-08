@@ -101,7 +101,7 @@ test("a game plays with no credentials configured", async ({ page }) => {
 //
 // marble-nostalgia is the only game whose end state is reachable by playing,
 // without writing a solver, so it is where the global-best line can actually be
-// observed. Mocking submit_game_score also covers the happy path without
+// observed. Mocking submit_game_run also covers the happy path without
 // depending on the database being migrated.
 // ---------------------------------------------------------------------------
 
@@ -228,8 +228,15 @@ test.describe("the end card shows the global best", () => {
     expect(sent.length).toBeGreaterThan(0);
     expect(sent[0].p_slug).toBe("marble-nostalgia");
     expect(Number.isInteger(sent[0].p_score)).toBe(true);
-    // Not a daily game, so it must not pin a day.
-    expect(sent[0].p_day).toBeUndefined();
+    // EVERY game pins its local day now, daily or not. It used to be a
+    // per-game option and only word-steps set it, so the other five had their
+    // Today and This week boards keyed by the server's UTC date while the wall
+    // reads them with localDay() -- at UTC+5:30 that hid every run played
+    // before 05:30 local. `is_daily` in the database, not this field, is what
+    // decides whether a game's *record* is day-scoped.
+    expect(sent[0].p_day, "the local day travels with every run").toMatch(
+      /^\d{4}-\d{2}-\d{2}$/,
+    );
 
     // Identity travels with the score, or the run cannot land on a board.
     // The id and token are this browser's, minted on first use; the run id is
@@ -241,6 +248,62 @@ test.describe("the end card shows the global best", () => {
     // The token authorises a rename; it must never equal the public id.
     expect(sent[0].p_write_token).not.toBe(sent[0].p_player_id);
     expect(uncaught()).toEqual([]);
+  });
+
+  test("carries the player's name, on the request it was already making", async ({ page }) => {
+    const uncaught = failOnUncaught(page);
+    const sent = [];
+    const all = [];
+    page.on("request", (r) => {
+      if (r.url().includes("/rest/v1/")) all.push(r.url());
+    });
+    await page.route(RPC, async (route) => {
+      sent.push(JSON.parse(route.request().postData() || "{}"));
+      await route.fulfill({ status: 200, contentType: "application/json", body: answer(1) });
+    });
+
+    await page.goto("/marble-nostalgia/");
+    // A named browser, the way the account page leaves it.
+    await page.evaluate(() =>
+      localStorage.setItem(
+        "twb:player",
+        JSON.stringify({
+          id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          token: "11111111-1111-4111-8111-111111111111",
+          name: "Kirti",
+        }),
+      ),
+    );
+    await page.reload();
+    expect(await playToEnd(page), "did not reach an end state").toBe(true);
+
+    expect(sent.length).toBeGreaterThan(0);
+    expect(sent[0].p_name, "the name rides along").toBe("Kirti");
+
+    /* And it costs nothing. The whole point of putting the name on this body
+       rather than in a call of its own is that the POST was happening anyway,
+       so a name reaches the boards with no extra round trip at game over —
+       which is when a player is most likely to be closing the tab. */
+    expect(all.length, `one request, not two: ${all.join(", ")}`).toBe(1);
+    expect(uncaught()).toEqual([]);
+  });
+
+  test("sends no name at all when none is set, so a run cannot clear one", async ({ page }) => {
+    const sent = [];
+    await page.route(RPC, async (route) => {
+      sent.push(JSON.parse(route.request().postData() || "{}"));
+      await route.fulfill({ status: 200, contentType: "application/json", body: answer(1) });
+    });
+
+    await page.goto("/marble-nostalgia/");
+    expect(await playToEnd(page), "did not reach an end state").toBe(true);
+
+    expect(sent.length).toBeGreaterThan(0);
+    /* Omitted, not sent empty. The server reads a missing name as "this run
+       brought none" and never as "clear it", so one stale read here can never
+       unsign somebody from every board at once. Clearing is the account
+       page's job, through save_player. */
+    expect("p_name" in sent[0], "no p_name key when unnamed").toBe(false);
   });
 
   test("celebrates when the run matched or beat the record", async ({ page }) => {
@@ -328,8 +391,15 @@ test.describe("bubble-tap reports the global best", () => {
 
     expect(sent.length).toBeGreaterThan(0);
     expect(sent[0].p_slug).toBe("bubble-tap");
-    // Not a daily game, so it must not pin a day.
-    expect(sent[0].p_day).toBeUndefined();
+    // EVERY game pins its local day now, daily or not. It used to be a
+    // per-game option and only word-steps set it, so the other five had their
+    // Today and This week boards keyed by the server's UTC date while the wall
+    // reads them with localDay() -- at UTC+5:30 that hid every run played
+    // before 05:30 local. `is_daily` in the database, not this field, is what
+    // decides whether a game's *record* is day-scoped.
+    expect(sent[0].p_day, "the local day travels with every run").toMatch(
+      /^\d{4}-\d{2}-\d{2}$/,
+    );
 
     // Identity travels with the score, or the run cannot land on a board.
     // The id and token are this browser's, minted on first use; the run id is

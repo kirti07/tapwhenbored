@@ -167,7 +167,7 @@ function themeBootstrap() {
 /**
  * Markup that every page draws the same way, kept in one file each.
  *
- * The sprite was 50 identical lines in two documents and the theme button four
+ * The sprite was 50 identical lines in three documents and the theme button four
  * lines in eleven, which had already drifted into three variants — the games'
  * copy was missing the `aria-hidden` the others had. Neither is a runtime
  * concern, so neither belongs in a module: they are substituted into the HTML
@@ -276,13 +276,6 @@ function homepageFromRegistry() {
             <td class="acc-rank" data-rank>${g.leaderboard === false ? "no board" : ""}</td>
           </tr>`;
 
-  /* The wall, one row per game that has a board.
-     Same read as the homepage tiles, laid out as a list so each record has room
-     for the things a tile has no space for: which way round the game scores,
-     and when the record was set. Rendered here rather than in script so the
-     list has its final height on the first frame — the numbers arrive from the
-     network a moment later and must not push anything down. */
-
   /* One tab per cabinet, all eight of them.
    *
    * The two games with no board are here too, labelled as such: the arcade
@@ -298,12 +291,12 @@ function homepageFromRegistry() {
     const board = g.leaderboard !== false;
     const first = i === 0;
     return `          <button class="arc-cabtab arc" role="tab" type="button"
-            id="cab-${g.slug}" data-slug="${g.slug}" data-board="${board}"
+            id="cab-${g.slug}" data-slug="${g.slug}"
             aria-controls="cabinet" aria-selected="${first}" tabindex="${first ? 0 : -1}"
             style="${vars(g)}">
             <span class="arc-marquee"><span class="arc-pix">${escapeHtml(g.title)}</span></span>
             <span class="arc-cabtab-foot">
-              <span class="arc-cabtab-k">${board ? "Today&rsquo;s best" : "No board"}</span>
+              <span class="arc-cabtab-k">${board ? "All-time best" : "No board"}</span>
               <span class="arc-cabtab-v" data-top>${board ? "&mdash;" : "&mdash;"}</span>
               <span class="arc-cabtab-w" data-holder>${board ? "" : "just for the doing"}</span>
             </span>
