@@ -101,6 +101,63 @@ function vercelInsights() {
 }
 
 /**
+ * Injects the Google Analytics 4 tag into every page.
+ *
+ * Google's instruction is to paste its snippet into every page immediately
+ * after <head>. Both halves of that are declined on purpose.
+ *
+ * One place instead of eleven, for the same reason as the Vercel tag above.
+ * Pasting a plain <script src> into the pages would also fail
+ * scripts/validate-games.js, which rejects a non-module <script src> in a game
+ * page because Vite would neither bundle nor emit it (§4).
+ *
+ * `injectTo: "head"` appends at the *end* of the head rather than the start.
+ * "head-prepend" would put an inline script ahead of the theme bootstrap, which
+ * exists solely to set data-theme before the first stylesheet applies and is
+ * the only thing standing between a dark-mode player and a white flash. First
+ * paint must never wait on the network (§34), and nothing is lost by waiting:
+ * the tag is async and built from JavaScript, so where it sits in the head does
+ * not change what GA4 records.
+ *
+ * "post" for the same reason as the Vercel tag: vite:build-html has already
+ * scanned the document, so nothing here is parsed for asset resolution.
+ *
+ * See scripts/gtag.js for the hostname guard and why gtag() is defined even
+ * where the library is not loaded.
+ */
+function googleAnalytics() {
+  let snippet = "";
+  return {
+    name: "twb:google-analytics",
+
+    buildStart() {
+      // Same read-as-a-string treatment as the theme bootstrap and the worker
+      // cleanup: the header documents the contract rather than the runtime
+      // behaviour, so it does not belong in every page, and the body is
+      // collapsed to one line. That collapse is why the file's code carries no
+      // `//` comments.
+      snippet = readFileSync(path.join(rootDir, "scripts/gtag.js"), "utf8")
+        .replace(/^(?:\/\/.*\n)+/, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      // Rebuild when it changes during dev.
+      this.addWatchFile?.(path.join(rootDir, "scripts/gtag.js"));
+    },
+
+    transformIndexHtml: {
+      order: "post",
+      handler: () => [
+        {
+          tag: "script",
+          children: snippet,
+          injectTo: "head",
+        },
+      ],
+    },
+  };
+}
+
+/**
  * True only for the site homepage.
  *
  * ctx.path is "/index.html" for the homepage and "/<slug>/index.html" for a
@@ -516,6 +573,7 @@ export default defineConfig(({ mode }) => {
     sharedMarkup(),
     homepageFromRegistry(),
     vercelInsights(),
+    googleAnalytics(),
     sitemap(),
     pwa(),
     warnMissingLeaderboardEnv(env),
