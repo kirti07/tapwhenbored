@@ -131,7 +131,8 @@ reader who does not know that will look for the missing content in vain.
 | `themeBootstrap()` | Inlines `scripts/theme-bootstrap.js` at the `<!-- theme-bootstrap -->` marker. Runs `"pre"` so Vite still sees a plain `<head>` when it injects preloads. |
 | `sharedMarkup()` | Substitutes `scripts/sprite.svg` and `scripts/theme-button.html` at their markers (§9). |
 | `homepageFromRegistry()` | Emits the shelf, the high-score roll, the player-card rows, the cabinet tabs and the JSON-LD from the registry, at build time (§28). This is the plugin a visual change touches most. |
-| `vercelInsights()` | Adds the analytics tag. |
+| `vercelInsights()` | Adds the Vercel Analytics tag, which only exists on Vercel's edge. |
+| `googleAnalytics()` | Inlines `scripts/gtag.js` at the end of every page's `<head>` (§19). |
 | `sitemap()` | Emits `sitemap.xml` from the registry; a dev middleware and a build emit (§28). |
 | `pwa()` | Injects the manifest and icon links, and inlines the worker-cleanup snippet (§18, §19). |
 | `warnMissingLeaderboardEnv()` | Warns when Supabase credentials are absent, and **fails the build** if a secret-looking variable is present (§35). |
@@ -1039,6 +1040,28 @@ Network-first or graceful failure.
 ### Analytics
 
 Must never block gameplay.
+
+There are two tags, both injected from `vite.config.js` so no page carries
+either in its source. `vercelInsights()` adds Vercel Analytics, which is
+cookieless and served from Vercel's edge — so it 404s in dev and preview, which
+is why `tests/smoke/site.spec.js` allowlists it. `googleAnalytics()` inlines
+`scripts/gtag.js`, the GA4 tag for `G-NPERHK4GNM`.
+
+GA4 loads its library **only when the hostname contains `tapwhenbored.com`**.
+That excludes dev, `vite preview`, Playwright and `*.vercel.app` preview
+deploys, and it is not a nicety: the browser tests run against a real production
+build on `localhost:4173` across two device projects, so an unguarded tag would
+report every CI run as real traffic, and the smoke suite — which fails on any
+subresource that does not load — would go red on a machine with no network. The
+guard is why neither spec needed an allowlist entry for Google.
+
+`window.dataLayer` and `window.gtag` are defined on every page in every
+environment; only the library and the `config` call are gated. So
+`gtag("event", ...)` is safe to call from anywhere, including locally, where it
+queues and goes nowhere.
+
+Neither tag is measured by `check:bundles`, which follows only same-origin
+`/static/*` references (§23).
 
 ---
 
