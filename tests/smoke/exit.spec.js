@@ -1,23 +1,29 @@
 // You can always leave a game page.
 //
-// The "Games" link in the top bar is the only way off a game page, and an open
-// end card used to take it away: bindOverlay() marked the whole `.stage` inert,
-// and seven of the eight games keep their top bar inside `.stage`. The link
-// stayed painted at full opacity — the card's backdrop is a gradient that
-// reaches transparency well above it — and did nothing at all.
+// There are two ways off it now, and this file holds both. The "Games" link in
+// the top bar was the only one, and an open end card used to take it away:
+// bindOverlay() marked the whole `.stage` inert, and seven of the eight games
+// keep their top bar inside `.stage`. The link stayed painted at full opacity —
+// the card's backdrop is a gradient that reaches transparency well above it —
+// and did nothing at all.
 //
 // word-steps turned that from a moment into a state. It re-opens its card on
 // load whenever today's puzzle is already solved, so for the rest of the day
 // every visit, including a shared link, landed on a page whose only exit was
-// dead. On a phone there is no Escape key, and no game's card has a close
-// button, so the only way out was to reload the tab.
+// dead. On a phone there is no Escape key, and back then no game's card had a
+// close button, so the only way out was to reload the tab.
 //
-// These drive the exit the way a player does: open the thing, tap Games, and
-// check the browser actually went home.
+// The card carries its own X to the games list now. That is a second exit, not
+// a replacement: the top bar must still work behind an open card, because the
+// how-to sheet has no X and never will. Both are asserted below, per game.
+//
+// These drive the exits the way a player does: open the thing, tap the control,
+// and check the browser actually went home.
 
 import { test, expect } from "@playwright/test";
 import { games } from "../../src/data/games.js";
 import { LAUNCH_DATE, PUZZLES } from "../../src/word-steps/data.js";
+import { openEndCard } from "../helpers/endcard.js";
 
 /* bubble-tap has no `.stage` and shows its cards by removing `.hidden`; it is
    covered separately below. */
@@ -81,6 +87,23 @@ test.describe("the way out survives an open end card", () => {
       expect(await leavesViaGames(page), `${id}: tapping Games goes home`).toBe(true);
     }
   });
+});
+
+test.describe("the end card's own exit", () => {
+  for (const game of games) {
+    test(`${game.path} — the X on the card goes home`, async ({ page }) => {
+      await page.goto(game.path);
+      const card = await openEndCard(page, game.slug);
+      const exit = card.locator(".overlay-exit");
+
+      await expect(exit).toBeVisible();
+      // Not just painted: the thing under that point has to be the exit
+      // itself. bubble-tap's top bar sits *above* its card in the stacking
+      // order, so a bounding box alone would prove nothing here.
+      await exit.click({ timeout: 2500 });
+      await page.waitForURL((url) => url.pathname === "/", { timeout: 2500 });
+    });
+  }
 });
 
 test.describe("the way out survives an open how-to sheet", () => {

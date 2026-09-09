@@ -14,6 +14,7 @@
 import { test, expect } from "@playwright/test";
 import { games, pages } from "../../src/data/games.js";
 import { blockStorage } from "../helpers/storage.js";
+import { openEndCard } from "../helpers/endcard.js";
 
 const paths = games.map((g) => g.path);
 /* Games plus every other page on the site. The game-only describes below use
@@ -95,8 +96,10 @@ test.describe("the how-to sheet is a dialog", () => {
       // for a pointer that the backdrop happens to block.
       expect(await unreachable(page, BOARD), "the board behind the sheet is inert").toBe(true);
       // But the way out of the page is never taken away. Freezing the top bar
-      // is what left a phone with no exit at all: no Escape key, and no card
-      // in any game has a close button.
+      // is what left a phone with no exit at all: no Escape key, and back then
+      // no card in any game had a close button. End cards carry their own X
+      // now; the how-to sheet does not, so the bar still has to work behind an
+      // open sheet.
       expect(await unreachable(page, EXIT), "the Games link stays reachable").toBe(false);
 
       await page.keyboard.press("Escape");
@@ -170,21 +173,126 @@ test.describe("the end card is a dialog", () => {
 
 test.describe("one vocabulary", () => {
   for (const path of paths) {
-    test(`${path} says "Play again" and "Share"`, async ({ page }) => {
+    test(`${path} says "Play again", "Share" and "See the wall"`, async ({ page }) => {
       await page.goto(path);
       const labels = await page.evaluate(() => {
         const again =
           document.getElementById("againBtn") || document.getElementById("restartBtn");
         const share = document.getElementById("shareBtn");
+        const wall = document.querySelector(".wall-btn");
+        const exit = document.querySelector(".overlay-exit");
         return {
           again: again ? again.textContent.trim() : null,
           share: share ? share.textContent.trim() : null,
+          wall: wall ? wall.textContent.trim() : null,
+          wallHref: wall ? wall.getAttribute("href") : null,
+          exitHref: exit ? exit.getAttribute("href") : null,
+          exitLabel: exit ? exit.getAttribute("aria-label") : null,
         };
       });
       // The markup carries the same string everywhere; a game may still shout
       // it in CSS if that is its register.
       expect(labels.again).toBe("Play again");
       expect(labels.share).toBe("Share");
+      // Both exits are substituted in from one file each, so this is a check
+      // that every game still has them rather than that anyone retyped them.
+      expect(labels.wall).toBe("See the wall");
+      expect(labels.wallHref).toBe("/wall/");
+      expect(labels.exitHref).toBe("/");
+      // Named for what it does. It leaves the page; it does not dismiss.
+      expect(labels.exitLabel).toBe("Leave and see all games");
+    });
+  }
+});
+
+test.describe("the end card's exits", () => {
+  for (const game of games) {
+    test(`${game.path} — the X sits in the top bar's slot and takes the tap`, async ({
+      page,
+    }) => {
+      for (const size of [
+        { width: 390, height: 844 },
+        { width: 844, height: 390 },
+      ]) {
+        await page.setViewportSize(size);
+        await page.goto(game.path);
+
+        // Measured before the card opens, because opening it is what stands
+        // the icon buttons down.
+        const slot = await page.locator(".top-actions > *").last().boundingBox();
+        const card = await openEndCard(page, game.slug);
+        const exit = await card.locator(".overlay-exit").boundingBox();
+
+        const where = `${game.slug} at ${size.width}x${size.height}`;
+        expect(Math.abs(exit.x + exit.width - (slot.x + slot.width)), where).toBeLessThanOrEqual(2);
+        expect(
+          Math.abs(exit.y + exit.height / 2 - (slot.y + slot.height / 2)),
+          where,
+        ).toBeLessThanOrEqual(2);
+
+        // A bounding box says nothing about what is on top. bubble-tap's top
+        // bar is deliberately above its card in the stacking order, so this is
+        // the assertion that matters there.
+        const hit = await page.evaluate(
+          ([x, y]) => Boolean(document.elementFromPoint(x, y)?.closest(".overlay-exit")),
+          [exit.x + exit.width / 2, exit.y + exit.height / 2],
+        );
+        expect(hit, `${where}: the exit is the thing under its own centre`).toBe(true);
+      }
+    });
+
+    test(`${game.path} — Play again and Share match, the wall spans both`, async ({ page }) => {
+      for (const size of [
+        { width: 390, height: 844 },
+        { width: 360, height: 640 },
+        { width: 844, height: 390 },
+      ]) {
+        await page.setViewportSize(size);
+        await page.goto(game.path);
+        const card = await openEndCard(page, game.slug);
+
+        const again = await card
+          .locator("#againBtn, #restartBtn")
+          .boundingBox();
+        const share = await card.locator("#shareBtn").boundingBox();
+        const wall = await card.locator(".wall-btn").boundingBox();
+
+        const where = `${game.slug} at ${size.width}x${size.height}`;
+        expect(Math.abs(again.width - share.width), `${where}: equal widths`).toBeLessThanOrEqual(1);
+        expect(Math.round(again.y), `${where}: same row`).toBe(Math.round(share.y));
+        expect(wall.y, `${where}: the wall is below the pair`).toBeGreaterThan(
+          again.y + again.height - 1,
+        );
+        expect(wall.width, `${where}: the wall spans both`).toBeGreaterThanOrEqual(
+          again.width + share.width,
+        );
+
+        // A third row is a third row of height. The card has to still fit.
+        const content = await card.locator(".overlay-content, .overlay-card").boundingBox();
+        expect(content.y, `${where}: the card is not off the top`).toBeGreaterThanOrEqual(-1);
+        expect(
+          content.y + content.height,
+          `${where}: the card is not off the bottom`,
+        ).toBeLessThanOrEqual(size.height + 1);
+      }
+    });
+
+    test(`${game.path} — the top bar's buttons stand down while the card is up`, async ({
+      page,
+    }) => {
+      await page.goto(game.path);
+      // The X takes the slot the rightmost of these occupies, so they cannot
+      // both be there. Scoped to .top-actions: bubble-tap's #restartBtn is its
+      // Play again, which is on the card and very much stays.
+      const icons = page.locator(".top-actions > *");
+      const count = await icons.count();
+      expect(count).toBeGreaterThan(0);
+
+      await openEndCard(page, game.slug);
+      for (let i = 0; i < count; i++) await expect(icons.nth(i)).toBeHidden();
+
+      await page.keyboard.press("Escape");
+      for (let i = 0; i < count; i++) await expect(icons.nth(i)).toBeVisible();
     });
   }
 });

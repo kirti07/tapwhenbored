@@ -81,6 +81,13 @@ function trap(root, e) {
  * marking the stage and then unmarking the bar; the children have to be marked
  * one at a time. bubble-tap already passed exactly this shape by hand.
  *
+ * End cards carry their own X to the games list now, so the bar is no longer
+ * the only way out of one. It still has to stay live: the how-to sheet uses
+ * the same inert root and has no close control of its own, and a second exit
+ * is not a reason to take the first one away. What the card's X *does* take is
+ * the top bar's icon buttons, which sit in the slot it occupies — they stand
+ * down for as long as a card is open, in CSS, in shared/css/endcard.css.
+ *
  * Captured once, at bind time, like the `inertRoot` it replaces — no game
  * mutates `.stage`'s children after load.
  */

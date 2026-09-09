@@ -4,6 +4,7 @@
 @import "../shared/css/base.css";
 @import "../shared/css/shell.css";
 @import "../shared/css/howto.css";
+@import "../shared/css/endcard.css";
 
 :root {
   --bg: #fdf2ef;
@@ -337,9 +338,9 @@ html, body {
   letter-spacing: 0.08em;
 }
 
+/* Layout is shared (endcard.css); the gap above the block is this
+   card's own vertical rhythm. */
 .overlay-actions {
-  display: flex;
-  gap: 3vw;
   margin-top: 1svh;
 }
 
