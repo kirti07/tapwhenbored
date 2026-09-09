@@ -450,14 +450,23 @@ The default should be to keep logic inside the game.
 | `ui/day.js` | a date computed two ways | A daily puzzle is chosen by the *player's* date and the server runs in UTC. One function, so a page cannot disagree with the score it submits (§27). |
 | `ui/format.js` | 8 spellings of a score | `31 moves`, `1:04` and a relative timestamp are platform copy, not game rules, and drifted per game. |
 
-Two things that are *markup* rather than code are shared the same way, but
+Four things that are *markup* rather than code are shared the same way, but
 through the build instead of a module: `scripts/sprite.svg` (the sticker
-`<symbol>` definitions) and `scripts/theme-button.html` (the light/dark toggle).
-Both were hand-copied — the sprite into two documents at 50 identical lines
-each, the button into eleven, where it had already drifted into three variants
-and the games' copy had lost its `aria-hidden`. They are substituted into the
+`<symbol>` definitions), `scripts/theme-button.html` (the light/dark toggle),
+and `scripts/end-card-exit.html` and `scripts/end-card-wall.html` (the end
+card's X to the games list and its link to the wall). The first two were
+hand-copied before they were extracted — the sprite into two documents at 50
+identical lines each, the button into eleven, where it had already drifted into
+three variants and the games' copy had lost its `aria-hidden`. The end card's
+pair were never copied at all: they carry an inline SVG each and go into all
+eight games, and the repo already held two close glyphs at two stroke widths,
+so they were built this way from the start. All four are substituted into the
 HTML by `sharedMarkup()` in `vite.config.js`, so they cost no runtime bytes and
-cannot drift again.
+cannot drift.
+
+A marker that is dropped fails silently — the page simply ships without the
+control — so `scripts/validate-games.js` checks that every game still carries
+one of each.
 
 `shell.js` is held at four small functions on purpose — `initHowto`,
 `initShare`, `createNote` and `bindOverlay`, and no fifth without a fight. The pull is to grow it
@@ -789,6 +798,7 @@ shared/css/
 ├── base.css          the reset, and document-level behaviour
 ├── shell.css         the top bar a game wears
 ├── howto.css         the how-to bottom sheet
+├── endcard.css       the end card's exits, and its action block
 └── leaderboard.css   the global-best line
 ```
 
@@ -828,7 +838,8 @@ Every game declares its own `:root { --bg, --ink, --ink-soft, --line, --accent,
 --accent-dark }` and its own `:root[data-theme="dark"]` override, and the shared
 files consume those names without ever defining them — `shell.css` needs
 `--ink`, `--ink-soft` and `--line`; `howto.css` needs `--bg`, `--ink`,
-`--ink-soft`, `--accent` and `--accent-dark`; `leaderboard.css` needs
+`--ink-soft`, `--accent` and `--accent-dark`; `endcard.css` needs `--ink`,
+`--line`, `--accent` and `--accent-dark`; `leaderboard.css` needs
 `--accent-dark` and optionally `--record`.
 
 The cabinet chrome is the one shared thing that will need a palette of its own —

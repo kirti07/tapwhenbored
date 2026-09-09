@@ -230,16 +230,31 @@ function themeBootstrap() {
  * concern, so neither belongs in a module: they are substituted into the HTML
  * at build time, exactly like the shelf and the slots.
  *
+ * The end card's two exits joined them for the same reason and before any drift
+ * had happened: both carry an inline SVG, both go into all eight games, and the
+ * repo already held two divergent copies of a close glyph at different stroke
+ * widths. A marker that is dropped fails silently, so scripts/validate-games.js
+ * checks that every game still has both.
+ *
  * The button's class differs by page family (`.iconbtn` on the homepage and the
- * book, `.icon-btn` in the game shells), so that one bit is a parameter.
+ * book, `.icon-btn` in the game shells), so that one bit is a parameter — the
+ * only partial that takes one.
  */
+const PARTIALS = {
+  "theme-btn": "scripts/theme-button.html",
+  "endcard-exit": "scripts/end-card-exit.html",
+  "endcard-wall": "scripts/end-card-wall.html",
+};
+
 function sharedMarkup() {
   let sprite = "";
-  let themeBtn = "";
+  const partials = {};
 
   const read = () => {
     sprite = readFileSync(path.join(rootDir, "scripts/sprite.svg"), "utf8").trim();
-    themeBtn = readFileSync(path.join(rootDir, "scripts/theme-button.html"), "utf8").trim();
+    for (const [name, file] of Object.entries(PARTIALS)) {
+      partials[name] = readFileSync(path.join(rootDir, file), "utf8").trim();
+    }
   };
 
   return {
@@ -247,7 +262,9 @@ function sharedMarkup() {
     buildStart() {
       read();
       this.addWatchFile?.(path.join(rootDir, "scripts/sprite.svg"));
-      this.addWatchFile?.(path.join(rootDir, "scripts/theme-button.html"));
+      for (const file of Object.values(PARTIALS)) {
+        this.addWatchFile?.(path.join(rootDir, file));
+      }
     },
     configureServer() {
       read();
@@ -258,12 +275,22 @@ function sharedMarkup() {
         if (html.includes("<!-- sprite -->")) {
           html = html.replace("<!-- sprite -->", sprite);
         }
-        return html.replace(/([ \t]*)<!-- theme-btn(?::([\w-]+))? -->/g, (_m, indent, cls) =>
-          indent +
-          themeBtn
-            .replace("{cls}", cls || "iconbtn")
-            .split("\n")
-            .join("\n" + indent),
+        // `<!-- name -->`, or `<!-- name:argument -->` where the partial takes
+        // one. The indent of the marker is applied to every line of the
+        // partial, so the emitted HTML reads the way a hand-written block would.
+        return html.replace(
+          /([ \t]*)<!-- ([\w-]+)(?::([\w-]+))? -->/g,
+          (whole, indent, name, arg) => {
+            const partial = partials[name];
+            if (partial === undefined) return whole;
+            return (
+              indent +
+              partial
+                .replace("{cls}", arg || "iconbtn")
+                .split("\n")
+                .join("\n" + indent)
+            );
+          },
         );
       },
     },

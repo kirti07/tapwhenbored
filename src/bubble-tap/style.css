@@ -3,6 +3,7 @@
 @import "../shared/css/base.css";
 @import "../shared/css/shell.css";
 @import "../shared/css/howto.css";
+@import "../shared/css/endcard.css";
 
 :root {
   --paper: #eaf6fb;
@@ -60,8 +61,11 @@ html, body {
    Lifted above the end and pause cards, which are opaque and cover the whole
    of `.app` (`.overlay`, below, is z-index 9). Taking `.topbar` out of the
    inert list was necessary but not sufficient here: the "Games" link was no
-   longer switched off, it was simply buried under an opaque card, and neither
-   card has a close button. `.app` and `.overlay` paint the identical
+   longer switched off, it was simply buried under an opaque card, and at the
+   time neither card had a close button. The end card has one now — which is
+   why the bar stops hit-testing while that card is up, further down: sitting
+   above the card, its empty right-hand strip would otherwise swallow the tap
+   meant for the X underneath. `.app` and `.overlay` paint the identical
    background, so the bar on top of a card looks exactly as it does on the
    board.
 
@@ -476,7 +480,7 @@ html, body {
 /* The gap above PLAY AGAIN belongs to the button, not to the last .go-sub:
    :last-of-type is structural, so it kept matching #globalBest even when that
    line was hidden and the card lost its gap in an unconfigured build. */
-#gameOverOverlay .btn:first-of-type { margin-top: 14px; }
+#gameOverOverlay .overlay-actions { margin-top: 14px; }
 /* This game keeps its own global-best styling rather than importing
    shared/css/leaderboard.css. Its end card is all-caps and mono-spaced and
    speaks --ink/--ink-soft, not --accent-dark — the same reason it opts out of
@@ -503,12 +507,74 @@ html, body {
   transition: transform 0.1s ease;
 }
 .btn:active { transform: scale(0.96); }
+/* The gap under the settings panel's RESTART GAME. It used to sit on
+   `.btn.ghost` itself, which also matched the end card's Share button — and
+   there the two buttons now share a grid row, where a top margin on one of
+   them makes it shorter than its pair. */
+#settingsPanel .btn.ghost { margin-top: 8px; }
 .btn.ghost {
   border: 1.5px solid var(--line);
   background: transparent;
   color: var(--ink);
-  margin-top: 8px;
 }
+
+/* ---- the end card's two exits ----
+ *
+ * The shared rules are in shared/css/endcard.css; this game diverges in four
+ * ways and each one needs a line here rather than a weakening there.
+ */
+
+/* This card is `display: none` when closed and is shown by *removing*
+   `.hidden` rather than adding `.show`, so the shared `.overlay.show` gate
+   never fires — and there is no invisible-but-laid-out state for it to guard
+   against in the first place. */
+#gameOverOverlay .overlay-exit { pointer-events: auto; }
+
+/* Not a `.stage` padding box, and not a 44px circle either: this bar pads
+   18px/20px and its icons are 36px squares — 30px on a phone — because three
+   44px targets would overlap in a 14px-padded bar on a 320px screen. The exit
+   is one of those icons, so it takes their box and their offsets, and picks up
+   the 44px `::after` hit area they all share (below). */
+#gameOverOverlay .overlay-exit {
+  top: 18px;
+  right: 20px;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  border-width: 1px;
+}
+
+/* `.overlay` is z-index 9 and a stacking context, deliberately below the bar
+   (see the note above .topbar), so nothing inside the card can be lifted over
+   it. With the icon buttons stood down the bar is an empty transparent strip,
+   and it would still swallow the tap meant for the exit underneath it. So it
+   stops hit-testing while the end card is up; the "Games" link opts back in,
+   because taking that away is the bug the z-index was chosen to avoid.
+   Keyed on #gameOverOverlay: the pause card is not an end card and keeps its
+   whole top bar, mute button included. */
+html:has(#gameOverOverlay:not(.hidden)) .topbar { pointer-events: none; }
+html:has(#gameOverOverlay:not(.hidden)) .topbar .back-link { pointer-events: auto; }
+html:has(#gameOverOverlay:not(.hidden)) .top-actions { visibility: hidden; }
+
+/* Square, uppercase, mono-adjacent: this game's register, the same reason
+   `.btn` diverges from every other game's pill. Quietest of the three. */
+#gameOverOverlay .wall-btn {
+  font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 12px 28px;
+  border-radius: 10px;
+  border: 1.5px solid var(--line);
+  color: var(--ink-soft);
+}
+
+/* The shared 44px floor lists .pill-btn/.again-btn/.share-btn, none of which
+   this game uses, and its card is display:none when closed so the tap-target
+   scan has never measured these two. At 12px of padding on a 12px label they
+   are 39 tall. */
+#gameOverOverlay .btn { min-height: 44px; }
 
 .panel {
   position: absolute;
@@ -587,6 +653,14 @@ html, body {
   .back-link span { display: none; }
   .icon-btn { width: 30px; height: 30px; border-radius: 8px; }
   .icon-btn svg { width: 15px; height: 15px; }
+  #gameOverOverlay .overlay-exit {
+    top: max(8px, env(safe-area-inset-top, 0px));
+    right: 14px;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+  }
+  #gameOverOverlay .overlay-exit svg { width: 15px; height: 15px; }
 
   .hud { padding: 4px 14px 8px; gap: 6px; }
   .playfield { margin: 0 8px 8px; }
@@ -749,7 +823,8 @@ html, body {
 
 .icon-btn::after,
 .back-link::after,
-.howto-link::after {
+.howto-link::after,
+.overlay-exit::after {
   content: "";
   position: absolute;
   top: 50%;

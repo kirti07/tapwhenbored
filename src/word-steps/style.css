@@ -4,6 +4,7 @@
 @import "../shared/css/base.css";
 @import "../shared/css/shell.css";
 @import "../shared/css/howto.css";
+@import "../shared/css/endcard.css";
 @import "../shared/css/leaderboard.css";
 
 :root {
@@ -478,10 +479,21 @@ html, body {
   color: var(--accent-dark);
 }
 
+/* Layout is shared (endcard.css); the gap above the block is this
+   card's own vertical rhythm. */
 .overlay-actions {
-  display: flex;
-  gap: 3vw;
   margin-top: 0.6svh;
+}
+
+/* The exit sits on the top bar's rightmost icon button, and this is the one
+   game whose bar does not reach the edge of the screen: `.stage` is capped at
+   480px and centred. The card is fixed to the viewport, so the offset has to
+   add the centring gutter back — which collapses to zero below 480px, where
+   the shared value is already right. */
+.overlay-exit {
+  right: calc(
+    max(0px, (100vw - 480px) / 2) + max(4vw, env(safe-area-inset-right, 0px))
+  );
 }
 
 .again-btn,
@@ -605,6 +617,7 @@ html, body {
 /* ---- short viewports (phone landscape) ---- */
 @media (max-height: 480px) {
   .stage { padding-top: 1.4svh; padding-bottom: 1.2svh; }
+  .overlay-exit { top: 1.4svh; }
   .subtitle, .seo-info { display: none; }
   .back-link { margin-bottom: 0.3svh; }
   .howto-link { padding-top: 0.4svh; }

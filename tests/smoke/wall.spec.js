@@ -16,6 +16,7 @@
 import { test, expect } from "@playwright/test";
 import { games, pages } from "../../src/data/games.js";
 import { brokenSpriteRefs } from "../helpers/storage.js";
+import { openEndCard } from "../helpers/endcard.js";
 
 const WALL = pages.find((p) => p.slug === "wall").path;
 const BOARD = "**/rest/v1/game_leaders*";
@@ -302,4 +303,21 @@ test.describe("the homepage", () => {
        the first one in the document, which is a placement detail. */
     await expect(page.locator(`a[href="${WALL}"]:visible`).first()).toBeVisible();
   });
+});
+
+test.describe("the end cards", () => {
+  /* Where most of this page's traffic will come from: a player who has just
+     finished a run and wants to see where it lands. Every card carries the
+     link, including the two games that keep no board — the wall is the arcade,
+     not one game's scoreboard. */
+  for (const game of games) {
+    test(`${game.path} — "See the wall" lands on the boards`, async ({ page }) => {
+      await page.goto(game.path);
+      const card = await openEndCard(page, game.slug);
+
+      await card.locator(".wall-btn").click({ timeout: 2500 });
+      await page.waitForURL((url) => url.pathname === WALL, { timeout: 2500 });
+      await expect(page.locator("#cabinet")).toBeVisible();
+    });
+  }
 });

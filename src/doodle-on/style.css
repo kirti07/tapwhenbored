@@ -4,6 +4,7 @@
 @import "../shared/css/base.css";
 @import "../shared/css/shell.css";
 @import "../shared/css/howto.css";
+@import "../shared/css/endcard.css";
 
 :root {
   --bg: #eaf6ee;
@@ -476,9 +477,9 @@ html, body {
   letter-spacing: 0.04em;
 }
 
+/* Layout is shared (endcard.css); the gap above the block is this
+   card's own vertical rhythm. */
 .overlay-actions {
-  display: flex;
-  gap: 3vw;
   margin-top: 0.6svh;
 }
 
@@ -594,6 +595,7 @@ html, body {
    stays in the page source for crawlers, it's just not rendered here. */
 @media (max-height: 480px) {
   .stage { padding-top: 1.4svh; padding-bottom: 1.2svh; }
+  .overlay-exit { top: 1.4svh; }
   .subtitle, .seo-info { display: none; }
   .back-link { margin-bottom: 0.3svh; }
   .howto-link { padding-top: 0.4svh; }

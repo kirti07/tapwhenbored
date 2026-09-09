@@ -196,6 +196,23 @@ for (const g of games) {
   if (!html.includes("<summary>What is this?</summary>"))
     err(`src/${g.slug}/index.html: the seo-info summary should read "What is this?"`);
 
+  // Every end card offers the same two ways out besides replaying: an X to the
+  // games list, and a link to the wall. Both are substituted in at build time
+  // (sharedMarkup() in vite.config.js), and a marker that goes missing fails
+  // silently — the card simply ships with no exit, which is the state this
+  // whole control was added to fix. They live inside .overlay-actions and the
+  // card respectively, so the wrapper is checked too.
+  for (const marker of ["endcard-exit", "endcard-wall"]) {
+    const found = html.split(`<!-- ${marker} -->`).length - 1;
+    if (found !== 1)
+      err(
+        `src/${g.slug}/index.html: expected exactly one <!-- ${marker} --> ` +
+          `marker on the end card, found ${found}`,
+      );
+  }
+  if (!html.includes('class="overlay-actions"'))
+    err(`src/${g.slug}/index.html: the end card's buttons must sit in .overlay-actions`);
+
   // A game with a leaderboard must have a line to put it on, and a game
   // without one must not pretend to.
   const hasGlobalEl = html.includes('id="globalBest"');
