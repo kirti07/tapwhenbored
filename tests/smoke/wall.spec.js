@@ -56,6 +56,9 @@ test.describe("the arcade", () => {
     for (const g of games) {
       await expect(page.locator(`#cab-${g.slug}`)).toContainText(g.title);
     }
+    // The way in is in the built HTML too, which is the only thing on this
+    // page that still works when the module never arrives.
+    await expect(page.locator("#cabPlay")).toHaveAttribute("href", games[0].path);
     await context.close();
   });
 
@@ -72,6 +75,31 @@ test.describe("the arcade", () => {
     await expect(page.locator("#noboardMsg")).not.toBeEmpty();
     // A game with no board has no periods either.
     await expect(page.locator("#timeTabs")).toBeHidden();
+  });
+
+  test("offers a way into the cabinet you are reading, board or no board", async ({
+    page,
+  }) => {
+    /* The panel named a game and then stranded you on it. The link has to
+       follow the selection past the point where the board code gives up:
+       untangle and doodle-on keep no scores, and load() returns early for
+       them long before it has finished with the rest of the bar. */
+    await serveBoard(page);
+    await page.goto(WALL);
+
+    const play = page.locator("#cabPlay");
+    await expect(play).toHaveAttribute("href", games[0].path);
+
+    for (const g of [boarded[1], scoreless[0]]) {
+      await page.locator(`#cab-${g.slug}`).click();
+      await expect(page.locator("#cabTitle")).toHaveText(g.title);
+      await expect(play).toHaveAttribute("href", g.path);
+      await expect(play).toHaveAttribute("aria-label", `Play ${g.title}`);
+    }
+
+    // And it arrives somewhere, which is the failure an href can hide.
+    await play.click();
+    await page.waitForURL((url) => url.pathname === scoreless[0].path);
   });
 
   test("renders a board, marks your row, and names the unnamed", async ({ page }) => {

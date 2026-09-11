@@ -278,6 +278,124 @@
   color: color-mix(in srgb, var(--arc-accent) 72%, #ffffff);
 }
 
+/* The way into the cabinet, in the bar that names it.
+ *
+ * Sized to disappear into the row rather than to announce itself: 17px tall,
+ * against the 17.8px line box #cabUnit already sets, so the bar is exactly as
+ * tall as it was without it. A control with .arc-btn's padding would add six
+ * pixels here and to every panel below it.
+ *
+ * 70% accent on the border, not less: against --arc-screen in the light theme
+ * (#1a1c36, the lighter of the two) 45% is 2.2:1 and 70% is 3.2:1, and the
+ * boundary of a control has a 3:1 floor. The ink is the same lift the bar's
+ * title takes, so it is a colour this panel already proves legible.
+ *
+ * The ::after is how .back-link does it in style.css: a 44px target centred
+ * on a 17px control, so the tap floor is met without standing a 44px slab in
+ * a 41px bar. Where it reaches past the pill it reaches into the bar's own
+ * 10px gap, whose only neighbour is a span nobody taps. */
+.arc-play {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border: 1.5px solid color-mix(in srgb, var(--arc-accent) 70%, transparent);
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--arc-accent) 72%, #ffffff);
+  font-family: var(--font-pix);
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.arc-play svg {
+  display: block;
+  flex: none;
+}
+
+.arc-play::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: max(100%, 44px);
+  height: 44px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .arc-play:hover {
+    background: color-mix(in srgb, var(--arc-accent) 18%, transparent);
+    border-color: var(--arc-accent);
+  }
+}
+
+/* 470, measured rather than guessed: the title and the unit together need
+   every pixel of the bar below 471px, so the word goes and the arrow stands
+   alone. The ::after keeps the target at 44px either way.
+ *
+ * The unit line stays whole rather than truncating — it is what the column of
+ * numbers means, and "lower is better" is the half an ellipsis would eat. The
+ * cost is that the bar takes a second line below 419px instead of below 376px,
+ * which is the wrap this bar already did on a small phone; the arrow moved the
+ * threshold, it did not introduce it. */
+@media (max-width: 470px) {
+  .arc-play-t {
+    display: none;
+  }
+
+  .arc-play {
+    padding: 2px 10px;
+  }
+}
+
+/* Below 420px not even that fits, and the bar's own answer — shrink the title
+ * and the unit until both break into fragments — is not one. So the unit takes
+ * a row of its own and the row above it reads name, then arrow, which is the
+ * pairing this bar exists to make. The arrow gets its word back: a row holding
+ * only those two has room for it at every width down to 320.
+ *
+ * Scoped by :has() rather than left open, because the homepage's attract panel
+ * is built from this same .arc-screen-bar and must not move (the note above
+ * .roll-open in src/style.css is the standing warning about exactly that).
+ *
+ * The unit is re-ordered rather than re-positioned: #cabUnit carries an inline
+ * margin-left:auto that no rule here could outrank, and on a row of its own
+ * there is no free space left for an auto margin to take. */
+@media (max-width: 419px) {
+  .arc-screen-bar:has(.arc-play) {
+    flex-wrap: wrap;
+    row-gap: 3px;
+  }
+
+  .arc-screen-bar:has(.arc-play) .arc-pix {
+    flex: none;
+  }
+
+  .arc-screen-bar:has(.arc-play) .arc-play {
+    margin-left: auto;
+  }
+
+  .arc-screen-bar:has(.arc-play) .arc-honesty {
+    order: 1;
+    flex: 1 0 100%;
+  }
+
+  .arc-play-t {
+    display: inline;
+  }
+
+  .arc-play {
+    padding: 2px 9px;
+  }
+}
+
 .arc-screen-in {
   padding: 10px 12px 12px;
 }

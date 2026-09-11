@@ -31,6 +31,7 @@ var live = document.getElementById("live");
 
 var cabTitle = document.getElementById("cabTitle");
 var cabUnit = document.getElementById("cabUnit");
+var cabPlay = document.getElementById("cabPlay");
 var scoreHead = document.getElementById("scoreHead");
 var noboardMsg = document.getElementById("noboardMsg");
 
@@ -144,6 +145,12 @@ async function load() {
   request = mine;
 
   cabTitle.textContent = game.title;
+  /* Above the no-board return below, deliberately: untangle and doodle-on keep
+     no scores and are entirely playable. The title goes in the label as well
+     as the href, so "Play" is not the whole of what a screen reader hears once
+     the bar is too narrow for the word. */
+  cabPlay.href = game.path;
+  cabPlay.setAttribute("aria-label", "Play " + game.title);
 
   if (game.leaderboard === false) {
     cabUnit.textContent = "no board";

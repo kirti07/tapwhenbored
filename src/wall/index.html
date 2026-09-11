@@ -54,6 +54,17 @@
       <div class="arc-screen-bar">
         <span class="arc-pix" id="cabTitle">Marble Nostalgia</span>
         <span class="arc-honesty" id="cabUnit" style="margin-left:auto"></span>
+        <!-- The way into the cabinet you are reading. Correct for the first
+             game before script runs, and moved with the selection by load(),
+             so unlike the cabinet tabs beside it it still goes somewhere when
+             the module never arrives.
+             Inline svg rather than a sprite symbol: the sprite carries game
+             stickers, and U+25B6 is outside both webfonts' subset, so a text
+             arrow would arrive as a system emoji on Android. -->
+        <a class="arc-play" id="cabPlay" href="/marble-nostalgia/" aria-label="Play Marble Nostalgia">
+          <svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>
+          <span class="arc-play-t">Play</span>
+        </a>
       </div>
 
       <div class="arc-tabs" role="tablist" aria-label="Time window" id="timeTabs">
