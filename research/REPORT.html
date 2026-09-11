@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tap When Bored, platform review</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f6f6fb;
+    --card: #ffffff;
+    --ink: #1a1b2e;
+    --muted: #5c5f7a;
+    --line: #e0e1ee;
+    --accent: #6b4fd8;
+    --ok-bg: #e6f6ea; --ok-ink: #1f6b3a; --ok-line: #9fd8b0;
+    --bad-bg: #fdecec; --bad-ink: #9b2c2c; --bad-line: #f0b3b3;
+    --new-bg: #e9f0fd; --new-ink: #24479a; --new-line: #b3c8f0;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d0e1a;
+      --card: #16182a;
+      --ink: #eceef8;
+      --muted: #9a9dbb;
+      --line: #2b2e48;
+      --accent: #a58cff;
+      --ok-bg: #16311f; --ok-ink: #8fe0a8; --ok-line: #2c6b42;
+      --bad-bg: #3a1b1b; --bad-ink: #f0a0a0; --bad-line: #7a3535;
+      --new-bg: #172647; --new-ink: #a9c2f5; --new-line: #2e4f92;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body {
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 32px 20px 80px;
+  }
+  main { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 30px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 21px; margin: 44px 0 12px; padding-top: 20px; border-top: 1px solid var(--line); }
+  h3 { font-size: 16px; margin: 24px 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+  p { margin: 0 0 12px; }
+  .meta { color: var(--muted); font-size: 14px; margin-bottom: 22px; }
+  .lede {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px 18px; margin-bottom: 8px;
+  }
+  code { font-family: var(--mono); font-size: .88em; background: color-mix(in srgb, var(--ink) 7%, transparent); padding: 1px 5px; border-radius: 4px; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 0; }
+  nav a {
+    font-size: 13px; color: var(--ink); text-decoration: none;
+    border: 1px solid var(--line); background: var(--card);
+    padding: 5px 11px; border-radius: 999px;
+  }
+  nav a:hover { border-color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 14.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  tr:last-child td { border-bottom: 0; }
+  .tablewrap { overflow-x: auto; }
+
+  /* finding lists */
+  ul.findings { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  ul.findings li {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px 14px 10px 12px; display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: start;
+  }
+  ul.findings .id {
+    font-family: var(--mono); font-size: 12px; font-weight: 700; padding: 3px 0; text-align: center;
+    border-radius: 6px; margin-top: 2px;
+  }
+  .ok .id { background: var(--ok-bg); color: var(--ok-ink); }
+  .bad .id { background: var(--bad-bg); color: var(--bad-ink); }
+  ul.findings b { display: block; margin-bottom: 2px; }
+  ul.findings span { color: var(--muted); font-size: 14.5px; }
+  .tag { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 1px 7px; border-radius: 999px; margin-left: 6px; vertical-align: 2px; }
+  .tag.ok { background: var(--ok-bg); color: var(--ok-ink); }
+  .tag.bad { background: var(--bad-bg); color: var(--bad-ink); }
+  .tag.new { background: var(--new-bg); color: var(--new-ink); }
+
+  /* diagram */
+  .diagram { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 12px; }
+  @media (max-width: 720px) { .diagram { grid-template-columns: 1fr; } }
+  .col { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+  .col h4 { margin: 0 0 14px; font-size: 14px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .box { border: 1px solid var(--line); border-radius: 9px; padding: 8px 11px; font-size: 13.5px; background: var(--bg); }
+  .box .t, .folder .t { font-family: var(--mono); font-size: 12.5px; font-weight: 700; }
+  .box .s { color: var(--muted); font-size: 12.5px; }
+  .arrow { text-align: center; color: var(--muted); font-size: 18px; line-height: 1; margin: 6px 0; }
+  .arrow small { display: block; font-size: 11.5px; margin-top: 2px; }
+  .stack { position: relative; margin: 6px 0 14px 0; }
+  .stack::before, .stack::after {
+    content: ""; position: absolute; inset: 0; border: 1px solid var(--line); border-radius: 9px; background: var(--card); z-index: 0;
+  }
+  .stack::before { transform: translate(6px, 6px); }
+  .stack::after { transform: translate(3px, 3px); }
+  .stack .folder { position: relative; z-index: 1; border: 1px solid var(--line); border-radius: 9px; background: var(--card); padding: 8px 10px; }
+  .folder .t { margin-bottom: 6px; }
+  .row { border-radius: 6px; padding: 5px 9px; font-size: 12.5px; margin: 4px 0; border: 1px solid; }
+  .row.dup { background: var(--bad-bg); color: var(--bad-ink); border-color: var(--bad-line); }
+  .row.own { background: var(--ok-bg); color: var(--ok-ink); border-color: var(--ok-line); }
+  .row.shared { background: var(--new-bg); color: var(--new-ink); border-color: var(--new-line); }
+  .row code { background: transparent; padding: 0; font-size: 12px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); margin: 10px 0 0; }
+  .legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; border: 1px solid; }
+  .result { margin-top: 14px; font-weight: 600; font-size: 14px; }
+  .result.bad { color: var(--bad-ink); }
+  .result.ok { color: var(--ok-ink); }
+  .new .id { background: var(--new-bg); color: var(--new-ink); }
+  pre.flow { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font: 13px/1.5 var(--mono); overflow-x: auto; margin: 10px 0 18px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Tap When Bored, platform review</h1>
+  <p class="meta">2026-09-05 · branch <code>main</code> at <code>90bf561</code> · Markdown source in <code>REPORT.md</code></p>
+
+  <div class="lede">
+    <p><b>Short version.</b> The site is healthy at 8 games and will hurt at 20. The cause is one thing repeated in different forms. Each game carries its own copy of the platform, so every platform change is eight edits.</p>
+    <p>The fix is two small shared modules and a handful of validator checks. Nothing changes a URL or adds a dependency.</p>
+    <p style="margin:0">Separately, the <a href="#pwa">offline PWA spec</a> at the end sets out how to make the installed app play every game offline and still pick up deploys: vite-plugin-pwa, one precache of the whole 190 kB catalogue, a 40-line register snippet.</p>
+  </div>
+
+  <nav>
+    <a href="#snapshot">Snapshot</a>
+    <a href="#working">What's working</a>
+    <a href="#arch">Not working, architecture</a>
+    <a href="#ux">Not working, UX</a>
+    <a href="#scoreboard">Scoreboard</a>
+    <a href="#proposal">Proposal</a>
+    <a href="#after">Before and after</a>
+    <a href="#pwa">Offline PWA</a>
+  </nav>
+
+  <h2 id="snapshot">Snapshot</h2>
+  <div class="tablewrap"><table>
+    <tr><th>Check</th><th>Result</th></tr>
+    <tr><td><code>npm run validate</code></td><td>8 games ok</td></tr>
+    <tr><td><code>npm run build</code></td><td>clean, 29 modules, 189 ms</td></tr>
+    <tr><td><code>check:bundles</code></td><td>every page under budget. Heaviest is word-steps at 16.0 kB JS gzipped vs 50 kB</td></tr>
+    <tr><td><code>npm test</code></td><td>327 passed, 1 skipped, 46 s</td></tr>
+    <tr><td>Bare <code>vh</code> in game CSS</td><td>0</td></tr>
+    <tr><td>Fresh <code>npm run game:new</code></td><td>validates, then fails 2 of 18 smoke tests <span class="tag bad">bug</span></td></tr>
+  </table></div>
+
+  <h2 id="working">What's working</h2>
+  <ul class="findings">
+    <li class="ok"><span class="id">ok</span><div><b>One folder per game, one page per game.</b><span>Vite finds folders on disk. No router, no framework. A game can't break another game.</span></div></li>
+    <li class="ok"><span class="id">ok</span><div><b>One registry drives four outputs.</b><span><code>src/data/games.js</code> feeds the homepage cards, JSON-LD, sitemap and smoke tests.</span></div></li>
+    <li class="ok"><span class="id">ok</span><div><b>Validator runs both directions.</b><span>Registry against filesystem, filesystem against registry, registry against the SQL seed.</span></div></li>
+    <li class="ok"><span class="id">ok</span><div><b>Score direction lives in the database.</b><span>The client never compares scores.</span></div></li>
+    <li class="ok"><span class="id">ok</span><div><b>Secrets can't leak into the browser.</b><span>Two env var names are allowlisted. The build refuses to run if a <code>*SECRET*</code>, <code>*SERVICE*</code> or <code>*JWT*</code> var is set.</span></div></li>
+    <li class="ok"><span class="id">ok</span><div><b><code>svh</code> everywhere.</b><span>Zero bare <code>vh</code>. Scroll recovery on <code>html,body</code> is proven by a test.</span></div></li>
+    <li class="ok"><span class="id">ok</span><div><b>Font preloads pinned to usage.</b><span>A test fails if a page preloads a font it doesn't use.</span></div></li>
+    <li class="ok"><span class="id">ok</span><div><b>Two dev dependencies, zero runtime.</b><span>Keep it that way.</span></div></li>
+  </ul>
+
+  <h2 id="arch">What's not working, architecture</h2>
+  <p class="meta">Ranked by how much it hurts at game #20.</p>
+  <ul class="findings">
+    <li class="bad"><span class="id">A1</span><div><b>Every platform change touches every game.</b><span>Each page pastes ~45 head lines (OG, Twitter, JSON-LD, preloads) and ~60 lines of shell JS (howto, share, overlay) by hand. About 450 duplicated lines. Commits <code>680a44e</code>, <code>f13cbad</code>, <code>ef1d12c</code>, <code>2149379</code> each touched all game folders.</span></div></li>
+    <li class="bad"><span class="id">A2</span><div><b>Adding a game needs a hidden CSS edit.</b><span>Each game needs a light and dark <code>.card--&lt;slug&gt;</code> rule in <code>src/style.css</code>. Nothing validates it. Forget it and the card ships purple.</span></div></li>
+    <li class="bad"><span class="id">A3</span><div><b>The scaffold writes stale rules.</b><span><code>scripts/new-game.js</code> uses <code>dvh</code> not <code>svh</code>, preloads a font only Honeycomb uses, skips <code>touch-action</code> and <code>color-scheme</code>. A fresh game fails 2 of its own tests. Verified with a probe.</span></div></li>
+    <li class="bad"><span class="id">A4</span><div><b>The validator skips most head tags.</b><span>Only canonical and <code>og:url</code> are checked. Description, images, JSON-LD name, theme colour, viewport and preloads match today only by care. Honeycomb's theme colour is already off by one hex digit.</span></div></li>
+    <li class="bad"><span class="id">A5</span><div><b>The homepage intro hardcodes the catalogue.</b><span><code>src/index.html</code> names games by hand and already describes Doodle On wrong.</span></div></li>
+    <li class="bad"><span class="id">A6</span><div><b>Theme colours live in four files.</b><span><code>#f6f6fb</code> and <code>#0d0e1a</code> sit in <code>vite.config.js</code>, <code>src/index.html</code>, the manifest and <code>src/style.css</code>.</span></div></li>
+    <li class="bad"><span class="id">A7</span><div><b>A registry field nothing reads.</b><span><code>leaderboard.unit</code> has no consumer. Same for <code>game_config.label</code> in the SQL.</span></div></li>
+    <li class="bad"><span class="id">A8</span><div><b>Docs describe deleted features.</b><span><code>tokens.css</code> header still explains the service worker. Brand README has the wrong manifest colour. ARCHITECTURE §7 lists 2 scripts, there are 5.</span></div></li>
+    <li class="bad"><span class="id">A9</span><div><b>Bubble Tap is a fork of the shell.</b><span>Own topbar, own overlay z-index, own class names, no <code>tokens.css</code> or <code>shell.css</code>. <code>hasOverlay: false</code> exists only to exempt it. Every shell test carries a Bubble Tap exception.</span></div></li>
+    <li class="bad"><span class="id">A10</span><div><b>Prefs are shared by coincidence.</b><span>Flip It and Bubble Tap agree on the <code>twb_sound</code> key only because a comment says so. Three localStorage naming conventions in the repo.</span></div></li>
+    <li class="bad"><span class="id">A11</span><div><b>Small things.</b><span>Dead <code>js += 0;</code> in check-bundles. No <code>.nvmrc</code>. A ternary in <code>playwright.config.js</code> with the same value on both sides.</span></div></li>
+  </ul>
+
+  <h2 id="ux">What's not working, UX</h2>
+  <p class="meta">Ranked by player impact. All from reading source. Nobody has opened these in a real browser yet, and that should be the first UX task.</p>
+  <ul class="findings">
+    <li class="bad"><span class="id">U1</span><div><b>Six games play sound with no mute.</b><span>Only Flip It and Bubble Tap have one. Five games never call <code>AudioContext.resume()</code>, so audio can die after a tab switch and stay dead.</span></div></li>
+    <li class="bad"><span class="id">U2</span><div><b>Safe-area padding is dead code in seven games.</b><span><code>howto.css</code> pads by <code>env(safe-area-inset-bottom)</code> but only Bubble Tap and the homepage set <code>viewport-fit=cover</code>, so the value is 0.</span></div></li>
+    <li class="bad"><span class="id">U3</span><div><b>The end card isn't modal, anywhere.</b><span>Restart, level buttons and the howto link stay clickable through it. No Escape, no focus move.</span></div></li>
+    <li class="bad"><span class="id">U4</span><div><b>Reduced motion is ignored or leaks.</b><span>Marble Nostalgia and Bubble Tap have no rule at all. Honeycomb's loss animation out-specifies its override. Slide N Order sets a transition inline from JS. Shared <code>howto.css</code> has no variant.</span></div></li>
+    <li class="bad"><span class="id">U5</span><div><b>Word Steps keeps yesterday's puzzle.</b><span>Day index is computed once at load. Leave an unsolved tab open past midnight and it's stale.</span></div></li>
+    <li class="bad"><span class="id">U6</span><div><b>Bubble Tap can die in private mode.</b><span>Two <code>localStorage</code> calls with no try/catch (<code>app.js:82</code>, <code>app.js:519</code>). Settings can also open on top of game over.</span></div></li>
+    <li class="bad"><span class="id">U7</span><div><b>Keyboard and screen reader gaps.</b><span><code>role="img"</code> on interactive boards in Honeycomb and Untangle. <code>role="status"</code> on buttons. Toggles that never set <code>aria-checked</code>. One <code>:focus-visible</code> rule site-wide. Six boards can't be played by keyboard.</span></div></li>
+    <li class="bad"><span class="id">U8</span><div><b>Landscape is handled by three games.</b><span>Only Flip It, Word Steps and Doodle On trim for short viewports. Tests never run landscape.</span></div></li>
+    <li class="bad"><span class="id">U9</span><div><b>No theme toggle inside a game.</b><span>Land from a shared link and you have to leave to change it.</span></div></li>
+    <li class="bad"><span class="id">U10</span><div><b>Copy drift.</b><span>"Again" x4, "Play Again" x2, "PLAY AGAIN". "Link copied" x5, "Copied!", "Saved". One circular-arrow glyph with five meanings.</span></div></li>
+    <li class="bad"><span class="id">U11</span><div><b>Game state read back from the DOM.</b><span>Untangle parses the crossings count from a span. Slide N Order trusts <code>dataset.index</code>. Word Steps builds the word from <code>textContent</code>. A copy tweak becomes a logic bug.</span></div></li>
+    <li class="bad"><span class="id">U12</span><div><b>Word Steps ships a 4,349-word dictionary statically.</b><span>16 kB gzipped vs 3 to 6 kB for the others. Under budget, but a lazy <code>import()</code> is a free win.</span></div></li>
+  </ul>
+
+  <h2 id="scoreboard">Consistency scoreboard</h2>
+  <div class="tablewrap"><table>
+    <tr><th>Surface</th><th>State</th></tr>
+    <tr><td><code>svh</code>, <code>touch-action</code>, <code>html,body</code> height</td><td>Consistent across 8 <span class="tag ok">ok</span></td></tr>
+    <tr><td>Howto sheet geometry, global-best line</td><td>Consistent, test-enforced <span class="tag ok">ok</span></td></tr>
+    <tr><td><code>.title</code> size</td><td>3 variants</td></tr>
+    <tr><td><code>.stage</code> bottom padding</td><td>3 variants</td></tr>
+    <tr><td>Again button label</td><td>5 variants</td></tr>
+    <tr><td>Share-note text</td><td>4 variants</td></tr>
+    <tr><td><code>viewport-fit=cover</code></td><td>2 of 9 pages</td></tr>
+    <tr><td><code>color-scheme</code> declared</td><td>3 of 9</td></tr>
+    <tr><td><code>:focus-visible</code> styling</td><td>1 rule site-wide</td></tr>
+    <tr><td><code>prefers-reduced-motion</code></td><td>0 rules in 2 games, partial elsewhere</td></tr>
+    <tr><td>Short-viewport media query</td><td>3 of 8</td></tr>
+    <tr><td>Sound mute</td><td>2 of 8, though all 8 make sound</td></tr>
+    <tr><td><code>AudioContext.resume()</code></td><td>3 of 8</td></tr>
+    <tr><td>Escape closes sheet or overlay</td><td>0 of 8</td></tr>
+    <tr><td>Keyboard-operable board</td><td>2 of 8</td></tr>
+    <tr><td>Overlay focus management</td><td>0 of 8</td></tr>
+    <tr><td>Theme toggle inside a game</td><td>0 of 8</td></tr>
+  </table></div>
+
+  <h2 id="proposal">Proposal</h2>
+  <p>Architecture first, then UX. The UX items that matter most (mute, safe-area, modal end card, theme toggle) are shell problems. Done per game they are eight edits each and drift within a month. Done in the shell they are one edit and a test.</p>
+
+  <h3>Architecture, in order</h3>
+  <div class="tablewrap"><table>
+    <tr><th>#</th><th>Change</th><th>Size</th><th>Closes</th></tr>
+    <tr><td>1</td><td>Regenerate the scaffold from Untangle. Add a CI step that scaffolds a probe game, runs its smoke tests, cleans up.</td><td>half a day</td><td>A3</td></tr>
+    <tr><td>2</td><td>Move card accent colours into the registry. Homepage plugin writes them as inline CSS vars. Delete 16 rules and <code>cardClass</code>.</td><td>1 h</td><td>A2</td></tr>
+    <tr><td>3</td><td><code>headFromRegistry()</code> Vite plugin, same shape as <code>homepageFromRegistry()</code>. Pages keep a <code>&lt;!-- head-meta --&gt;</code> marker. Two new registry fields, <code>genre</code> and <code>ogDescription</code>.</td><td>half a day</td><td>A1 head, most of A4</td></tr>
+    <tr><td>4</td><td><code>src/shared/ui/shell.js</code> exporting <code>initHowto()</code>, <code>initShare({…})</code>, <code>bindOverlay(el)</code>. No state, no lifecycle, no growing options object. <b>The only item that needs judgment. Hold it at three functions.</b></td><td>1 day</td><td>A1 JS</td></tr>
+    <tr><td>5</td><td><code>src/shared/ui/prefs.js</code> with <code>get</code>, <code>set</code>, try/catch inside, <code>twb:</code> prefix. Sound control in the shell.</td><td>with UX</td><td>A10, U1</td></tr>
+    <tr><td>6</td><td>Sweep. Validator checks for theme colour, viewport, preloads. Catalogue-agnostic intro. Theme colours into the registry. Delete <code>unit</code>. Fix docs.</td><td>half a day</td><td>A4 leftovers, A5 to A8, A11</td></tr>
+    <tr><td>7</td><td>Migrate Bubble Tap onto the template. Remove <code>hasOverlay</code> and every test exception.</td><td>1 day</td><td>A9, U6</td></tr>
+  </table></div>
+
+  <h3>UX, in order</h3>
+  <div class="tablewrap"><table>
+    <tr><th>#</th><th>Change</th><th>Depends on</th></tr>
+    <tr><td>1</td><td>Browser pass at 390x844, 360x640 landscape, 1280x800, both themes, all 9 pages. Screenshots into <code>REPORT-shots/</code>.</td><td>nothing</td></tr>
+    <tr><td>2</td><td><code>viewport-fit=cover</code> on every page, then pad topbars for <code>safe-area-inset-top</code>.</td><td>head plugin</td></tr>
+    <tr><td>3</td><td>Shared mute button and theme toggle in <code>.top-actions</code>.</td><td><code>shell.js</code>, <code>prefs.js</code></td></tr>
+    <tr><td>4</td><td>Modal end card. Disable <code>.top-actions</code> while ended, Escape closes, focus moves to the primary button.</td><td><code>bindOverlay()</code></td></tr>
+    <tr><td>5</td><td>Reduced-motion sweep, including <code>howto.css</code>.</td><td>nothing</td></tr>
+    <tr><td>6</td><td>Word Steps day rollover on <code>visibilitychange</code>. Bubble Tap localStorage try/catch.</td><td>nothing</td></tr>
+    <tr><td>7</td><td>Fix roles and aria. Add <code>:focus-visible</code> to <code>shell.css</code>.</td><td>nothing</td></tr>
+    <tr><td>8</td><td>Landscape rule in <code>shell.css</code> plus one landscape smoke case.</td><td>nothing</td></tr>
+    <tr><td>9</td><td>Copy pass, DOM-state cleanups, lazy dictionary.</td><td>nothing</td></tr>
+  </table></div>
+
+  <h2 id="after">Before and after</h2>
+  <p>Today every game folder holds three things. Its own head tags, its own copy of the shell JS, and the game itself. After, the first two come from one place.</p>
+
+  <div class="diagram">
+    <div class="col">
+      <h4>Today</h4>
+      <div class="box"><div class="t">src/data/games.js</div><div class="s">title, description, og, theme colours, leaderboard</div></div>
+      <div class="arrow">↓<small>homepage · sitemap · validator</small></div>
+      <div class="stack">
+        <div class="folder">
+          <div class="t">src/&lt;game&gt;/ <span class="s">× 8</span></div>
+          <div class="row dup">index.html · 45 head lines, pasted by hand</div>
+          <div class="row dup">game.js · openHowto / closeHowto</div>
+          <div class="row dup">game.js · shareResult / showShareNote</div>
+          <div class="row dup">game.js · showOverlay / hideOverlay</div>
+          <div class="row dup">game.js · localStorage try/catch, sound toggle (some)</div>
+          <div class="row own">game.js · game logic</div>
+          <div class="row own">style.css · game styles</div>
+        </div>
+      </div>
+      <div class="box"><div class="t">src/shared/ui/</div><div class="s">leaderboard.js</div></div>
+      <div class="box" style="margin-top:8px"><div class="t">src/style.css</div><div class="s">+ 2 <code>.card--&lt;slug&gt;</code> rules per game, unvalidated</div></div>
+      <div class="result bad">Platform change = 8 edits. New game = folder + registry + CSS.</div>
+    </div>
+
+    <div class="col">
+      <h4>After</h4>
+      <div class="box"><div class="t">src/data/games.js</div><div class="s">+ genre, ogDescription, accent, home colours</div></div>
+      <div class="arrow">↓<small>homepage · sitemap · validator · <b>headFromRegistry()</b></small></div>
+      <div class="stack">
+        <div class="folder">
+          <div class="t">src/&lt;game&gt;/ <span class="s">× 8, Bubble Tap included</span></div>
+          <div class="row shared">index.html · <code>&lt;!-- head-meta --&gt;</code> filled at build</div>
+          <div class="row shared">game.js · <code>import { initHowto, initShare, bindOverlay }</code></div>
+          <div class="row shared">game.js · <code>import prefs</code></div>
+          <div class="row own">game.js · game logic</div>
+          <div class="row own">style.css · game styles</div>
+        </div>
+      </div>
+      <div class="box">
+        <div class="t">src/shared/ui/</div>
+        <div class="s">leaderboard.js · <b>shell.js</b> (3 functions) · <b>prefs.js</b> (2 functions)</div>
+      </div>
+      <div class="box" style="margin-top:8px"><div class="t">src/style.css</div><div class="s">no per-game rules. Cards get <code>style="--accent:…"</code> from the plugin</div></div>
+      <div class="result ok">Platform change = 1 edit + 1 test. New game = folder + registry.</div>
+    </div>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--bad-bg);border-color:var(--bad-line)"></i>duplicated per game</span>
+    <span><i style="background:var(--new-bg);border-color:var(--new-line)"></i>comes from shared code or the build</span>
+    <span><i style="background:var(--ok-bg);border-color:var(--ok-line)"></i>belongs to the game</span>
+  </div>
+  <p style="margin-top:16px">Shared code stays inside what ARCHITECTURE §9 allows. Both new modules standardise the edges and leave the games alone.</p>
+
+  <h2 id="pwa">Offline PWA, spec</h2>
+  <p class="meta"><code>P</code> items are decisions, not findings. Researched 2026-09-05 against vite-plugin-pwa 1.3.0, Workbox 7.4.1, Serwist 9.5.12, Playwright 1.62, Safari 26, Chrome stable.</p>
+  <p>Today the app is installable and nothing else. ARCHITECTURE §19 calls offline "a feature to add back on purpose". This is that. §41 lists "eager caching of all games" as something to avoid. The numbers below are the reason to overturn it, and §39 question 7 gets answered here rather than dodged.</p>
+
+  <h3>The promise</h3>
+  <ul class="findings">
+    <li class="ok"><span class="id">1</span><div><b>Visit once, or add to the home screen, and every game plays offline from the next launch.</b><span>Not only the games you happened to open.</span></div></li>
+    <li class="ok"><span class="id">2</span><div><b>A deploy reaches an installed app on its next launch.</b><span>A game in play is never reloaded under the player.</span></div></li>
+    <li class="ok"><span class="id">3</span><div><b>Leaderboards and analytics still go to the network.</b><span>They degrade as they do today (§20). Nothing about gameplay changes.</span></div></li>
+  </ul>
+
+  <h3>Numbers that decide the shape</h3>
+  <div class="tablewrap"><table>
+    <tr><th>What</th><th>Raw</th><th>Gzipped</th><th>Cached?</th></tr>
+    <tr><td>Every <code>/static/</code> JS and CSS file</td><td>219 kB</td><td>55 kB</td><td>yes</td></tr>
+    <tr><td>Every document, 9 pages</td><td>82 kB</td><td>12 kB</td><td>yes</td></tr>
+    <tr><td>Every card thumbnail</td><td>52 kB</td><td>35 kB</td><td>yes</td></tr>
+    <tr><td>Two webfonts</td><td>31 kB</td><td>31 kB</td><td>yes</td></tr>
+    <tr><td>Icons, manifest, favicon</td><td>67 kB</td><td>60 kB</td><td>yes</td></tr>
+    <tr><td>OG images, <code>/assets/*-og.jpg</code></td><td>374 kB</td><td>334 kB</td><td>never, no page loads them</td></tr>
+  </table></div>
+  <p style="margin-top:12px">The whole playable site is about 190 kB gzipped. A game costs 3 to 6 kB of code, Word Steps 16 kB, plus a 1.3 kB document and a 1 to 5 kB thumbnail. Fifty games land near 700 kB, still less than one OG image. The old worker spent 276 lines and most of three architecture sections keeping install size proportional to games opened. At these sizes that scheme cost more than it saved.</p>
+
+  <ul class="findings" style="margin-top:20px">
+    <li class="new"><span class="id">P1</span><div><b>Tool: vite-plugin-pwa in <code>injectManifest</code> mode.</b><span>1.3.0 (May 2026) on Workbox 7.4.1 (May 2026), Vite 7 supported. Dev dependency only, nothing ships inside a page. The worker is our own ~25-line file importing <code>workbox-precaching</code> and <code>workbox-core</code>; the plugin bundles it into one self-contained <code>/sw.js</code> and injects the precache manifest at <code>self.__WB_MANIFEST</code>. Cost, said plainly: <code>workbox-build</code> pulls a large tree (Rollup, Babel) into <code>node_modules</code>, <code>npm ci</code> gets slower, dev deps go from 2 to 5, runtime stays at zero.</span></div></li>
+  </ul>
+  <div class="tablewrap" style="margin-top:8px"><table>
+    <tr><th>Option</th><th>Verdict</th></tr>
+    <tr><td>Hand-rolled worker, as before</td><td>What got deleted was 276 lines of worker, 75 of register, 492 of tests, and most of the prose was about revisions, cache order and eviction. That is exactly what <code>workbox-precaching</code> does: revisioned manifest, atomic install, outdated-cache cleanup.</td></tr>
+    <tr><td><code>generateSW</code> mode</td><td>Config only. Its defaults assume an SPA (<code>navigateFallback</code> to <code>index.html</code>) and it cannot express the one-off cleanup of legacy <code>twb-*</code> caches. We would spend the config fighting it.</td></tr>
+    <tr><td>Serwist (<code>@serwist/vite</code>)</td><td>Maintained Workbox fork, 9.5.12 in July 2026, same API. Workbox shipped 7.4.0 in Nov 2025 and 7.4.1 in May 2026, so it is not stale. Pick the plugin with Vite as a first-class target. Serwist is the swap if Workbox stalls again; the worker code is the same either way.</td></tr>
+  </table></div>
+
+  <ul class="findings" style="margin-top:20px">
+    <li class="new"><span class="id">P2</span><div><b>One precache, filled atomically on install, diffed by revision on update.</b><span>In: every document, everything under <code>/static/</code>, <code>/assets/*-thumb.*</code>, <code>/fonts/*.woff2</code>, <code>/icons/*.png</code>, the manifest and favicon. Out: <code>*-og.jpg</code>, <code>sw.js</code>, <code>sitemap.xml</code>, <code>robots.txt</code>, anything cross-origin. <code>/static/</code> names are hashes so those carry no revision and no busting query (<code>dontCacheBustURLsMatching: /^static\//</code>); documents and <code>public/</code> files get a content revision, so a thumbnail edit refetches one file. <b>No runtime caching routes.</b> A request not in the precache goes to the network untouched, which is what keeps the <code>page.route</code> leaderboard mocks in the smoke tests working.</span></div></li>
+    <li class="new"><span class="id">P3</span><div><b>Shared links and slashless URLs.</b><span><code>ignoreURLParametersMatching: [/.*/]</code> so <code>/flip-it/?moves=12&amp;size=5</code> hits the precached document. Four games read parameters from <code>location.search</code>, never from the document, so this is safe, and it was the old worker's <code>cacheKey()</code> lesson. <code>urlManipulation</code> adds a trailing-slash candidate so <code>/honeycomb</code> resolves offline the way Vercel's 308 resolves it online.</span></div></li>
+    <li class="new"><span class="id">P4</span><div><b>No offline fallback page.</b><span>Every page is precached, so an offline miss is a URL that does not exist. Keep the browser's own error. <code>navigateFallback</code> stays off. This is an MPA, and answering a navigation with the homepage breaks gameplay and SEO.</span></div></li>
+    <li class="new"><span class="id">P5</span><div><b>Update flow.</b><span>Worker calls <code>skipWaiting()</code> and <code>clientsClaim()</code> unconditionally. Safe in an MPA because a page never fetches its own modules twice and <code>/static/</code> is immutable. It imposes one rule on games: load everything you play with before play begins. The lazy dictionary in U12 still gets imported at page load, off the critical path, or a mid-game update could remove the chunk it later asks for. <code>/sw.js</code> is served <code>max-age=0, must-revalidate</code>, Vercel's default, written into <code>vercel.json</code> explicitly so nobody widens a rule onto it.</span></div></li>
+  </ul>
+  <pre class="flow">deploy
+  → next navigation, or registration.update() on resume
+  → browser fetches /sw.js, byte-different
+  → install: fetch only entries whose revision changed
+  → skipWaiting
+  → activate: cleanupOutdatedCaches, drop entries not in the manifest,
+              delete legacy twb-* caches
+  → clientsClaim
+  → every open page receives controllerchange</pre>
+
+  <ul class="findings">
+    <li class="new"><span class="id">P6</span><div><b>The page-side snippet, <code>scripts/sw-register.js</code>, about 40 lines.</b><span>Inlined into every page by the same plugin that inlines the theme bootstrap. Replaces <code>scripts/sw-cleanup.js</code>, which must go in the same commit because it unregisters every worker on every load. Registers after <code>load</code>. Records whether a controller existed before registering. On <code>controllerchange</code> reloads only when all three hold: homepage, a controller existed before, and the player has not touched the page (pointerdown, keydown, wheel, scroll). The new homepage is already precached, so that reload works offline. A game page never reloads. On <code>visibilitychange</code> to visible, calls <code>registration.update()</code> throttled to 15 minutes, because a resumed installed app never navigates. In <code>display-mode: standalone</code>, calls <code>navigator.storage.persist()</code>; Chrome grants it silently for installed apps, Firefox shows a prompt, hence the gate. <code>injectRegister: null</code>, no <code>workbox-window</code>: the homepage ships no JavaScript today and should not gain 3 kB of library for a 40-line job.</span></div></li>
+  </ul>
+
+  <h3>P7. Platform notes, verified September 2026</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Platform</th><th>What holds</th></tr>
+    <tr><td>Chrome, Android and desktop</td><td>Installable without a worker since 108 and 112. Persistent storage auto-granted once installed.</td></tr>
+    <tr><td>iOS and iPadOS 26</td><td>Anything added to the Home Screen now opens as a web app. The home-screen app has its own storage and its own days-of-use counter. ITP's 7-day script-storage purge applies to Safari tab use, and Apple says first-party data in home-screen apps is not expected to be deleted. Safari 17+ raised quota and added the Persistent Storage API.</td></tr>
+    <tr><td>iOS consequence</td><td>The installed app registers the worker on its own first launch, since its storage is separate from the Safari tab. First launch needs the network. Second launch works offline.</td></tr>
+    <tr><td>Playwright</td><td>Service workers run in Chromium only. <code>context.setOffline(true)</code> works with a worker. <code>page.route</code> cannot intercept the worker's own script fetch, so the update test dispatches <code>controllerchange</code> synthetically, as the old suite did.</td></tr>
+    <tr><td>Dev server</td><td>No worker in dev (<code>devOptions.enabled: false</code>). Different port from preview, so nothing leaks. Preview gets the real one and tests run there.</td></tr>
+  </table></div>
+
+  <h3>P8. Files</h3>
+  <div class="tablewrap"><table>
+    <tr><th>File</th><th>Change</th></tr>
+    <tr><td><code>src/pwa/sw.js</code></td><td>new. <code>precacheAndRoute</code>, <code>cleanupOutdatedCaches</code>, <code>skipWaiting</code>, <code>clientsClaim</code>, one activate handler deleting <code>twb-*</code>. No <code>index.html</code>, so not a page.</td></tr>
+    <tr><td><code>scripts/sw-register.js</code></td><td>new, P6</td></tr>
+    <tr><td><code>vite.config.js</code></td><td><code>pwa()</code> becomes <code>VitePWA({ strategies: "injectManifest", srcDir: "pwa", filename: "sw.js", manifest: false, injectRegister: null, devOptions: { enabled: false }, injectManifest: { globPatterns, globIgnores, dontCacheBustURLsMatching } })</code> plus the existing manifest and icon link injection and the new snippet.</td></tr>
+    <tr><td><code>public/sw.js</code></td><td>delete. The plugin emits <code>/sw.js</code>; a public copy collides. The new worker is byte-different from both the tombstone and the old caching worker, so it replaces either on a device that still has one, and its activate step drops their caches.</td></tr>
+    <tr><td><code>scripts/sw-cleanup.js</code></td><td>delete, same commit</td></tr>
+    <tr><td><code>public/manifest.webmanifest</code></td><td>unchanged, <code>manifest: false</code> keeps ours</td></tr>
+    <tr><td><code>vercel.json</code></td><td><code>/sw.js</code> header, P5</td></tr>
+    <tr><td><code>package.json</code></td><td>three dev dependencies, P1</td></tr>
+    <tr><td><code>scripts/check-bundles.js</code></td><td>one more line, "precache total", warn above 1 MB gzipped. Today about 190 kB.</td></tr>
+    <tr><td><code>tests/pwa/pwa.spec.js</code></td><td>rewrite, P9</td></tr>
+    <tr><td><code>ARCHITECTURE.md</code></td><td>§7 tree, §18, §19, §21, §30, §36 rewritten from this section. §41 swaps "eager caching of all games" for "a precache without a budget". <code>tokens.css</code> header fixed at the same time (A8).</td></tr>
+  </table></div>
+  <p style="margin-top:12px">Half a day including tests. One PR, independent of every A and U item. The PR description answers the nine §39 questions.</p>
+
+  <h3>P9. Tests</h3>
+  <p class="meta">All in <code>tests/pwa/</code>, Chromium, against preview.</p>
+  <ol style="margin:0 0 12px 20px; padding:0; font-size:14.5px">
+    <li>Every registry page registers and gets a controller.</li>
+    <li>The precache holds every registry page, its <code>/static/</code> files and its thumbnail, and holds no <code>-og.jpg</code>.</li>
+    <li><code>setOffline(true)</code>, then open every game. The board renders and restart works.</li>
+    <li>Offline, <code>/flip-it/?moves=12&amp;size=5</code> is served, and so is <code>/honeycomb</code> without the slash.</li>
+    <li>Synthetic <code>controllerchange</code>. Untouched homepage reloads. After a <code>pointerdown</code> it does not. A game page does not. A first install does not.</li>
+    <li>A leaderboard request still reaches the <code>page.route</code> mock with a worker live.</li>
+    <li><code>visibilitychange</code> calls <code>registration.update()</code> once, not twice within 15 minutes.</li>
+    <li><code>storage.persist()</code> is called in standalone and not in a tab, using the existing <code>asInstalledApp()</code> stub.</li>
+  </ol>
+  <p>Manual, once per release that touches the worker: real iPhone and real Android. Install, kill the app, airplane mode, launch, play two games, check a deploy shows on the next launch.</p>
+</main>
+</body>
+</html>

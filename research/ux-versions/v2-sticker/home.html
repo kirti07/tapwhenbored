@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tap When Bored — Sticker Book</title>
+<meta name="color-scheme" content="light dark">
+<script>
+(function(){try{
+  var q=new URLSearchParams(location.search).get('theme');
+  var s=null; try{s=localStorage.getItem('twb:theme')}catch(e){}
+  var t=q||s||(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+  document.documentElement.setAttribute('data-theme', t==='dark'?'dark':'light');
+}catch(e){}})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800&family=Caveat:wght@600;700&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --paper:#f3ece0; --paper-2:#efe6d6;
+  --card:#fffdf8; --card-2:#faf4e7;
+  --ink:#282218; --ink-soft:#776d5d; --ink-dim:#9d9382;
+  --line:#e3d8c4; --line-2:#d4c6ab;
+  --brand:#c9432f; --cool:#17805f;
+  --dot:rgba(40,34,24,.06);
+  --slot:rgba(40,34,24,.16);
+  --shadow-s:0 1px 0 rgba(40,34,24,.05), 0 4px 10px -6px rgba(40,34,24,.32);
+  --shadow-m:0 1px 0 rgba(40,34,24,.05), 0 10px 22px -14px rgba(40,34,24,.5);
+  --shadow-l:0 24px 60px -26px rgba(40,34,24,.55), 0 2px 0 rgba(40,34,24,.06);
+  --gold:#b8801a; --silver:#7f8792; --bronze:#a2653a;
+  --tape:rgba(214,197,164,.85);
+  --btn-ink:#282218; --btn-paper:#fffdf8;
+  --r-s:10px; --r-m:14px; --r-l:20px; --r-x:26px;
+  --ease-out:cubic-bezier(.23,1,.32,1);
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  color-scheme:dark;
+  --paper:#0f0e18; --paper-2:#151425;
+  --card:#1a1928; --card-2:#211f31;
+  --ink:#f1ecdf; --ink-soft:#a79eb8; --ink-dim:#867d99;
+  --line:#2c2942; --line-2:#3b3757;
+  --brand:#ff8a72; --cool:#34e19a;
+  --dot:rgba(255,252,240,.05);
+  --slot:rgba(241,236,223,.18);
+  --shadow-s:0 1px 0 rgba(0,0,0,.4), 0 4px 12px -6px rgba(0,0,0,.7);
+  --shadow-m:0 1px 0 rgba(0,0,0,.4), 0 12px 26px -16px rgba(0,0,0,.9);
+  --shadow-l:0 26px 70px -28px rgba(0,0,0,.95), 0 1px 0 rgba(255,255,255,.05);
+  --gold:#ffc84d; --silver:#c3cad6; --bronze:#e0955e;
+  --tape:rgba(80,74,112,.7);
+  --btn-ink:#f1ecdf; --btn-paper:#12111d;
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#0f0e18; --paper-2:#151425;
+  --card:#1a1928; --card-2:#211f31;
+  --ink:#f1ecdf; --ink-soft:#a79eb8; --ink-dim:#867d99;
+  --line:#2c2942; --line-2:#3b3757;
+  --brand:#ff8a72; --cool:#34e19a;
+  --dot:rgba(255,252,240,.05);
+  --slot:rgba(241,236,223,.18);
+  --shadow-s:0 1px 0 rgba(0,0,0,.4), 0 4px 12px -6px rgba(0,0,0,.7);
+  --shadow-m:0 1px 0 rgba(0,0,0,.4), 0 12px 26px -16px rgba(0,0,0,.9);
+  --shadow-l:0 26px 70px -28px rgba(0,0,0,.95), 0 1px 0 rgba(255,255,255,.05);
+  --gold:#ffc84d; --silver:#c3cad6; --bronze:#e0955e;
+  --tape:rgba(80,74,112,.7);
+  --btn-ink:#f1ecdf; --btn-paper:#12111d;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; min-height:100svh; background-color:var(--paper); color:var(--ink);
+  font-family:Nunito,ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-size:15px; line-height:1.55; font-weight:500;
+  -webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 0);
+  background-size:22px 22px;
+  overflow-x:hidden;
+}
+.sprite{position:absolute;width:0;height:0;overflow:hidden}
+h1,h2,h3,p,ul,ol,figure{margin:0}
+ul,ol{padding:0;list-style:none}
+a{color:inherit}
+button,input{font:inherit;color:inherit}
+:where(a,button,input,summary,label):focus-visible{outline:2.5px solid var(--brand);outline-offset:2px;border-radius:6px}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+/* Caveat is a hairline script; on the dark album page its strokes thin out.
+   A third of a pixel of stroke restores the optical weight without changing size. */
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .sig,
+  :root:not([data-theme="light"]) .wn, :root:not([data-theme="light"]) .bs-done .nm,
+  :root:not([data-theme="light"]) .bs-inp{-webkit-text-stroke:.3px currentColor} }
+:root[data-theme="dark"] .sig, :root[data-theme="dark"] .wn,
+:root[data-theme="dark"] .bs-done .nm, :root[data-theme="dark"] .bs-inp{-webkit-text-stroke:.3px currentColor}
+
+.wrap{max-width:1060px;margin:0 auto;padding:0 16px}
+.page{padding-bottom:calc(56px + env(safe-area-inset-bottom))}
+@media(min-width:900px){ .wrap{padding:0 28px} }
+
+.top{display:flex;align-items:flex-start;gap:12px;padding:18px 0 8px;flex-wrap:wrap}
+.brand{font-size:clamp(23px,6vw,30px);font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.brand .w{color:var(--brand)} .brand .b{color:var(--cool)}
+.tagline{color:var(--ink-soft);font-size:13.5px;margin-top:2px}
+.top-r{margin-left:auto;display:flex;align-items:center;gap:8px}
+.back{display:inline-flex;align-items:center;gap:5px;min-height:44px;padding:0 12px 0 6px;font-size:14px;font-weight:700;color:var(--ink-soft);text-decoration:none;border-radius:999px}
+.back svg{width:16px;height:16px}
+.iconbtn{width:44px;height:44px;display:grid;place-items:center;border-radius:50%;border:1.5px solid var(--line);background:transparent;cursor:pointer;color:var(--ink-soft);flex:none}
+.iconbtn svg{width:19px;height:19px}
+.iconbtn:hover{border-color:var(--line-2);color:var(--ink)}
+
+/* Quiet identity chip: a signed sticker corner, not an account badge.
+   44x44 target, glyph only, opens the sticker book. */
+.me{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;min-height:44px;
+  border-radius:999px;background:transparent;border:0;text-decoration:none;cursor:pointer;flex:none;padding:0}
+.me-av{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;flex:none;
+  background:color-mix(in srgb,var(--brand) 13%,var(--card));color:var(--brand);font-weight:800;font-size:15px;
+  border:1.5px solid color-mix(in srgb,var(--brand) 30%,transparent);transform:rotate(-4deg);
+  transition:border-color .14s ease}
+@media(hover:hover) and (pointer:fine){.me:hover .me-av{border-color:var(--brand)}}
+@media(prefers-reduced-motion:reduce){.me-av{transition:none}}
+
+.sec{margin-top:30px}
+.sec-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.eyebrow{font-size:10.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-dim)}
+h2.sec-t,.sec-t{font-size:20px;font-weight:800;letter-spacing:-.015em}
+.sec-sub{color:var(--ink-soft);font-size:13.5px}
+.sec-link{margin-left:auto;font-size:13.5px;font-weight:800;color:var(--brand);text-decoration:none;
+  min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:flex-end}
+.sec-link:hover{text-decoration:underline}
+
+.sb{--sz:56px;width:var(--sz);height:var(--sz);flex:none;display:grid;place-items:center;
+  border-radius:32%;color:var(--accent);
+  background:color-mix(in srgb,var(--accent) 13%,var(--card));
+  box-shadow:0 0 0 2.5px var(--card), 0 0 0 3.9px color-mix(in srgb,var(--accent) 34%,transparent), var(--shadow-s);
+  transform:rotate(var(--rot,0deg));}
+.sb svg{width:64%;height:64%;display:block}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .sb{
+  background:color-mix(in srgb,var(--accent-d,var(--accent)) 17%,var(--card));color:var(--accent-d,var(--accent));
+  box-shadow:0 0 0 2.5px color-mix(in srgb,var(--accent-d,var(--accent)) 12%,var(--card)), 0 0 0 3.9px color-mix(in srgb,var(--accent-d,var(--accent)) 42%,transparent), var(--shadow-s);}}
+:root[data-theme="dark"] .sb{
+  background:color-mix(in srgb,var(--accent-d,var(--accent)) 17%,var(--card));color:var(--accent-d,var(--accent));
+  box-shadow:0 0 0 2.5px color-mix(in srgb,var(--accent-d,var(--accent)) 12%,var(--card)), 0 0 0 3.9px color-mix(in srgb,var(--accent-d,var(--accent)) 42%,transparent), var(--shadow-s);}
+
+.stk{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:12px 10px 10px;border-radius:var(--r-l);text-align:center;
+  background:color-mix(in srgb,var(--accent) 10%,var(--card));
+  border:2.5px solid var(--card);
+  box-shadow:0 0 0 1.4px color-mix(in srgb,var(--accent) 32%,transparent), var(--shadow-m);
+  transform:rotate(var(--rot,0deg));}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .stk{
+  background:color-mix(in srgb,var(--accent-d,var(--accent)) 13%,var(--card));
+  border-color:color-mix(in srgb,var(--accent-d,var(--accent)) 10%,var(--card));
+  box-shadow:0 0 0 1.4px color-mix(in srgb,var(--accent-d,var(--accent)) 42%,transparent), var(--shadow-m);}}
+:root[data-theme="dark"] .stk{
+  background:color-mix(in srgb,var(--accent-d,var(--accent)) 13%,var(--card));
+  border-color:color-mix(in srgb,var(--accent-d,var(--accent)) 10%,var(--card));
+  box-shadow:0 0 0 1.4px color-mix(in srgb,var(--accent-d,var(--accent)) 42%,transparent), var(--shadow-m);}
+.stk .ico{width:34px;height:34px;color:var(--accent);margin-bottom:2px}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .stk .ico{color:var(--accent-d,var(--accent))}}
+:root[data-theme="dark"] .stk .ico{color:var(--accent-d,var(--accent))}
+.stk .ico svg{width:100%;height:100%;display:block}
+.stk .g{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.stk .s{font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+.stk .u{font-size:11px;font-weight:700;color:var(--ink-soft);line-height:1.2}
+.stk .sig{margin-top:8px;padding-top:6px;width:100%;border-top:1.5px dashed color-mix(in srgb,var(--ink) 22%,transparent);
+  font-family:Caveat,"Segoe Print","Bradley Hand",ui-rounded,cursive;font-size:21px;font-weight:700;line-height:1.15;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stk.is-you{border-color:var(--brand);box-shadow:0 0 0 1.4px var(--brand), var(--shadow-m)}
+.youchip{position:absolute;top:-9px;right:-6px;background:var(--brand);color:#fff;font-size:10px;font-weight:800;
+  letter-spacing:.09em;text-transform:uppercase;padding:3px 8px;border-radius:999px;transform:rotate(4deg);
+  box-shadow:var(--shadow-s)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .youchip{color:#2a1109}}
+:root[data-theme="dark"] .youchip{color:#2a1109}
+
+.wall{display:grid;grid-template-columns:repeat(2,1fr);gap:16px 12px;padding:6px 4px;
+  transition:opacity .12s var(--ease-out)}
+.wall.swapping{opacity:0}
+@media(prefers-reduced-motion:reduce){.wall{transition:none}.wall.swapping{opacity:1}}
+@media(min-width:560px){.wall{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:900px){.wall{grid-template-columns:repeat(5,1fr);gap:20px 16px}}
+.wall .stk{min-height:176px;justify-content:flex-start}
+
+/* Press feedback: the paper button is pushed down onto its ink edge.
+   transform + box-shadow, 120ms strong ease-out. Hover is pointer-gated. */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:46px;padding:0 20px;
+  border-radius:999px;font-weight:800;font-size:15px;border:2px solid transparent;cursor:pointer;text-decoration:none;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  transition:transform .12s var(--ease-out), box-shadow .12s var(--ease-out), border-color .14s ease, color .14s ease}
+.btn svg{width:16px;height:16px;flex:none}
+.btn--p{background:var(--btn-ink);color:var(--btn-paper);box-shadow:0 3px 0 color-mix(in srgb,var(--ink) 42%,var(--paper))}
+.btn--p:active{transform:translateY(1px);box-shadow:0 1px 0 color-mix(in srgb,var(--ink) 42%,var(--paper))}
+.btn--s{background:var(--card);color:var(--ink);border-color:var(--line-2);box-shadow:var(--shadow-s)}
+.btn--s:active,.btn--g:active{transform:translateY(1px)}
+.btn--g{background:transparent;color:var(--ink-soft);border-color:transparent;text-decoration:underline;text-underline-offset:3px}
+@media(hover:hover) and (pointer:fine){
+  .btn--p:hover{transform:translateY(-1px);box-shadow:0 4px 0 color-mix(in srgb,var(--ink) 42%,var(--paper))}
+  .btn--s:hover{border-color:var(--ink-soft)}
+  .btn--g:hover{color:var(--ink)}
+}
+@media(prefers-reduced-motion:reduce){.btn{transition:border-color .14s ease, color .14s ease}}
+
+.field{display:block}
+.field .lbl{display:block;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px}
+.inp{width:100%;min-height:48px;font-size:16px;font-weight:700;padding:10px 14px;border-radius:var(--r-m);
+  background:var(--card);border:2px solid var(--line-2);color:var(--ink)}
+.inp::placeholder{color:var(--ink-dim);font-weight:600}
+.inp:focus{outline:none;border-color:var(--ink-soft);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 26%,transparent)}
+.hint{font-size:12.5px;color:var(--ink-soft);line-height:1.45}
+
+.panel{background:var(--card);border:1.5px solid var(--line);border-radius:var(--r-x);padding:18px;box-shadow:var(--shadow-s)}
+.panel-t{font-size:16px;font-weight:800;letter-spacing:-.01em}
+.panel-s{font-size:13.5px;color:var(--ink-soft);margin-top:3px;line-height:1.5}
+
+.honest{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-dim);margin-top:14px;line-height:1.4}
+.honest svg{width:14px;height:14px;flex:none}
+
+.foot{margin-top:36px;padding-top:18px;border-top:1.5px dashed var(--line-2);color:var(--ink-dim);font-size:13px;
+  display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center}
+.foot a{color:var(--ink-soft);text-decoration:none;font-weight:700;
+  display:inline-flex;align-items:center;min-height:44px}
+.foot a:hover{color:var(--ink);text-decoration:underline}
+
+.demo-bar{position:fixed;left:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:60;
+  display:flex;align-items:center;gap:6px;padding:5px 6px 5px 10px;border-radius:999px;
+  background:#3a3a3e;color:#e9e9ee;border:1px solid #5a5a60;
+  font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;box-shadow:0 6px 18px -8px rgba(0,0,0,.7)}
+.demo-bar>span{opacity:.7;letter-spacing:.06em;text-transform:uppercase}
+.demo-bar button{min-height:30px;padding:0 10px;border-radius:999px;border:1px solid #6a6a72;background:#4a4a50;color:#fff;
+  font:700 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;cursor:pointer}
+.demo-bar button:hover{background:#5c5c64}
+
+.t-sun,.t-moon{display:none;width:19px;height:19px}
+.t-sun svg,.t-moon svg{width:19px;height:19px;display:block}
+:root[data-theme="light"] .t-moon{display:block}
+:root[data-theme="dark"] .t-sun{display:block}
+/* ---- book strip ---- */
+.book{position:relative;margin-top:14px;background:var(--card);border:1.5px solid var(--line);border-radius:var(--r-x);
+  padding:18px 18px 16px;box-shadow:var(--shadow-m);
+  background-image:radial-gradient(circle at 1px 1px,var(--dot) 1px,transparent 0);background-size:20px 20px}
+.book-top{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.book-h{font-size:19px;font-weight:800;letter-spacing:-.015em}
+.book-p{font-size:13.5px;color:var(--ink-soft);margin-top:3px;max-width:44ch}
+.book-cta{margin-left:auto}
+.slots{display:flex;gap:8px;margin-top:16px}
+.slot{flex:1;max-width:56px;aspect-ratio:1;border-radius:32%;display:grid;place-items:center;position:relative}
+.slots .sb{width:100%;height:100%}
+.slot--e{border:2px dashed var(--slot);color:var(--ink-dim)}
+.slot--e svg{width:52%;height:52%;opacity:.34}
+.progress{margin-top:14px;max-width:504px;height:8px;border-radius:999px;background:color-mix(in srgb,var(--ink) 10%,transparent);overflow:hidden}
+.progress i{display:block;height:100%;width:62.5%;border-radius:999px;background:var(--brand)}
+
+/* ---- shelf ---- */
+.shelf{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(min-width:640px){.shelf{grid-template-columns:repeat(3,1fr);gap:14px}}
+@media(min-width:900px){.shelf{grid-template-columns:repeat(4,1fr);gap:16px}}
+.card{display:flex;flex-direction:column;gap:0;background:var(--card);border:1.5px solid var(--line);
+  border-radius:var(--r-l);text-decoration:none;overflow:hidden;box-shadow:var(--shadow-s);
+  transition:transform .14s ease,border-color .14s ease,box-shadow .14s ease}
+@media(hover:hover) and (pointer:fine){
+  .card:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--accent) 45%,var(--line));box-shadow:var(--shadow-m)}
+}
+.card:active{transform:translateY(0)}
+@media(prefers-reduced-motion:reduce){.card{transition:border-color .14s ease}.card:hover{transform:none}}
+.card-art{height:96px;display:grid;place-items:center;
+  background:color-mix(in srgb,var(--accent) 11%,var(--card-2));
+  border-bottom:1.5px solid color-mix(in srgb,var(--accent) 18%,var(--line));
+  background-image:radial-gradient(circle at 1px 1px,color-mix(in srgb,var(--accent) 22%,transparent) 1px,transparent 0);
+  background-size:16px 16px}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .card-art{
+  background-color:color-mix(in srgb,var(--accent-d) 10%,var(--card-2));
+  border-bottom-color:color-mix(in srgb,var(--accent-d) 26%,var(--line));
+  background-image:radial-gradient(circle at 1px 1px,color-mix(in srgb,var(--accent-d) 26%,transparent) 1px,transparent 0)}}
+:root[data-theme="dark"] .card-art{
+  background-color:color-mix(in srgb,var(--accent-d) 10%,var(--card-2));
+  border-bottom-color:color-mix(in srgb,var(--accent-d) 26%,var(--line));
+  background-image:radial-gradient(circle at 1px 1px,color-mix(in srgb,var(--accent-d) 26%,transparent) 1px,transparent 0)}
+.card-b{padding:11px 12px 12px;display:flex;flex-direction:column;gap:1px;flex:1}
+.card-n{font-size:15px;font-weight:800;letter-spacing:-.01em;line-height:1.25}
+.card-t{font-size:12.5px;color:var(--ink-soft);font-weight:600}
+.card-f{margin-top:9px;display:flex;align-items:center;gap:8px;min-height:22px}
+.card-best{font-size:11.5px;font-weight:800;letter-spacing:.02em;color:var(--ink-soft)}
+.card-best em{font-style:normal;color:var(--ink);font-variant-numeric:tabular-nums}
+.card-new{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);
+  border:1.5px dashed var(--line-2);border-radius:999px;padding:2px 7px}
+.card-go{margin-left:auto;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;flex:none;
+  background:var(--accent);color:#fff}
+.card-go svg{width:13px;height:13px}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .card-go{background:var(--accent-d);color:#0f0e18}}
+:root[data-theme="dark"] .card-go{background:var(--accent-d);color:#0f0e18}
+
+/* ---- wall filter ---- */
+.seg{display:inline-flex;gap:4px;padding:4px;border-radius:999px;background:var(--card-2);border:1.5px solid var(--line)}
+.seg button{min-height:44px;padding:0 14px;border-radius:999px;border:0;background:transparent;color:var(--ink-soft);
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background-color .14s ease,color .14s ease;
+  font-weight:800;font-size:13px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--card);color:var(--ink);box-shadow:var(--shadow-s)}
+</style>
+</head>
+<body>
+<svg class="sprite" aria-hidden="true" focusable="false" width="0" height="0">
+<symbol id="st-marble" viewBox="0 0 48 48">
+  <g fill="currentColor">
+    <circle cx="16" cy="9" r="3.1"/><circle cx="24" cy="9" r="3.1"/><circle cx="32" cy="9" r="3.1"/>
+    <circle cx="16" cy="17" r="3.1"/><circle cx="24" cy="17" r="3.1"/><circle cx="32" cy="17" r="3.1"/>
+    <circle cx="8" cy="25" r="3.1"/><circle cx="16" cy="25" r="3.1"/><circle cx="32" cy="25" r="3.1"/><circle cx="40" cy="25" r="3.1"/>
+    <circle cx="16" cy="33" r="3.1"/><circle cx="24" cy="33" r="3.1"/><circle cx="32" cy="33" r="3.1"/>
+    <circle cx="16" cy="41" r="3.1"/><circle cx="24" cy="41" r="3.1"/><circle cx="32" cy="41" r="3.1"/>
+  </g>
+  <circle cx="24" cy="25" r="3.1" fill="none" stroke="currentColor" stroke-width="1.7" opacity=".55"/>
+</symbol>
+<symbol id="st-bubble" viewBox="0 0 48 48">
+  <g fill="currentColor"><circle cx="16" cy="16" r="8.4"/><circle cx="32.5" cy="12.5" r="5.2"/><circle cx="33" cy="30" r="7"/></g>
+  <g stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none">
+    <circle cx="15" cy="34" r="4.4"/><path d="M15 25.6v-2.4M6.6 34h-2.4M23.6 34h2.4M15 42.4v2.4"/></g>
+</symbol>
+<symbol id="st-slide" viewBox="0 0 48 48">
+  <g fill="currentColor"><rect x="7" y="7" width="15" height="15" rx="4.5"/><rect x="26" y="7" width="15" height="15" rx="4.5"/><rect x="7" y="26" width="15" height="15" rx="4.5"/></g>
+  <rect x="26" y="26" width="15" height="15" rx="4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-dasharray="4.5 3.6" opacity=".7"/>
+</symbol>
+<symbol id="st-flip" viewBox="0 0 48 48">
+  <g fill="currentColor"><rect x="18" y="4" width="12" height="12" rx="3.6"/><rect x="4" y="18" width="12" height="12" rx="3.6"/><rect x="32" y="18" width="12" height="12" rx="3.6"/><rect x="18" y="32" width="12" height="12" rx="3.6"/></g>
+  <rect x="19.2" y="19.2" width="9.6" height="9.6" rx="3" fill="none" stroke="currentColor" stroke-width="2.4"/>
+</symbol>
+<symbol id="st-word" viewBox="0 0 48 48">
+  <g fill="currentColor"><rect x="4" y="6" width="21" height="8.6" rx="4.3"/><rect x="10" y="19.7" width="21" height="8.6" rx="4.3"/><rect x="16" y="33.4" width="21" height="8.6" rx="4.3"/></g>
+  <g fill="currentColor" opacity=".55"><circle cx="40" cy="10.3" r="2.6"/><circle cx="7" cy="37.7" r="2.6"/></g>
+</symbol>
+<symbol id="st-untangle" viewBox="0 0 48 48">
+  <g stroke="currentColor" stroke-width="2.3" fill="none" stroke-linecap="round">
+    <path d="M11 12h26M11 12l13 12M37 12 24 24M11 36l13-12M37 36 24 24M11 36h26"/></g>
+  <g fill="currentColor"><circle cx="11" cy="12" r="3.6"/><circle cx="37" cy="12" r="3.6"/><circle cx="24" cy="24" r="3.6"/><circle cx="11" cy="36" r="3.6"/><circle cx="37" cy="36" r="3.6"/></g>
+</symbol>
+<symbol id="st-honey" viewBox="0 0 48 48">
+  <g fill="currentColor">
+    <path d="M21.2 9.2h5.6L29.6 14l-2.8 4.8h-5.6L18.4 14z"/>
+    <path d="M30.2 14.4h5.6l2.8 4.8-2.8 4.8h-5.6l-2.8-4.8z"/>
+    <path d="M12.2 14.4h5.6l2.8 4.8-2.8 4.8h-5.6L9.4 19.2z"/>
+    <path d="M21.2 19.6h5.6l2.8 4.8-2.8 4.8h-5.6l-2.8-4.8z"/>
+    <path d="M30.2 24.8h5.6l2.8 4.8-2.8 4.8h-5.6l-2.8-4.8z"/>
+    <path d="M12.2 24.8h5.6l2.8 4.8-2.8 4.8h-5.6L9.4 29.6z"/>
+  </g>
+  <path d="M21.2 30h5.6l2.8 4.8-2.8 4.8h-5.6l-2.8-4.8z" fill="none" stroke="currentColor" stroke-width="2" opacity=".6"/>
+</symbol>
+<symbol id="st-doodle" viewBox="0 0 48 48">
+  <path d="M6 33c4-16 12-21 17-13s10 9 16-5" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M35 28l1.9 4 4 1.9-4 1.9-1.9 4-1.9-4-4-1.9 4-1.9z" fill="currentColor"/>
+  <circle cx="9.5" cy="14" r="2.6" fill="currentColor" opacity=".6"/>
+</symbol>
+</svg>
+<div class="wrap page">
+  <header class="top">
+    <div>
+      <h1 class="brand">Tap <span class="w">When</span> <span class="b">Bored</span></h1>
+      <p class="tagline">Tiny games. Big breaks.</p>
+    </div>
+    <div class="top-r"><button class="iconbtn" id="themeBtn" type="button" aria-label="Switch theme">
+  <span class="t-sun" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg></span><span class="t-moon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.4A8.6 8.6 0 0 1 9.6 4 8.4 8.4 0 1 0 20 14.4Z"/></svg></span></button><a class="me" href="account.html" id="meChip">
+  <span class="me-av" aria-hidden="true">Q</span>
+  <span class="sr">Your sticker book — <span id="meName">Quiet Otter 42</span></span></a></div>
+  </header>
+
+  <section class="book" aria-labelledby="bookH">
+    <div class="book-top">
+      <div>
+        <p class="eyebrow">Your sticker book</p>
+        <h2 class="book-h" id="bookH">5 of 8 stickers earned</h2>
+        <p class="book-p">Finish a game, get its sticker, sign it. Three slots are still empty and they are being very quiet about it.</p>
+      </div>
+      <div class="book-cta"><a class="btn btn--s" href="account.html">Open your book</a></div>
+    </div>
+    <div class="slots">
+      <span class="slot slot--e" title="Marble Nostalgia — empty slot"><svg viewBox="0 0 48 48" aria-hidden="true"><use href="#st-marble"/></svg></span>
+      <span class="slot slot--e" title="Bubble Tap — empty slot"><svg viewBox="0 0 48 48" aria-hidden="true"><use href="#st-bubble"/></svg></span>
+      <span class="slot" title="Slide N Order — earned"><span class="sb" style="--accent:#7a6ddb;--accent-d:#a855f7;--sz:52px;--rot:-1.2deg" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-slide"/></svg></span></span>
+      <span class="slot" title="Flip It — earned"><span class="sb" style="--accent:#c98413;--accent-d:#ffd60a;--sz:52px;--rot:2.6deg" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-flip"/></svg></span></span>
+      <span class="slot" title="Word Steps — earned"><span class="sb" style="--accent:#1f9974;--accent-d:#34e19a;--sz:52px;--rot:-3deg" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-word"/></svg></span></span>
+      <span class="slot" title="Untangle — earned"><span class="sb" style="--accent:#d9523d;--accent-d:#ff6b57;--sz:52px;--rot:1.2deg" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-untangle"/></svg></span></span>
+      <span class="slot" title="Honeycomb — earned"><span class="sb" style="--accent:#7b5fcc;--accent-d:#b48cff;--sz:52px;--rot:-1.8deg" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-honey"/></svg></span></span>
+      <span class="slot slot--e" title="Doodle On — empty slot"><svg viewBox="0 0 48 48" aria-hidden="true"><use href="#st-doodle"/></svg></span>
+    </div>
+    <div class="progress" role="img" aria-label="5 of 8 stickers earned"><i></i></div>
+  </section>
+
+  <section class="sec" aria-labelledby="shelfH">
+    <div class="sec-head">
+      <div><p class="eyebrow">The shelf</p><h2 class="sec-t" id="shelfH">Eight games, eight stickers</h2></div>
+      <p class="sec-sub" style="width:100%">Each game hands out exactly one sticker. Beating your own best just rewrites the number on it.</p>
+    </div>
+    <div class="shelf">
+      <a class="card" href="play.html" style="--accent:#1684d1;--accent-d:#22d3ee">
+        <span class="card-art"><span class="sb" style="--accent:#1684d1;--accent-d:#22d3ee;--sz:64px;--rot:2.6deg" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-marble"/></svg></span></span>
+        <span class="card-b">
+          <span class="card-n">Marble Nostalgia</span>
+          <span class="card-t">Think · Move</span>
+          <span class="card-f"><span class="card-new">New sticker</span>
+            <span class="card-go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8.5 5.6 18 12l-9.5 6.4z"/></svg></span></span>
+        </span></a>
+      <a class="card" href="play.html" style="--accent:#3f9dc4;--accent-d:#22e5ff">
+        <span class="card-art"><span class="sb" style="--accent:#3f9dc4;--accent-d:#22e5ff;--sz:64px;--rot:-3deg" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-bubble"/></svg></span></span>
+        <span class="card-b">
+          <span class="card-n">Bubble Tap</span>
+          <span class="card-t">Tap · Relax</span>
+          <span class="card-f"><span class="card-new">New sticker</span>
+            <span class="card-go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8.5 5.6 18 12l-9.5 6.4z"/></svg></span></span>
+        </span></a>
+      <a class="card" href="play.html" style="--accent:#7a6ddb;--accent-d:#a855f7">
+        <span class="card-art"><span class="sb" style="--accent:#7a6ddb;--accent-d:#a855f7;--sz:64px;--rot:1.2deg" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-slide"/></svg></span></span>
+        <span class="card-b">
+          <span class="card-n">Slide N Order</span>
+          <span class="card-t">Tap · Arrange</span>
+          <span class="card-f"><span class="card-best">Best <em>101 moves</em></span>
+            <span class="card-go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8.5 5.6 18 12l-9.5 6.4z"/></svg></span></span>
+        </span></a>
+      <a class="card" href="play.html" style="--accent:#c98413;--accent-d:#ffd60a">
+        <span class="card-art"><span class="sb" style="--accent:#c98413;--accent-d:#ffd60a;--sz:64px;--rot:-1.8deg" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-flip"/></svg></span></span>
+        <span class="card-b">
+          <span class="card-n">Flip It</span>
+          <span class="card-t">Tap · Clear</span>
+          <span class="card-f"><span class="card-best">Best <em>0:11.5</em></span>
+            <span class="card-go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8.5 5.6 18 12l-9.5 6.4z"/></svg></span></span>
+        </span></a>
+      <a class="card" href="play.html" style="--accent:#1f9974;--accent-d:#34e19a">
+        <span class="card-art"><span class="sb" style="--accent:#1f9974;--accent-d:#34e19a;--sz:64px;--rot:2.2deg" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-word"/></svg></span></span>
+        <span class="card-b">
+          <span class="card-n">Word Steps</span>
+          <span class="card-t">Think · Spell</span>
+          <span class="card-f"><span class="card-best">Best <em>6 steps</em></span>
+            <span class="card-go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8.5 5.6 18 12l-9.5 6.4z"/></svg></span></span>
+        </span></a>
+      <a class="card" href="play.html" style="--accent:#d9523d;--accent-d:#ff6b57">
+        <span class="card-art"><span class="sb" style="--accent:#d9523d;--accent-d:#ff6b57;--sz:64px;--rot:-2.6deg" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-untangle"/></svg></span></span>
+        <span class="card-b">
+          <span class="card-n">Untangle</span>
+          <span class="card-t">Drag · Solve</span>
+          <span class="card-f"><span class="card-best">Best <em>31 moves</em></span>
+            <span class="card-go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8.5 5.6 18 12l-9.5 6.4z"/></svg></span></span>
+        </span></a>
+      <a class="card" href="play.html" style="--accent:#7b5fcc;--accent-d:#b48cff">
+        <span class="card-art"><span class="sb" style="--accent:#7b5fcc;--accent-d:#b48cff;--sz:64px;--rot:1.5deg" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-honey"/></svg></span></span>
+        <span class="card-b">
+          <span class="card-n">Honeycomb</span>
+          <span class="card-t">Tap · Reshape</span>
+          <span class="card-f"><span class="card-best">Best <em>0:56.8</em></span>
+            <span class="card-go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8.5 5.6 18 12l-9.5 6.4z"/></svg></span></span>
+        </span></a>
+      <a class="card" href="play.html" style="--accent:#6b4fd8;--accent-d:#ff5fb3">
+        <span class="card-art"><span class="sb" style="--accent:#6b4fd8;--accent-d:#ff5fb3;--sz:64px;--rot:-0.9deg" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-doodle"/></svg></span></span>
+        <span class="card-b">
+          <span class="card-n">Doodle On</span>
+          <span class="card-t">Draw · 30s</span>
+          <span class="card-f"><span class="card-new">New sticker</span>
+            <span class="card-go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8.5 5.6 18 12l-9.5 6.4z"/></svg></span></span>
+        </span></a>
+    </div>
+  </section>
+
+  <section class="sec" aria-labelledby="wallH">
+    <div class="sec-head">
+      <div><p class="eyebrow">The wall</p><h2 class="sec-t" id="wallH">What people stuck up today</h2></div>
+      <a class="sec-link" href="leaderboard.html">Full boards →</a>
+      <div style="flex-basis:100%"><div class="seg" role="group" aria-label="Sort the wall">
+        <button type="button" data-sort="best" aria-pressed="true">Best today</button>
+        <button type="button" data-sort="new" aria-pressed="false">Just added</button>
+      </div></div>
+    </div>
+    <div class="wall" id="wall">
+      <figure data-i="0" class="stk" style="--accent:#c98413;--accent-d:#ffd60a;--rot:1.8deg">
+  
+  <span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-flip"/></svg></span>
+  <figcaption class="g">Flip It</figcaption>
+  <p class="s num">0:09.4</p>
+  <p class="u">perfect time</p>
+  <p class="sig">Maya P.</p>
+</figure>
+      <figure data-i="1" class="stk" style="--accent:#3f9dc4;--accent-d:#22e5ff;--rot:-1.2deg">
+  
+  <span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-bubble"/></svg></span>
+  <figcaption class="g">Bubble Tap</figcaption>
+  <p class="s num">4,820</p>
+  <p class="u">points</p>
+  <p class="sig">Bex</p>
+</figure>
+      <figure data-i="2" class="stk" style="--accent:#1f9974;--accent-d:#34e19a;--rot:2.6deg">
+  
+  <span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-word"/></svg></span>
+  <figcaption class="g">Word Steps</figcaption>
+  <p class="s num">4</p>
+  <p class="u">steps</p>
+  <p class="sig">Nadia H.</p>
+</figure>
+      <figure data-i="3" class="stk" style="--accent:#1684d1;--accent-d:#22d3ee;--rot:-3deg">
+  
+  <span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-marble"/></svg></span>
+  <figcaption class="g">Marble Nostalgia</figcaption>
+  <p class="s num">1</p>
+  <p class="u">marble left</p>
+  <p class="sig">Ada Lin</p>
+</figure>
+      <figure data-i="4" class="stk" style="--accent:#7b5fcc;--accent-d:#b48cff;--rot:1.2deg">
+  
+  <span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-honey"/></svg></span>
+  <figcaption class="g">Honeycomb</figcaption>
+  <p class="s num">0:38.2</p>
+  <p class="u">time</p>
+  <p class="sig">Rui</p>
+</figure>
+      <figure data-i="5" class="stk" style="--accent:#7a6ddb;--accent-d:#a855f7;--rot:-1.8deg">
+  
+  <span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-slide"/></svg></span>
+  <figcaption class="g">Slide N Order</figcaption>
+  <p class="s num">82</p>
+  <p class="u">moves</p>
+  <p class="sig">Tomás R.</p>
+</figure>
+      <figure data-i="6" class="stk is-you" style="--accent:#c98413;--accent-d:#ffd60a;--rot:2.2deg">
+  <span class="youchip">you</span>
+  <span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-flip"/></svg></span>
+  <figcaption class="g">Flip It</figcaption>
+  <p class="s num">0:11.5</p>
+  <p class="u">perfect time</p>
+  <p class="sig">Quiet Otter 42</p>
+</figure>
+      <figure data-i="7" class="stk" style="--accent:#d9523d;--accent-d:#ff6b57;--rot:-2.6deg">
+  
+  <span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-untangle"/></svg></span>
+  <figcaption class="g">Untangle</figcaption>
+  <p class="s num">26</p>
+  <p class="u">moves</p>
+  <p class="sig">greenfinch</p>
+</figure>
+      <figure data-i="8" class="stk" style="--accent:#6b4fd8;--accent-d:#ff5fb3;--rot:1.5deg">
+  
+  <span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-doodle"/></svg></span>
+  <figcaption class="g">Doodle On</figcaption>
+  <p class="s num">Fish</p>
+  <p class="u">circle → fish</p>
+  <p class="sig">Ollie K.</p>
+</figure>
+      <figure data-i="9" class="stk" style="--accent:#3f9dc4;--accent-d:#22e5ff;--rot:-0.9deg">
+  
+  <span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><use href="#st-bubble"/></svg></span>
+  <figcaption class="g">Bubble Tap</figcaption>
+  <p class="s num">4,402</p>
+  <p class="u">points</p>
+  <p class="sig">Sam W.</p>
+</figure>
+    </div>
+    <p class="honest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5" stroke-linecap="round"/><circle cx="12" cy="7.6" r="1.15" fill="currentColor" stroke="none"/></svg><span>Boards are for fun — scores aren't verified.</span></p>
+  </section>
+
+  <footer class="foot">
+  <span>More tiny games coming soon.</span>
+  <a href="leaderboard.html">All boards</a><a href="account.html">Your book</a>
+  <span style="margin-left:auto;color:var(--ink-dim)">No account needed. Ever.</span>
+</footer>
+</div>
+
+<script>
+
+(function(){
+  var b=document.getElementById('themeBtn'); if(!b) return;
+  b.addEventListener('click',function(){
+    var d=document.documentElement, n=d.getAttribute('data-theme')==='dark'?'light':'dark';
+    d.setAttribute('data-theme',n); try{localStorage.setItem('twb:theme',n)}catch(e){}
+  });
+})();
+
+var TWB={
+  read:function(){try{return JSON.parse(localStorage.getItem('twb:player')||'null')}catch(e){return null}},
+  write:function(n){try{localStorage.setItem('twb:player',JSON.stringify({name:n,id:'twb_'+Math.random().toString(36).slice(2,10)}))}catch(e){}}
+};
+(function(){
+  var p=TWB.read(); if(p&&p.name){var n=document.getElementById('meName');var a=document.querySelector('.me-av');
+    n.textContent=p.name; a.textContent=p.name.trim().charAt(0).toUpperCase();}
+  // 120ms fade-in of re-ordered content: bridges the reflow, transition-based so
+  // rapid taps retarget instead of restarting.
+  function fadeSwap(el){
+    el.classList.add('swapping');
+    requestAnimationFrame(function(){requestAnimationFrame(function(){el.classList.remove('swapping');});});
+  }
+  var NEW=[6,8,4,0,9,2,7,1,5,3];
+  var wall=document.getElementById('wall');
+  document.querySelectorAll('.seg button').forEach(function(b){
+    b.addEventListener('click',function(){
+      document.querySelectorAll('.seg button').forEach(function(x){x.setAttribute('aria-pressed', String(x===b))});
+      var byNew=b.dataset.sort==='new';
+      wall.querySelectorAll('.stk').forEach(function(el,i){
+        el.style.order = byNew ? NEW.indexOf(Number(el.dataset.i)) : Number(el.dataset.i);
+      });
+      fadeSwap(wall);
+    });
+  });
+})();
+</script>
+</body></html>

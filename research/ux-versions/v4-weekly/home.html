@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Tap When Bored — tiny games, weekly tables</title>
+<script>(function(){try{var q=new URLSearchParams(location.search).get("theme");var t=q||localStorage.getItem("twb:theme")||(window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=(t==="dark"?"dark":"light");}catch(e){document.documentElement.dataset.theme="light";}})();</script>
+
+<style>
+/* Nunito is the site's own face. It is declared with local() only: no network request,
+   so these dummies render identically online and offline, with no FOUT and no layout
+   shift. Anyone without Nunito installed gets the system rounded stack, which is what
+   tapwhenbored.com already uses for body copy. No display font is added. */
+@font-face{
+  font-family:"Nunito"; font-style:normal; font-weight:400 900; font-display:swap;
+  src:local("Nunito"), local("Nunito Regular"), local("Nunito-Regular");
+}
+:root{
+  --font: "Nunito", ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --bg:#f3f3fa; --bg-2:#e9e9f4;
+  --surface:#ffffff; --surface-2:#f7f7fc; --surface-3:#eeeef8;
+  --ink:#1b1d2e; --ink-soft:#5f6379; --ink-faint:#8a8da3;
+  --line:#e5e4f0; --line-2:#d5d4e6;
+  --accent:#5546c8; --accent-2:#7b6ce8; --accent-soft:#eeebff;
+  --up:#0f6b50; --up-soft:#e0f3ec;
+  --gold:#8a6206; --gold-soft:#fbeed0;
+  --silver:#5c6076; --silver-soft:#eaecf4;
+  --bronze:#8a5730; --bronze-soft:#f7e9dd;
+  --you-soft:#efecff; --you-line:#7b6ce8;
+  --par:#6d7189; --par-soft:#f0f0f6;
+  --sk:#e9e9f2;
+  --shadow:0 1px 2px rgba(24,22,58,.05), 0 10px 30px -14px rgba(24,22,58,.24);
+  --shadow-lg:0 2px 6px rgba(24,22,58,.08), 0 30px 60px -22px rgba(24,22,58,.42);
+  --r:16px; --r-sm:10px;
+  /* motion: strong custom curves; the built-in CSS easings are too weak */
+  --ease-out:cubic-bezier(0.23,1,0.32,1);
+  --ease-in-out:cubic-bezier(0.77,0,0.175,1);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0d0e1a; --bg-2:#080910;
+  --surface:#171932; --surface-2:#1d1f3b; --surface-3:#242648;
+  --ink:#eeecfa; --ink-soft:#a6a7c9; --ink-faint:#82849f;
+  --line:#282a4c; --line-2:#373a66;
+  --accent:#a794ff; --accent-2:#bfb0ff; --accent-soft:#232048;
+  --up:#48dfa2; --up-soft:#0f3328;
+  --gold:#ffd166; --gold-soft:#3a2c0c;
+  --silver:#ccd0e6; --silver-soft:#252843;
+  --bronze:#e3a678; --bronze-soft:#37200f;
+  --you-soft:#241f52; --you-line:#a794ff;
+  --par:#9698ba; --par-soft:#1e2040;
+  --sk:#232544;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7);
+  --shadow-lg:0 2px 8px rgba(0,0,0,.5), 0 30px 60px -20px rgba(0,0,0,.85);
+}}
+html[data-theme="dark"]{
+  --bg:#0d0e1a; --bg-2:#080910;
+  --surface:#171932; --surface-2:#1d1f3b; --surface-3:#242648;
+  --ink:#eeecfa; --ink-soft:#a6a7c9; --ink-faint:#82849f;
+  --line:#282a4c; --line-2:#373a66;
+  --accent:#a794ff; --accent-2:#bfb0ff; --accent-soft:#232048;
+  --up:#48dfa2; --up-soft:#0f3328;
+  --gold:#ffd166; --gold-soft:#3a2c0c;
+  --silver:#ccd0e6; --silver-soft:#252843;
+  --bronze:#e3a678; --bronze-soft:#37200f;
+  --you-soft:#241f52; --you-line:#a794ff;
+  --par:#9698ba; --par-soft:#1e2040;
+  --sk:#232544;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7);
+  --shadow-lg:0 2px 8px rgba(0,0,0,.5), 0 30px 60px -20px rgba(0,0,0,.85);
+}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+:root[data-theme="dark"]{color-scheme:dark}
+:root[data-theme="light"]{color-scheme:light}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--font); font-size:15px; line-height:1.5;
+  font-variant-numeric:tabular-nums lining-nums;
+  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  -webkit-tap-highlight-color:transparent;
+}
+button,a,summary,label,input,select{touch-action:manipulation}
+h1,h2,h3,p,ol,ul,figure{margin:0}
+ol,ul{padding:0;list-style:none}
+a{color:inherit}
+img,svg{display:block}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent-2); outline-offset:2px; border-radius:8px}
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ---------- app frame ---------- */
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px}
+.site-head{display:flex;align-items:center;gap:12px;padding:18px 0 14px;flex-wrap:wrap}
+.brand-name{font-size:26px;font-weight:800;letter-spacing:-.4px;line-height:1.1}
+.brand-name .warm{color:#e04a37} .brand-name .cool{color:#137a5b}
+html[data-theme="dark"] .brand-name .warm{color:#ff7d6b} html[data-theme="dark"] .brand-name .cool{color:#34e19a}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .brand-name .warm{color:#ff7d6b} :root:not([data-theme="light"]) .brand-name .cool{color:#34e19a}}
+.brand-sub{color:var(--ink-soft);font-size:14px;margin-top:2px}
+.head-tools{margin-left:auto;display:flex;align-items:center;gap:8px}
+@media (max-width:559px){ .site-head:has(.me){gap:10px} .site-head:has(.me) .head-tools{margin-left:0;width:100%;justify-content:flex-start} }
+
+/* identity chip */
+.me{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:6px 14px 6px 6px;border-radius:999px;
+  background:var(--surface);border:1.5px solid var(--line);text-decoration:none;font-weight:700;font-size:14px;box-shadow:var(--shadow)}
+@media (hover:hover) and (pointer:fine){ .me:hover{border-color:var(--line-2)} }
+.me-av{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-size:14px;font-weight:800;flex:none}
+.me-txt{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.me--ghost .me-av{background:var(--surface-3);color:var(--ink-faint)}
+
+/* theme toggle */
+.tt{width:56px;height:44px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);
+  display:inline-flex;align-items:center;justify-content:center;box-shadow:var(--shadow)}
+.tt svg{width:19px;height:19px;stroke:var(--ink-soft);fill:none;stroke-width:1.9;stroke-linecap:round}
+.tt .moon{display:none} html[data-theme="dark"] .tt .moon{display:block} html[data-theme="dark"] .tt .sun{display:none}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tt .moon{display:block} :root:not([data-theme="light"]) .tt .sun{display:none}}
+
+/* ---------- THE WEEKLY WINDOW (identical markup on every page) ---------- */
+.wk{background:var(--surface);border:1.5px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);
+  padding:10px 12px 8px;position:relative;overflow:hidden}
+.wk-top{display:flex;align-items:flex-start;gap:10px;height:44px}
+.wk-id{min-width:0;flex:1}
+.wk-title{display:flex;align-items:center;gap:8px;font-size:15.5px;font-weight:800;letter-spacing:-.2px;line-height:1.25;min-width:0}
+.wk-title .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wk-dot{width:10px;height:10px;border-radius:3px;flex:none;background:var(--dot,var(--accent))}
+html[data-theme="dark"] .wk-dot{background:var(--dotd,var(--accent))}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .wk-dot{background:var(--dotd,var(--accent))}}
+.wk-unit{font-size:12.5px;color:var(--ink-faint);font-weight:600;margin-top:2px;letter-spacing:.01em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wk-reset{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:1px;
+  height:44px;padding:0 2px;border:0;background:transparent;flex:none;text-align:right;border-radius:10px}
+.wk-reset b{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;line-height:1.3}
+/* The time is a detail, not a countdown: reserved height, revealed on hover or tap, never ticking. */
+.wk-clock{height:17px;line-height:17px;font-size:12.5px;font-weight:700;color:var(--ink-faint);
+  min-width:80px;white-space:nowrap;opacity:0;transition:opacity 140ms var(--ease-out)}
+.wk-reset[aria-expanded="true"] .wk-clock,.wk-reset:focus-visible .wk-clock{opacity:1}
+@media (hover:hover) and (pointer:fine){ .wk-reset:hover .wk-clock{opacity:1} .wk-reset:hover{background:var(--surface-2)} }
+@media (prefers-reduced-motion: reduce){ .wk-clock{transition:none} }
+
+.wk-rows{margin-top:8px}
+.wk-row{display:grid;grid-template-columns:28px minmax(0,1fr) 30px auto;align-items:center;gap:10px;
+  height:40px;padding:0 8px;border-radius:10px;position:relative}
+.wk-row + .wk-row{box-shadow:inset 0 1px 0 var(--line)}
+.wk-rank{font-size:13.5px;font-weight:800;color:var(--ink-faint);text-align:center}
+.wk-rank.medal{display:grid;place-items:center;width:26px;height:26px;border-radius:8px;font-size:13px;margin:0 auto}
+.wk-rank.rk1{background:var(--gold-soft);color:var(--gold)}
+.wk-rank.rk2{background:var(--silver-soft);color:var(--silver)}
+.wk-rank.rk3{background:var(--bronze-soft);color:var(--bronze)}
+.wk-name{display:flex;align-items:center;gap:6px;min-width:0;font-weight:700;font-size:14.5px;overflow:hidden}
+.wk-name span.nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crown{width:11px;height:9px;flex:none;fill:#c99213}
+html[data-theme="dark"] .crown{fill:#ffd166}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .crown{fill:#ffd166}}
+.chip{flex:none;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  padding:2px 6px;border-radius:6px;line-height:1.35}
+.chip-you{background:var(--you-line);color:#fff}
+html[data-theme="dark"] .chip-you{color:#171932}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .chip-you{color:#171932}}
+.chip-par{background:var(--par-soft);color:var(--par);border:1px dashed var(--line-2)}
+.wk-move{font-size:12px;font-weight:800;color:transparent;text-align:center}
+.wk-move.up{color:var(--up)}
+.wk-move.dn{color:var(--ink-faint)}
+.wk-score{font-size:15px;font-weight:800;text-align:right;min-width:64px;white-space:nowrap}
+.wk-score i{font-style:normal;font-weight:700;font-size:11.5px;color:var(--ink-faint);margin-left:3px}
+.wk-row.is-you{background:var(--you-soft);box-shadow:none}
+.wk-row.is-you + .wk-row{box-shadow:none}
+.wk-row.is-you::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:3px;background:var(--you-line)}
+.wk-row.is-par .wk-name{color:var(--par)}
+.wk-row.is-par .wk-score{color:var(--par)}
+.wk-row.is-open .wk-rank,.wk-row.is-open .wk-name,.wk-row.is-open .wk-score{color:var(--ink-faint);font-weight:700}
+.wk-gap{height:18px;display:flex;align-items:center;gap:8px;padding:0 8px;color:var(--ink-faint);font-size:11.5px;font-weight:700}
+.wk-gap::before,.wk-gap::after{content:"";height:1px;background:var(--line);flex:1}
+.wk-gap.blank span{display:none}
+.wk-gap.blank::after{display:none}
+.wk-msg{height:218px;margin-top:8px;display:grid;place-content:center;justify-items:center;gap:10px;text-align:center;padding:0 12px}
+.wk-msg p{font-size:14px;color:var(--ink-soft);max-width:30ch}
+.wk-msg b{font-size:15px}
+.sk{background:var(--sk);border-radius:6px;height:12px}
+.wk-row.is-sk .wk-rank{background:var(--sk);border-radius:6px;height:14px;color:transparent}
+.wk-row.is-sk .wk-name{display:block;height:13px;background:var(--sk);border-radius:6px;width:60%}
+.wk-row.is-sk .wk-score{background:var(--sk);border-radius:6px;height:13px;color:transparent;min-width:52px}
+.wk-drama{height:30px;display:flex;align-items:center;gap:7px;padding:0 8px;margin-top:5px;line-height:1.3;
+  font-size:13.5px;font-weight:700;color:var(--ink-soft)}
+.wk-drama .txt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wk-drama .bolt{color:var(--accent);font-weight:800}
+.wk-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;height:30px;
+  padding:5px 8px 0;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-faint);font-weight:700}
+.wk-foot>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wk-more{color:var(--accent);text-decoration:none;font-weight:800;display:inline-flex;align-items:center;gap:4px;
+  min-height:30px;align-self:center;position:relative;flex:none}
+/* the visual stays 30px tall; the hit area is 44 */
+.wk-more::after{content:"";position:absolute;left:-10px;right:-8px;bottom:-2px;height:45px}
+@media (hover:hover) and (pointer:fine){ .wk-more:hover{text-decoration:underline} }
+/* Purpose: state indication — where this run landed. One property (opacity), one shot,
+   over a row that is already permanently marked, so nothing is lost when it is removed. */
+@keyframes youpulse{0%{opacity:0}22%{opacity:1}100%{opacity:0}}
+.wk-row.is-new::after{content:"";position:absolute;inset:0;border-radius:10px;pointer-events:none;
+  background:color-mix(in srgb, var(--accent) 24%, transparent);opacity:0;
+  animation:youpulse 520ms var(--ease-out) 1}
+@media (prefers-reduced-motion: reduce){ .wk-row.is-new::after{animation:none} }
+
+.honest{font-size:12px;color:var(--ink-faint);text-align:center;margin-top:10px;font-weight:600}
+
+/* game marks (shared by home cards and the account list) */
+.gicon{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;
+  background:color-mix(in srgb, var(--dot) 17%, transparent);color:var(--dot);flex:none}
+.gicon svg{width:22px;height:22px}
+html[data-theme="dark"] .gicon{background:color-mix(in srgb, var(--dotd) 22%, transparent);color:var(--dotd)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .gicon{background:color-mix(in srgb, var(--dotd) 22%, transparent);color:var(--dotd)}}
+
+/* ---------- buttons ---------- */
+.btn{min-height:48px;padding:0 20px;border-radius:999px;border:1.5px solid transparent;font-weight:800;font-size:15px;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;
+  transition:transform 140ms var(--ease-out)}
+.btn:active{transform:scale(.97)}
+@media (prefers-reduced-motion: reduce){.btn{transition:none}.btn:active{transform:none}}
+.btn-primary{background:var(--accent);color:#fff}
+html[data-theme="dark"] .btn-primary{color:#12132a}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn-primary{color:#12132a}}
+@media (hover:hover) and (pointer:fine){ .btn-primary:hover{background:var(--accent-2)} }
+.btn-ghost{background:var(--surface);border-color:var(--line-2);color:var(--ink)}
+@media (hover:hover) and (pointer:fine){ .btn-ghost:hover{background:var(--surface-2)} }
+.btn-quiet{background:transparent;border-color:var(--line);color:var(--ink-soft);font-weight:700}
+@media (hover:hover) and (pointer:fine){ .btn-quiet:hover{background:var(--surface-2)} }
+.btn-sm{min-height:44px;font-size:14px;padding:0 16px}
+
+/* ---------- forms ---------- */
+.field{display:block}
+.field label{display:block;font-size:13px;font-weight:800;color:var(--ink-soft);margin-bottom:6px}
+.input{width:100%;min-height:50px;font-size:16px;font-weight:700;padding:0 14px;border-radius:12px;
+  border:1.5px solid var(--line-2);background:var(--surface-2);color:var(--ink)}
+.input::placeholder{color:var(--ink-faint);font-weight:600}
+.input:focus{border-color:var(--accent);background:var(--surface)}
+.consent{font-size:12px;color:var(--ink-faint);line-height:1.45;font-weight:600}
+
+/* ---------- demo bar ---------- */
+.demo-bar{position:fixed;left:10px;bottom:10px;z-index:90;display:flex;align-items:center;gap:4px;flex-wrap:wrap;
+  max-width:min(94vw,520px);background:#2b2c38;color:#d8d9e4;border-radius:10px;padding:5px 7px;
+  font:600 10.5px/1 var(--font);box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.demo-bar b{font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8b8da0;margin-right:2px;font-size:9.5px}
+.demo-bar button{background:#3d3f4f;border:0;color:#e6e7f0;border-radius:6px;padding:5px 7px;font:700 10.5px/1 var(--font);min-height:24px}
+.demo-bar button[aria-pressed="true"]{background:#cfd0dd;color:#23242e}
+
+/* ---------- misc ---------- */
+.tabs{display:flex;gap:6px;background:var(--surface-2);border:1.5px solid var(--line);padding:4px;border-radius:999px}
+.tab{flex:1;min-height:44px;border:0;background:transparent;border-radius:999px;font-weight:800;font-size:13.5px;color:var(--ink-soft);padding:0 10px}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.card-note{font-size:12.5px;color:var(--ink-faint);font-weight:700}
+.section-h{display:flex;align-items:baseline;gap:10px;margin:26px 0 12px}
+.section-h h2{font-size:17px;font-weight:800;letter-spacing:-.2px}
+.section-h span{font-size:12.5px;color:var(--ink-faint);font-weight:700}
+.site-foot{padding:26px 0 34px;text-align:center;color:var(--ink-faint);font-size:13px;font-weight:600}
+
+
+.home-grid{display:grid;gap:8px}
+.col-week{order:1}
+.col-shelf{order:2}
+@media (min-width:900px){
+  .home-grid{grid-template-columns:minmax(0,1fr) 350px;gap:30px;align-items:start}
+  .col-week{order:2;position:sticky;top:16px}
+  .col-shelf{order:1}
+  .col-week .section-h{margin-top:26px}
+}
+.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(156px,1fr));gap:12px}
+.gcard{display:flex;flex-direction:column;gap:2px;padding:14px;border-radius:var(--r);text-decoration:none;
+  background:var(--surface);border:1.5px solid var(--line);box-shadow:var(--shadow);min-height:150px}
+.gcard:hover{border-color:var(--dot)}
+html[data-theme="dark"] .gcard:hover{border-color:var(--dotd)}
+.gcard .gicon{margin-bottom:8px}
+.gname{font-size:15px;font-weight:800;letter-spacing:-.2px}
+.gtag{font-size:12.5px;color:var(--ink-faint);font-weight:700}
+.gweek{margin-top:auto;padding-top:10px;font-size:12.5px;color:var(--ink-soft);font-weight:700;min-height:34px;line-height:1.35}
+.gweek b{color:var(--ink);font-weight:800}
+.gweek.none{color:var(--ink-faint);font-weight:600}
+.notes{margin-top:18px;display:grid;gap:12px}
+@media (min-width:640px){ .notes{grid-template-columns:repeat(3,1fr);gap:14px} }
+.notes li{font-size:12.5px;color:var(--ink-soft);line-height:1.55;padding:12px 13px;border-radius:13px;
+  background:var(--surface-2);border:1.5px solid var(--line)}
+.notes b{color:var(--ink);display:block;font-size:13px;margin-bottom:3px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="site-head">
+  <div>
+    <h1 class="brand-name">Tap <span class="warm">When</span> <span class="cool">Bored</span></h1>
+    <p class="brand-sub">Tiny games. Big breaks. New table every week.</p>
+  </div>
+  <div class="head-tools"><a class="me" href="account.html"><span class="me-av" aria-hidden="true">QO</span><span class="me-txt">Quiet Otter 42</span></a><button class="tt" type="button" aria-label="Switch theme">
+<svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.4"/><path d="M12 1.8v2.6M12 19.6v2.6M4.2 4.2l1.9 1.9M17.9 17.9l1.9 1.9M1.8 12h2.6M19.6 12h2.6M4.2 19.8l1.9-1.9M17.9 6.1l1.9-1.9"/></svg>
+<svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1z"/></svg>
+</button></div>
+</header>
+<div class="home-grid">
+  <section class="col-week" aria-labelledby="weekH">
+    <div class="section-h"><h2 id="weekH">This week</h2><span>everyone, all 8 games</span></div>
+    <section class="wk" id="wkHome"></section>
+    <p class="honest">Boards are for fun — scores aren’t verified.</p>
+  </section>
+  <section class="col-shelf" aria-labelledby="shelfH">
+    <div class="section-h"><h2 id="shelfH">8 tiny games</h2><span>your standing, this week</span></div>
+    <div class="shelf">
+<a class="gcard" href="play.html" style="--dot:#1684d1;--dotd:#22d3ee">
+  <span class="gicon" aria-hidden="true"><svg viewBox="0 0 22 22" fill="currentColor"><circle cx="11" cy="4.4" r="2.1"/><circle cx="4.6" cy="11" r="2.1"/><circle cx="11" cy="11" r="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="17.4" cy="11" r="2.1"/><circle cx="11" cy="17.6" r="2.1"/></svg></span>
+  <span class="gname">Marble Nostalgia</span>
+  <span class="gtag">Think · Move</span>
+  <span class="gweek"><b>6th</b> this week · 2 left</span>
+</a>
+<a class="gcard" href="play.html" style="--dot:#4fb6e0;--dotd:#22e5ff">
+  <span class="gicon" aria-hidden="true"><svg viewBox="0 0 22 22" fill="currentColor"><circle cx="8" cy="9" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="15.5" cy="14.5" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="16" cy="6" r="1.8"/></svg></span>
+  <span class="gname">Bubble Tap</span>
+  <span class="gtag">Tap · Relax</span>
+  <span class="gweek"><b>9th</b> this week · 1,240 pts</span>
+</a>
+<a class="gcard" href="play.html" style="--dot:#8b7fe0;--dotd:#a855f7">
+  <span class="gicon" aria-hidden="true"><svg viewBox="0 0 22 22" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="12" y="3" width="7" height="7" rx="2"/><rect x="3" y="12" width="7" height="7" rx="2"/><rect x="12" y="12" width="7" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>
+  <span class="gname">Slide N Order</span>
+  <span class="gtag">Tap · Arrange</span>
+  <span class="gweek"><b>4th</b> this week · 84 moves</span>
+</a>
+<a class="gcard" href="play.html" style="--dot:#f0a825;--dotd:#ffd60a">
+  <span class="gicon" aria-hidden="true"><svg viewBox="0 0 22 22" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="12" y="3" width="7" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="12" width="7" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="12" y="12" width="7" height="7" rx="2"/></svg></span>
+  <span class="gname">Flip It</span>
+  <span class="gtag">Tap · Clear</span>
+  <span class="gweek"><b>3rd</b> this week · 9 moves</span>
+</a>
+<a class="gcard" href="play.html" style="--dot:#1f9974;--dotd:#34e19a">
+  <span class="gicon" aria-hidden="true"><svg viewBox="0 0 22 22" fill="currentColor"><rect x="3" y="3.5" width="16" height="4.4" rx="2.2"/><rect x="3" y="9.8" width="16" height="4.4" rx="2.2" opacity=".45"/><rect x="3" y="16.1" width="16" height="4.4" rx="2.2"/></svg></span>
+  <span class="gname">Word Steps</span>
+  <span class="gtag">Think · Spell</span>
+  <span class="gweek"><b>2nd</b> today · 4 steps</span>
+</a>
+<a class="gcard" href="play.html" style="--dot:#ef6a55;--dotd:#ff6b57">
+  <span class="gicon" aria-hidden="true"><svg viewBox="0 0 22 22" fill="currentColor"><circle cx="8.4" cy="11" r="4.9" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="14.6" cy="11" r="4.9" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span>
+  <span class="gname">Untangle</span>
+  <span class="gtag">Drag · Solve</span>
+  <span class="gweek none">No board — just the calm</span>
+</a>
+<a class="gcard" href="play.html" style="--dot:#8b6fd9;--dotd:#b48cff">
+  <span class="gicon" aria-hidden="true"><svg viewBox="0 0 22 22" fill="currentColor"><path d="M11 2.6 18.4 7v8.8L11 20.2 3.6 15.8V7z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><circle cx="11" cy="11.4" r="2.4"/></svg></span>
+  <span class="gname">Honeycomb</span>
+  <span class="gtag">Tap · Reshape</span>
+  <span class="gweek"><b>5th</b> this week · 1:12</span>
+</a>
+<a class="gcard" href="play.html" style="--dot:#7c5cff;--dotd:#ff5fb3">
+  <span class="gicon" aria-hidden="true"><svg viewBox="0 0 22 22" fill="currentColor"><path d="M3 15c3-8 6 4 9-2s4 3 7-1" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><circle cx="18" cy="5" r="1.6"/></svg></span>
+  <span class="gname">Doodle On</span>
+  <span class="gtag">Draw · 30s</span>
+  <span class="gweek none">No score. That’s the point.</span>
+</a>
+    </div>
+    <ul class="notes">
+      <li><b>Every Sunday, everything empties.</b> Last week stays readable for seven days, then it’s
+        gone. A good week is always one run away.</li>
+      <li><b>Par is the maker’s target.</b> A seeded row on every board, so there is something to beat
+        even on a quiet Tuesday. It never wins the week.</li>
+      <li><b>A name is all it takes.</b> One field, once, shared by all eight games. No account, no
+        password, and the email is only ever the Sunday note.</li>
+    </ul>
+  </section>
+</div>
+<footer class="site-foot">More tiny games coming soon.</footer>
+</div>
+<script>
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+
+/* ---- theme ---- */
+function initTheme(){
+  var btn = document.querySelector(".tt");
+  if(!btn) return;
+  btn.addEventListener("click", function(){
+    var cur = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+    var next = cur === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try{ localStorage.setItem("twb:theme", next); }catch(e){}
+    btn.setAttribute("aria-label", next === "dark" ? "Switch to light theme" : "Switch to dark theme");
+  });
+}
+
+/* ---- weekly reset: a date, not a countdown ---- */
+function nextReset(){
+  var n = new Date();
+  var d = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+  var add = (7 - n.getDay()) % 7;
+  if(add === 0) add = 7;
+  d.setDate(d.getDate() + add);
+  return d;
+}
+/* Coarse on purpose: no minutes means nothing has to tick, and nothing has to move. */
+function countdownText(){
+  var ms = nextReset() - new Date();
+  if(ms < 0) ms = 0;
+  var m = Math.round(ms/6e4), h = Math.round(ms/36e5), d = Math.round(ms/864e5);
+  if(ms >= 1296e5) return "in " + d + " days";
+  if(ms >= 54e5)   return "in " + h + " hour" + (h === 1 ? "" : "s");
+  return "in " + m + " minute" + (m === 1 ? "" : "s");
+}
+function initCountdown(){
+  var t = countdownText(), all = document.querySelectorAll("[data-clock]");
+  for(var i=0;i<all.length;i++) all[i].textContent = t;
+  /* On a fine pointer hover reveals the time; on touch, a tap does. Never both, never ticking. */
+  document.addEventListener("click", function(e){
+    var b = e.target.closest && e.target.closest(".wk-reset");
+    if(!b) return;
+    b.setAttribute("aria-expanded", b.getAttribute("aria-expanded") === "true" ? "false" : "true");
+  });
+}
+
+/* ---- THE weekly window. One renderer, identical markup everywhere. ---- */
+function renderWk(el, cfg){
+  var st = cfg.state || "full";
+  el.dataset.state = st;
+  el.style.setProperty("--dot", cfg.dot);
+  el.style.setProperty("--dotd", cfg.dotd);
+  var head =
+    '<div class="wk-top">' +
+      '<div class="wk-id">' +
+        '<h2 class="wk-title"><span class="wk-dot"></span><span class="nm">' + esc(cfg.title) + '</span></h2>' +
+        '<p class="wk-unit">' + esc(cfg.unit) + '</p>' +
+      '</div>' +
+      '<button class="wk-reset" type="button" aria-expanded="false" aria-label="Resets Sunday. Show how long is left.">' +
+        '<b>Resets Sunday</b><span class="wk-clock" data-clock>' + countdownText() + '</span></button>' +
+    '</div>';
+
+  var body = "";
+  if(st === "error"){
+    body = '<div class="wk-msg"><b>Couldn\u2019t reach the board</b><p>' + esc(cfg.errorNote) +
+           '</p><button class="btn btn-ghost btn-sm" type="button" data-wk-retry>Try again</button></div>';
+  } else if(st === "loading"){
+    body = '<ol class="wk-rows">';
+    for(var i=0;i<5;i++){
+      body += '<li class="wk-row is-sk"><span class="wk-rank">0</span><span class="wk-name">&nbsp;</span>' +
+              '<span class="wk-move"></span><span class="wk-score">0</span></li>';
+      if(i===2) body += '<li class="wk-gap blank"><span>&nbsp;</span></li>';
+    }
+    body += '</ol>';
+  } else {
+    var rows = cfg.rows || [];
+    body = '<ol class="wk-rows">';
+    for(var j=0;j<rows.length;j++){
+      var r = rows[j];
+      var cls = "wk-row";
+      if(r.you) cls += " is-you";
+      if(r.par) cls += " is-par";
+      if(r.open) cls += " is-open";
+      if(r.pulse) cls += " is-new";
+      var rank = r.rank <= 3 && !r.open
+        ? '<span class="wk-rank medal rk' + r.rank + '">' + r.rank + '</span>'
+        : '<span class="wk-rank">' + (r.open ? "\u2013" : r.rank) + '</span>';
+      var crown = r.rank === 1 && !r.open && !r.par
+        ? '<svg class="crown" viewBox="0 0 24 18" aria-hidden="true"><title>Leads the week</title><path d="M1.6 16.4 0 3.2l6.4 4.6L12 0l5.6 7.8L24 3.2l-1.6 13.2z"/></svg>'
+        : "";
+      var chips = "";
+      if(r.you) chips += '<span class="chip chip-you">you</span>';
+      if(r.par) chips += '<span class="chip chip-par">target</span>';
+      var mv = '<span class="wk-move"></span>';
+      if(r.up) mv = '<span class="wk-move up" title="Up ' + r.up + ' this week">\u25B2' + r.up + '</span>';
+      else if(r.down) mv = '<span class="wk-move dn" title="Down ' + r.down + ' this week">\u25BC' + r.down + '</span>';
+      var score = r.open
+        ? '<span class="wk-score">\u2013</span>'
+        : '<span class="wk-score">' + esc(r.score) + (r.you ? '<i>' + esc(cfg.short) + '</i>' : "") + '</span>';
+      body += '<li class="' + cls + '">' + rank +
+              '<span class="wk-name">' + (r.open ? '<span class="nm">' + esc(r.name) + '</span>' : '<span class="nm">' + esc(r.name) + '</span>' + crown + chips) + '</span>' +
+              mv + score + '</li>';
+      if(j === 2){
+        var g = cfg.gap ? cfg.gap : "";
+        body += '<li class="wk-gap' + (g ? "" : " blank") + '"><span>' + esc(g || "x") + '</span></li>';
+      }
+    }
+    body += '</ol>';
+  }
+
+  /* A failed fetch has nothing encouraging to say and no player count to quote:
+     both strips stay empty, and both are fixed height, so nothing resizes. */
+  var drama = (st === "loading" || st === "error") ? "" : (cfg.drama || "");
+  var foot  = st === "loading" ? "Reading this week\u2019s board\u2026" : (st === "error" ? "" : (cfg.count || ""));
+  var out = head + body +
+    '<p class="wk-drama">' + (drama ? '<span class="bolt">\u2192</span>' : "") + '<span class="txt">' + esc(drama) + '</span></p>' +
+    '<div class="wk-foot"><span>' + esc(foot) + '</span>' +
+    (cfg.link ? '<a class="wk-more" href="' + cfg.link + '">Full table \u203A</a>' : '<span></span>') + '</div>';
+  el.innerHTML = out;
+  var rt = el.querySelector("[data-wk-retry]");
+  if(rt && cfg.onRetry) rt.addEventListener("click", cfg.onRetry);
+}
+
+/* ---- demo state bar ---- */
+function initDemo(states, apply){
+  var bar = document.querySelector(".demo-bar");
+  if(!bar) return;
+  bar.addEventListener("click", function(e){
+    var b = e.target.closest("button[data-state]");
+    if(!b) return;
+    var btns = bar.querySelectorAll("button[data-state]");
+    for(var i=0;i<btns.length;i++) btns[i].setAttribute("aria-pressed", String(btns[i] === b));
+    apply(b.dataset.state);
+  });
+  apply(states[0]);
+}
+
+/* ---- stored player ---- */
+function getPlayer(){
+  try{ return JSON.parse(localStorage.getItem("twb:player") || "null"); }catch(e){ return null; }
+}
+function setPlayer(name){
+  var p = getPlayer() || { id: "p_" + Math.random().toString(36).slice(2,10) };
+  p.name = name;
+  try{ localStorage.setItem("twb:player", JSON.stringify(p)); }catch(e){}
+  return p;
+}
+
+
+initTheme(); initCountdown();
+renderWk(document.getElementById("wkHome"), {
+  title: "All 8 games \u00B7 this week",
+  unit: "Points \u00B7 1 per board, +2 for top 3",
+  short: "pts", dot: "#5546c8", dotd: "#a794ff",
+  rows: [{"rank":1,"name":"Nadia Kova","score":"19"},{"rank":2,"name":"Tomas Reyes","score":"14"},{"rank":3,"name":"Mei Tanaka","score":"11"},{"rank":6,"name":"Leila Haddad","score":"8"},{"rank":7,"name":"Quiet Otter 42","score":"7","you":true,"up":1}],
+  gap: "2 more players",
+  drama: "1 point off 6th \u2014 one more board.",
+  count: "31 players this week",
+  link: "leaderboard.html"
+});
+</script>
+</body>
+</html>
