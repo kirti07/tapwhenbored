@@ -17,3 +17,6 @@ playwright-report/
 # The UX research: personas, prototypes, screenshots. Read from, never built
 # from, and large. Kept out of the repo rather than out of the working tree.
 research/
+
+# Local planning notes for in-progress work.
+todo.md

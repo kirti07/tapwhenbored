@@ -1,0 +1,105 @@
+/* The challenge card: what a challenge link shows above the board.
+ *
+ * "Riya cleared this in · Beat 0:42" — a marquee strip over a dark screen,
+ * with the level as a chip. Flip It and Slide N Order both show it, and a
+ * party round will reuse the same pages, so the geometry lives here once.
+ *
+ * The design draws the marquee in the pixel face. It uses the display face
+ * instead: game pages do not load the pixel face, and preloading it on every
+ * visit for a card only challenge links show would cost every player ~7 kB.
+ *
+ * Layout and geometry only, like endcard.css. No value in this file is a
+ * colour except the marquee bulbs, which are white light on any accent. Each
+ * game sets the card's colours in its own stylesheet through four properties:
+ *
+ *   --challenge-bar       marquee background
+ *   --challenge-bar-ink   marquee text
+ *   --challenge-screen    body background
+ *   --challenge-ink       body text
+ *
+ * Hidden with the `hidden` attribute (base.css makes it win), so a page with
+ * no challenge has no card in the layout, the tab order or the tree.
+ */
+
+.challenge {
+  flex-shrink: 0;
+  width: min(100%, 420px);
+  margin: 1.2svh auto 0;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--challenge-screen);
+  color: var(--challenge-ink);
+}
+
+.challenge-bar {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 9px 14px 6px;
+  background: var(--challenge-bar);
+  color: var(--challenge-bar-ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* The bulbs: one radial-gradient tile, the same trick as the arcade marquee. */
+.challenge-bar::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 2px;
+  height: 5px;
+  background-image: radial-gradient(circle at 2.5px 2.5px, rgba(255, 255, 255, 0.9) 1.6px, transparent 2px);
+  background-size: 13px 5px;
+}
+
+.challenge-bar span { position: relative; top: 2px; }
+.challenge-bar span + span { opacity: 0.75; }
+
+.challenge-body {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 1.2svh 14px;
+}
+
+.challenge-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+}
+
+.challenge-who {
+  font-size: 13px;
+  opacity: 0.75;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.challenge-beat {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(18px, 2.8svh, 24px);
+  font-variant-numeric: tabular-nums;
+}
+
+.challenge-level {
+  margin-left: auto;
+  padding: 3px 9px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  opacity: 0.7;
+}
+
+.challenge-level:empty { display: none; }

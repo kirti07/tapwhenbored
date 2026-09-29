@@ -4,6 +4,7 @@ import { tone, initSoundToggle } from "../shared/ui/audio.js";
 import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 import { getJSON, setJSON, get as getPref, set as setPref } from "../shared/ui/prefs.js";
 import { recordPlay } from "../shared/ui/progress.js";
+import { getName, clean } from "../shared/ui/player.js";
 /* Was a local formatter that zero-padded the minutes, so a nine-second solve
    read "00:09". The site now spells a duration one way. */
 import { formatDuration as formatTime } from "../shared/ui/format.js";
@@ -24,10 +25,14 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   var LEVEL_ORDER = ["easy", "medium", "hard"];
   var DEFAULT_LEVEL = "easy";
 
-  // Links shared when the picker was 5/6/7 still open on a sensible level.
-  var LEGACY_SIZE_LEVEL = { "4": "easy", "5": "easy", "6": "medium", "7": "hard" };
   var GEN_ATTEMPTS = 200;
   var RECENT_MAX = 12;
+  var DEAL_ATTEMPTS = 40; // seeds tried before a recently seen board is accepted
+
+  // A challenge replays the sharer's exact board. It is offered on Easy and
+  // Medium only — a product decision; Hard stays a personal-best level.
+  var CHALLENGE_LEVELS = ["easy", "medium"];
+  var MAX_BEAT_MS = 60 * 60 * 1000; // a longer "time to beat" is a broken link
 
   // Only Medium perfect solves reach the leaderboard. Boards are random, so a
   // plain "fewest moves" record would just log whoever drew the easiest board —
@@ -60,7 +65,12 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   var againBtn = document.getElementById("againBtn");
   var shareBtn = document.getElementById("shareBtn");
   var shareNote = document.getElementById("shareNote");
-  var challengeBanner = document.getElementById("challengeBanner");
+  var challengeCard = document.getElementById("challenge");
+  var challengeWho = document.getElementById("challengeWho");
+  var challengeBeat = document.getElementById("challengeBeat");
+  var challengeLevel = document.getElementById("challengeLevel");
+  var beatStat = document.getElementById("beatStat");
+  var beatVal = document.getElementById("beatVal");
   var howtoBtn = document.getElementById("howtoBtn");
   var howtoSheet = document.getElementById("howtoSheet");
   var howtoBackdrop = document.getElementById("howtoBackdrop");
@@ -70,6 +80,7 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   var size = LEVELS[level].sizes[0]; // the dealt board decides; this is a seed
   var state = null;      // Uint8Array, 1 = lit
   var startState = null; // the board Reset returns to
+  var seed = 0;          // what built this board; a challenge link carries it
   var optimal = 0;       // fewest moves this board can be solved in
   var tileEls = [];
   var moves = 0;
@@ -80,6 +91,7 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   var rippleHandle = null;
   var recent = readRecent();
   var bests = readBests();
+  var challenge = readChallenge(); // null, or the run a shared link asks you to beat
 
   // ---------- storage (all of it optional, none of it load-bearing) ----------
 
@@ -253,14 +265,39 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
     return true;
   }
 
+  // ---------- seeded boards ----------
+  //
+  // Every board is built from a 32-bit seed, so the seed alone reproduces it on
+  // any device: that is what makes a challenge link (and a party round) the same
+  // board for everyone. mulberry32 is integer maths throughout, so it gives the
+  // same sequence in every engine. It is a local copy on purpose — a shared
+  // module used by two games would become a chunk of its own and one more
+  // request on both pages.
+  //
+  // Changing anything that consumes `rand` changes which board an old seed
+  // builds. A live challenge link would then replay a different board.
+
+  function mulberry32(a) {
+    return function () {
+      a = (a + 0x6d2b79f5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), a | 1);
+      t = (t + Math.imul(t ^ (t >>> 7), t | 61)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function randomSeed() {
+    return (Math.random() * 4294967296) >>> 0;
+  }
+
   /** An empty grid with k distinct random tiles pressed. */
-  function pressRandomK(n, k) {
+  function pressRandomK(n, k, rand) {
     var N = n * n;
     var lit = new Uint8Array(N);
     var idx = [];
     for (var i = 0; i < N; i++) idx.push(i);
     for (i = N - 1; i > 0; i--) {                 // Fisher-Yates, partial
-      var j = (Math.random() * (i + 1)) | 0;
+      var j = (rand() * (i + 1)) | 0;
       var t = idx[i]; idx[i] = idx[j]; idx[j] = t;
     }
     for (i = 0; i < k; i++) press(n, lit, idx[i]);
@@ -268,31 +305,34 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   }
 
   /**
-   * A fresh board for a level, solvable by construction: pressing k distinct
-   * tiles on an empty grid makes those presses a solution, so an impossible
-   * puzzle cannot be produced and the optimal is k in all but a few percent of
-   * draws (a shorter route can exist through the null space). The solver still
-   * has the last word on `optimal`; a draw that lands under the level's floor
-   * is redrawn. Boards served in the last dozen deals are rejected too.
+   * The board a level and a seed build — a pure function of the two, and
+   * nothing else. Solvable by construction: pressing k distinct tiles on an
+   * empty grid makes those presses a solution, so an impossible puzzle cannot
+   * be produced and the optimal is k in all but a few percent of draws (a
+   * shorter route can exist through the null space). The solver still has the
+   * last word on `optimal`; a draw that lands under the level's floor is
+   * redrawn from the same stream.
+   *
+   * It must not read anything else. Avoiding recently seen boards is deal()'s
+   * job, done by trying another seed — if it happened in here, a board would
+   * depend on the browser that built it, and a shared seed would not replay.
    */
-  function generate(lvl) {
+  function generate(lvl, seedValue) {
+    var rand = mulberry32(seedValue);
     var cfg = LEVELS[lvl];
-    var n = cfg.sizes[(Math.random() * cfg.sizes.length) | 0];
+    var n = cfg.sizes[(rand() * cfg.sizes.length) | 0];
     var band = cfg.moves[n];
-    var k = band[0] + ((Math.random() * (band[1] - band[0] + 1)) | 0);
+    var k = band[0] + ((rand() * (band[1] - band[0] + 1)) | 0);
     var fallback = null;
 
     for (var attempt = 0; attempt < GEN_ATTEMPTS; attempt++) {
-      var lit = pressRandomK(n, k);
+      var lit = pressRandomK(n, k, rand);
       if (isCleared(lit)) continue;
-
-      var sig = signature(lit);
-      if (recent.indexOf(sig) !== -1) continue;
 
       var solved = solveOptimal(n, lit);
       if (!solved) continue;
 
-      var puzzle = { n: n, lit: lit, optimal: solved.moves, sig: sig };
+      var puzzle = { n: n, lit: lit, optimal: solved.moves, sig: signature(lit) };
       if (!fallback) fallback = puzzle;
       if (solved.moves >= band[0]) return puzzle;
     }
@@ -301,7 +341,7 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
 
     // Unreachable in practice — the loop above would have to draw the empty
     // board 200 times running. Still cheaper to have an answer than to throw.
-    var last = pressRandomK(n, 1);
+    var last = pressRandomK(n, 1, rand);
     return { n: n, lit: last, optimal: 1, sig: signature(last) };
   }
 
@@ -451,8 +491,14 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
     shareNote.classList.remove("show");
 
     // The end card is complete before the leaderboard is asked anything, so a
-    // slow or failed request costs nothing but this one line.
-    if (level === LB_LEVEL && perfect) {
+    // slow or failed request costs nothing but this one line. A challenge run
+    // is unranked (leaderboard.js refuses seeded runs), so the same line
+    // answers the only question that run asked instead.
+    if (challenge) {
+      lbHint.hidden = true;
+      globalBest.hidden = false;
+      globalBest.textContent = verdict(finalMs, challenge);
+    } else if (level === LB_LEVEL && perfect) {
       lbHint.hidden = true;
       renderGlobalBest(globalBest, {
         slug: "flip-it",
@@ -502,15 +548,31 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
     updateHud();
   }
 
-  /** The topbar refresh: a fresh board at the current level. */
+  /**
+   * A fresh board at the current level, from a fresh seed. A seed whose board
+   * was served in the last dozen deals is passed over for another, so a player
+   * does not meet the same small board twice in a row.
+   */
   function deal() {
+    leaveChallenge();
+    var s, puzzle;
+    for (var i = 0; i < DEAL_ATTEMPTS; i++) {
+      s = randomSeed();
+      puzzle = generate(level, s);
+      if (recent.indexOf(puzzle.sig) === -1) break;
+    }
+    load(puzzle, s);
+    pushRecent(puzzle.sig);
+  }
+
+  /** Put a built board on the table. */
+  function load(puzzle, seedValue) {
     clearRun();
-    var puzzle = generate(level);
+    seed = seedValue;
     size = puzzle.n;
     startState = new Uint8Array(puzzle.lit);
     state = new Uint8Array(puzzle.lit);
     optimal = puzzle.optimal;
-    pushRecent(puzzle.sig);
     if (tileEls.length !== size * size) buildBoard();
     renderAll();
     updateHud();
@@ -533,42 +595,73 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
     deal();
   }
 
-  // ---------- share ----------
+  // ---------- challenges ----------
+  //
+  // A challenge link is this page's own URL with the board's seed, its level,
+  // the time to beat and, when the sharer has set one, their name:
+  //   /flip-it/?seed=1k3x9z&level=easy&beat=42180&by=Riya
+  // Opening it replays that exact board. The URL is the whole state: while it
+  // carries a seed the run is a challenge, and leaderboard.js reads the same
+  // URL to keep the run off the global boards. Leaving the challenge (a new
+  // board, a new level) strips the query, which makes the next run ranked again.
+
+  /** The challenge in this page's URL, or null if it has none or a bad one. */
+  function readChallenge() {
+    var params = new URLSearchParams(location.search);
+    var rawSeed = params.get("seed") || "";
+    var lvl = params.get("level");
+    var beat = Number(params.get("beat"));
+    if (!/^[0-9a-z]{1,7}$/.test(rawSeed)) return null;
+    var seedValue = parseInt(rawSeed, 36);
+    if (seedValue > 0xffffffff) return null;
+    if (CHALLENGE_LEVELS.indexOf(lvl) === -1) return null;
+    if (!Number.isInteger(beat) || beat <= 0 || beat > MAX_BEAT_MS) return null;
+    return { seed: seedValue, level: lvl, beat: beat, by: clean(params.get("by")) };
+  }
+
+  function canChallenge() {
+    return CHALLENGE_LEVELS.indexOf(level) !== -1;
+  }
+
+  function showChallenge() {
+    challengeWho.textContent = (challenge.by || "A friend") + " cleared this in";
+    challengeBeat.textContent = "Beat " + formatTime(challenge.beat);
+    challengeLevel.textContent = LEVELS[challenge.level].label;
+    beatVal.textContent = formatTime(challenge.beat);
+    challengeCard.hidden = false;
+    beatStat.hidden = false;
+  }
+
+  function leaveChallenge() {
+    if (!challenge) return;
+    challenge = null;
+    challengeCard.hidden = true;
+    beatStat.hidden = true;
+    history.replaceState(history.state, "", location.pathname);
+  }
+
+  /** One line for the end card: did this run beat the link? */
+  function verdict(ms, c) {
+    var who = c.by || "your friend";
+    var gap = (Math.abs(c.beat - ms) / 1000).toFixed(1) + "s";
+    return ms < c.beat
+      ? "You beat " + who + " by " + gap
+      : "Still " + gap + " behind " + who;
+  }
 
   function shareUrl() {
-    var url = new URL(location.href);
-    url.search = "";
-    url.hash = "";
-    url.searchParams.set("moves", String(moves));
+    var url = new URL(location.pathname, location.origin);
+    if (!canChallenge()) return url.toString();
+    url.searchParams.set("seed", seed.toString(36));
     url.searchParams.set("level", level);
+    url.searchParams.set("beat", String(Math.round(finalMs)));
+    var name = getName();
+    if (name) url.searchParams.set("by", name);
     return url.toString();
   }
 
-  /** A shared link carries the friend's score and the level they played. */
-  function checkChallengeLink() {
-    if (!challengeBanner) return;
-    var params = new URLSearchParams(location.search);
-    var theirMoves = parseInt(params.get("moves"), 10);
-    var theirLevel = params.get("level");
-    if (!isFinite(theirMoves) || theirMoves <= 0) return;
-
-    // Links shared before levels existed carry ?size= instead.
-    if (LEVEL_ORDER.indexOf(theirLevel) === -1) {
-      theirLevel = LEGACY_SIZE_LEVEL[params.get("size")] || null;
-    }
-
-    var label = "the board";
-    if (theirLevel) {
-      label = LEVELS[theirLevel].label;
-      level = theirLevel; // read before the first deal, so play starts on their level
-    }
-    challengeBanner.textContent =
-      "A friend cleared " + label + " in " + theirMoves +
-      (theirMoves === 1 ? " move" : " moves") + " — tap to dismiss and beat it";
-    challengeBanner.classList.add("show");
-    challengeBanner.addEventListener("click", function () {
-      challengeBanner.classList.remove("show");
-    });
+  function track(name) {
+    try { window.gtag("event", name, { game: "flip-it" }); } catch (e) { /* analytics never matters */ }
   }
 
   // ---------- sound toggle ----------
@@ -602,11 +695,16 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
     note: shareNote,
     title: "Flip It",
     text: function () {
-      return "I cleared FLIP IT on " + LEVELS[level].label + " (" + size + "×" + size +
-        ") in " + moves + (moves === 1 ? " move" : " moves") +
-        " (optimal " + optimal + "). Can you beat that?";
+      return canChallenge()
+        ? "I cleared this FLIP IT board in " + formatTime(finalMs) + ". Same board — beat me."
+        : "I cleared FLIP IT on " + LEVELS[level].label + " (" + size + "×" + size +
+          ") in " + moves + (moves === 1 ? " move" : " moves") +
+          " (optimal " + optimal + "). Can you beat that?";
     },
     url: shareUrl,
+  });
+  shareBtn.addEventListener("click", function () {
+    if (canChallenge()) track("challenge_shared");
   });
 
   initSoundToggle(soundBtn, sndUi);
@@ -618,7 +716,13 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
     label: "Game over",
   });
 
-  checkChallengeLink();
+  if (challenge) {
+    level = challenge.level; // not written to prefs: the link's level is theirs
+    showChallenge();
+    load(generate(level, challenge.seed), challenge.seed);
+    track("challenge_link_opened");
+  } else {
+    deal();
+  }
   syncLevelButtons();
-  deal();
 })();

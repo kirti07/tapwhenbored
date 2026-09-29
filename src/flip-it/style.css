@@ -6,6 +6,7 @@
 @import "../shared/css/howto.css";
 @import "../shared/css/endcard.css";
 @import "../shared/css/leaderboard.css";
+@import "../shared/css/challenge.css";
 
 /* Soft Pop. Cream ground, warm yellow lit tiles, pale blue-grey dark ones,
    sky blue for interaction, peach and mint for the two secondary actions.
@@ -97,37 +98,23 @@ html, body {
   flex-shrink: 0;
 }
 
-/* ---- challenge banner ---- */
+/* ---- challenge card (layout in shared/css/challenge.css) ---- */
 
-.challenge-banner {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  margin: 0 auto;
-  padding: 0 4vw;
-  border-radius: 999px;
-  background: rgba(77, 178, 232, 0.12);
-  border: 1.5px solid rgba(77, 178, 232, 0.35);
-  color: var(--ink);
-  font-size: clamp(11px, 1.6svh, 13px);
-  letter-spacing: 0.02em;
-  text-align: center;
-  transition: max-height 0.35s ease, opacity 0.3s ease, margin 0.35s ease, padding 0.35s ease;
-  flex-shrink: 0;
-  cursor: pointer;
+.challenge {
+  --challenge-bar: #e8503d;
+  --challenge-bar-ink: #ffffff;
+  --challenge-screen: #1a1c36;
+  --challenge-ink: #f0eeff;
 }
 
-.challenge-banner.show {
-  max-height: 8svh;
-  opacity: 1;
-  margin: 1.2svh auto 0;
-  padding: 0.9svh 4vw;
+[data-theme="dark"] .challenge {
+  --challenge-bar: #ff5c8a;
+  --challenge-screen: #080915;
 }
+
+/* The board is sized from the viewport height, so the card has to come out of
+   that budget or it pushes the board over it. ~104px is the card's height. */
+.challenge:not([hidden]) ~ .board-area .board-wrap { width: min(88vw, calc(52svh - 104px), 480px); }
 
 /* ---- board ---- */
 
@@ -473,7 +460,6 @@ html, body {
   .tile--flip { animation: none; }
   .tile--flip::after { animation: none; }
   .grid.is-cleared .tile { animation: none; }
-  .challenge-banner { transition: none; }
 }
 
 /* ==== Neon Arcade (dark theme) ==== */
@@ -524,11 +510,6 @@ html, body {
   background: color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
-[data-theme="dark"] .challenge-banner {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-}
-
 [data-theme="dark"] .level-btn.is-active {
   color: #04212a;
   box-shadow: 0 0 1.4svh color-mix(in srgb, var(--accent) 55%, transparent);
@@ -550,10 +531,7 @@ html, body {
    and they sit in a row of three, so a miss lands on the wrong difficulty. */
 .level-btn { min-height: 44px; }
 
-/* The challenge banner collapses with max-height/opacity when there is no
-   challenge, which hides it visually but leaves a 33x2 button in the tab order
-   and in the hit-test — a control that announces itself to a screen reader and
-   can be focused, for a message that does not exist. `visibility` removes it
-   from both, and `.show` puts it back. */
-.challenge-banner { visibility: hidden; }
-.challenge-banner.show { visibility: visible; min-height: 44px; }
+
+/* The time a challenge link asks you to beat, beside your own. */
+.stat--beat .stat-value { color: #e8503d; }
+[data-theme="dark"] .stat--beat .stat-value { color: #ff5c8a; }

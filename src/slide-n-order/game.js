@@ -4,6 +4,7 @@ import { tone, initSoundToggle } from "../shared/ui/audio.js";
 import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 import { getInt, set as setPref } from "../shared/ui/prefs.js";
 import { recordPlay } from "../shared/ui/progress.js";
+import { getName, clean } from "../shared/ui/player.js";
 
 (function () {
   "use strict";
@@ -12,6 +13,7 @@ import { recordPlay } from "../shared/ui/progress.js";
   var TOTAL = SIZE * SIZE;
   var SHUFFLE_MOVES = 160;
   var BEST_KEY = "slide-n-order.best";
+  var MAX_BEAT_MOVES = 9999; // a longer "moves to beat" is a broken link
 
   // ---------- drag-to-slide tuning ----------
   var DRAG_COMMIT_FRACTION = 0.5;   // past halfway toward the gap commits the slide
@@ -33,7 +35,9 @@ import { recordPlay } from "../shared/ui/progress.js";
   var againBtn = document.getElementById("againBtn");
   var shareBtn = document.getElementById("shareBtn");
   var shareNote = document.getElementById("shareNote");
-  var challengeBanner = document.getElementById("challengeBanner");
+  var challengeCard = document.getElementById("challenge");
+  var challengeWho = document.getElementById("challengeWho");
+  var challengeBeat = document.getElementById("challengeBeat");
   var globalBest = document.getElementById("globalBest");
   var howtoBtn = document.getElementById("howtoBtn");
   var howtoSheet = document.getElementById("howtoSheet");
@@ -47,6 +51,8 @@ import { recordPlay } from "../shared/ui/progress.js";
   var moves = 0;
   var ended = false;
   var best = getInt(BEST_KEY);
+  var seed = 0;          // what built this scramble; a challenge link carries it
+  var challenge = readChallenge(); // null, or the run a shared link asks you to beat
 
 
   function writeBest(v) {
@@ -82,13 +88,41 @@ import { recordPlay } from "../shared/ui/progress.js";
     return tiles[TOTAL - 1] === null;
   }
 
-  function shuffleBoard() {
+  // ---------- seeded scrambles ----------
+  //
+  // Every scramble is built from a 32-bit seed, so the seed alone reproduces
+  // it on any device: that is what makes a challenge link (and a party round)
+  // the same board for everyone. mulberry32 is integer maths throughout, so it
+  // gives the same sequence in every engine. A local copy on purpose — a shared
+  // module used by two games would become a chunk of its own and one more
+  // request on both pages.
+  //
+  // Changing anything that consumes `rand` changes which scramble an old seed
+  // builds. A live challenge link would then replay a different board.
+
+  function mulberry32(a) {
+    return function () {
+      a = (a + 0x6d2b79f5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), a | 1);
+      t = (t + Math.imul(t ^ (t >>> 7), t | 61)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function randomSeed() {
+    return (Math.random() * 4294967296) >>> 0;
+  }
+
+  /** The scramble a seed builds — a pure function of the seed. */
+  function shuffleBoard(seedValue) {
+    var rand = mulberry32(seedValue);
+    seed = seedValue;
     buildSolved();
     var prevBlank = -1;
     for (var n = 0; n < SHUFFLE_MOVES; n++) {
       var candidates = neighborIndices(blankIndex).filter(function (idx) { return idx !== prevBlank; });
       if (!candidates.length) candidates = neighborIndices(blankIndex);
-      var chosen = candidates[Math.floor(Math.random() * candidates.length)];
+      var chosen = candidates[Math.floor(rand() * candidates.length)];
       prevBlank = blankIndex;
       tiles[blankIndex] = tiles[chosen];
       tiles[chosen] = null;
@@ -96,7 +130,7 @@ import { recordPlay } from "../shared/ui/progress.js";
     }
     if (isSolved()) {
       var extra = neighborIndices(blankIndex);
-      var pick = extra[Math.floor(Math.random() * extra.length)];
+      var pick = extra[Math.floor(rand() * extra.length)];
       tiles[blankIndex] = tiles[pick];
       tiles[pick] = null;
       blankIndex = pick;
@@ -373,7 +407,9 @@ import { recordPlay } from "../shared/ui/progress.js";
   }
 
   function updateBestHud() {
-    bestVal.textContent = best != null ? "Best " + best : "";
+    bestVal.textContent = challenge
+      ? "To beat " + challenge.beat
+      : best != null ? "Best " + best : "";
   }
 
   function checkWin() {
@@ -386,7 +422,14 @@ import { recordPlay } from "../shared/ui/progress.js";
       updateBestHud();
       setTimeout(function () {
         showOverlay(isNewBest ? "NEW BEST" : "SOLVED", moves + (moves === 1 ? " move" : " moves"));
-        showGlobalBest(moves);
+        // A challenge run is unranked (leaderboard.js refuses seeded runs), so
+        // the global-best line answers the only question that run asked.
+        if (challenge) {
+          globalBest.hidden = false;
+          globalBest.textContent = verdict(moves, challenge);
+        } else {
+          showGlobalBest(moves);
+        }
       }, 350);
     }
   }
@@ -418,32 +461,70 @@ import { recordPlay } from "../shared/ui/progress.js";
     overlay.classList.remove("show");
   }
 
-  function shareUrl(moveCount) {
-    var url = new URL(location.href);
-    url.search = "";
-    url.hash = "";
-    url.searchParams.set("moves", String(moveCount));
+  // ---------- challenges ----------
+  //
+  // A challenge link is this page's own URL with the scramble's seed, the
+  // moves to beat and, when the sharer has set one, their name:
+  //   /slide-n-order/?seed=1k3x9z&beat=38&by=Riya
+  // Opening it replays that exact scramble. The URL is the whole state: while
+  // it carries a seed the run is a challenge, and leaderboard.js reads the same
+  // URL to keep the run off the global boards. A new board strips the query,
+  // which makes the next run ranked again.
+
+  /** The challenge in this page's URL, or null if it has none or a bad one. */
+  function readChallenge() {
+    var params = new URLSearchParams(location.search);
+    var rawSeed = params.get("seed") || "";
+    var beat = Number(params.get("beat"));
+    if (!/^[0-9a-z]{1,7}$/.test(rawSeed)) return null;
+    var seedValue = parseInt(rawSeed, 36);
+    if (seedValue > 0xffffffff) return null;
+    if (!Number.isInteger(beat) || beat <= 0 || beat > MAX_BEAT_MOVES) return null;
+    return { seed: seedValue, beat: beat, by: clean(params.get("by")) };
+  }
+
+  function showChallenge() {
+    challengeWho.textContent = (challenge.by || "A friend") + " solved this in";
+    challengeBeat.textContent = "Beat " + challenge.beat + (challenge.beat === 1 ? " move" : " moves");
+    challengeCard.hidden = false;
+  }
+
+  function leaveChallenge() {
+    if (!challenge) return;
+    challenge = null;
+    challengeCard.hidden = true;
+    history.replaceState(history.state, "", location.pathname);
+  }
+
+  /** One line for the end card: did this run beat the link? */
+  function verdict(moveCount, c) {
+    var who = c.by || "your friend";
+    var gap = Math.abs(c.beat - moveCount);
+    if (gap === 0) return "Level with " + who;
+    var n = gap + (gap === 1 ? " move" : " moves");
+    return moveCount < c.beat ? "You beat " + who + " by " + n : n + " behind " + who;
+  }
+
+  function shareUrl() {
+    var url = new URL(location.pathname, location.origin);
+    url.searchParams.set("seed", seed.toString(36));
+    url.searchParams.set("beat", String(moves));
+    var name = getName();
+    if (name) url.searchParams.set("by", name);
     return url.toString();
   }
 
-  function checkChallengeLink() {
-    if (!challengeBanner) return;
-    var params = new URLSearchParams(location.search);
-    var raw = params.get("moves");
-    var challengeMoves = parseInt(raw, 10);
-    if (!raw || !isFinite(challengeMoves) || challengeMoves <= 0) return;
-    challengeBanner.textContent = "A friend solved it in " + challengeMoves + (challengeMoves === 1 ? " move" : " moves") + " — tap to dismiss and beat it";
-    challengeBanner.classList.add("show");
-    challengeBanner.addEventListener("click", function () {
-      challengeBanner.classList.remove("show");
-    });
+  function track(name) {
+    try { window.gtag("event", name, { game: "slide-n-order" }); } catch (e) { /* analytics never matters */ }
   }
 
+  /** A fresh scramble from a fresh seed; leaves any challenge behind. */
   function restart() {
+    leaveChallenge();
     ended = false;
     moves = 0;
     hideOverlay();
-    shuffleBoard();
+    shuffleBoard(randomSeed());
     renderTiles();
     updateMovesHud();
     updateBestHud();
@@ -468,11 +549,12 @@ import { recordPlay } from "../shared/ui/progress.js";
     note: shareNote,
     title: "Slide N Order",
     text: function () {
-      return "I solved Slide N Order in " + moves +
-        (moves === 1 ? " move" : " moves") + ". Can you beat that?";
+      return "I solved this Slide N Order board in " + moves +
+        (moves === 1 ? " move" : " moves") + ". Same board — beat me.";
     },
-    url: function () { return shareUrl(moves); },
+    url: shareUrl,
   });
+  shareBtn.addEventListener("click", function () { track("challenge_shared"); });
 
   tilesGrid.addEventListener("pointerdown", function (e) {
     if (ended || activePointerId !== null || settling) return; // one interaction at a time, and only once the last one has fully committed
@@ -522,9 +604,14 @@ import { recordPlay } from "../shared/ui/progress.js";
   });
 
   buildDom();
-  shuffleBoard();
+  if (challenge) {
+    showChallenge();
+    shuffleBoard(challenge.seed);
+    track("challenge_link_opened");
+  } else {
+    shuffleBoard(randomSeed());
+  }
   renderTiles();
   updateMovesHud();
   updateBestHud();
-  checkChallengeLink();
 })();

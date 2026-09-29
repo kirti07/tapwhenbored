@@ -840,7 +840,10 @@ files consume those names without ever defining them — `shell.css` needs
 `--ink`, `--ink-soft` and `--line`; `howto.css` needs `--bg`, `--ink`,
 `--ink-soft`, `--accent` and `--accent-dark`; `endcard.css` needs `--ink`,
 `--line`, `--accent` and `--accent-dark`; `leaderboard.css` needs
-`--accent-dark` and optionally `--record`.
+`--accent-dark` and optionally `--record`. `challenge.css` (the challenge-link
+card in Flip It and Slide N Order) takes its four colours from
+`--challenge-bar`, `--challenge-bar-ink`, `--challenge-screen` and
+`--challenge-ink`, which each game sets in its own stylesheet.
 
 The cabinet chrome is the one shared thing that will need a palette of its own —
 a marquee, a dark screen panel, medals — and it wants the same obvious names. So
@@ -1454,6 +1457,34 @@ the ranks".
 So there is no `player_games` table, no per-player history and no streak table,
 and adding one is not a small change but a reversal. `ui/progress.js` and
 `ui/player.js` are where this lives.
+
+## Seeded and framed runs are unranked
+
+A board can be *chosen* rather than dealt. Flip It and Slide N Order build every
+board from a 32-bit seed (a local mulberry32 in each game, not a shared module,
+so it costs neither page a chunk), and a challenge link —
+`/flip-it/?seed=…&level=easy&beat=42180&by=Riya` — replays the sharer's exact
+board. A party round will do the same inside a frame.
+
+Neither kind of run reaches the global boards. A time on a board someone picked
+and passed around is not comparable with one on a random deal, and an easy seed
+would flood the records. The rule is written once, in `isRanked()` in
+`ui/leaderboard.js`: a page whose URL carries `seed`, or that is framed
+(`self !== top`), gets no global-best line and submits nothing. It reads the
+live URL at submit time, so a game that leaves a challenge strips its query and
+the next run is ranked again. Games never test for it themselves.
+
+Local records are unaffected: `recordPlay` still counts a challenge run for the
+sticker book and streaks, because those are this browser's own history.
+
+Two consequences worth knowing before touching a generator:
+
+* The board is a pure function of `(level, seed)`. Anything browser-specific —
+  Flip It's "not one of the last dozen boards" filter — happens *outside* it, by
+  trying another seed.
+* Changing what consumes the random stream changes which board an old seed
+  builds, so a challenge link already in a group chat would replay a different
+  board.
 
 ## Data model
 
