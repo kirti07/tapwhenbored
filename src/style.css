@@ -468,7 +468,8 @@ button { font: inherit; color: inherit; }
   gap: 16px;
 }
 
-.hgrid .attract { order: -1; }
+.hgrid .attract,
+.hgrid .clash-strip { order: -1; }
 
 /* In one column the roll collapses to its header.
  *
@@ -532,8 +533,9 @@ button { font: inherit; color: inherit; }
     align-items: start;
     gap: 18px;
   }
-  .hgrid > main { grid-row: 1 / 3; }
-  .hgrid .attract { order: 0; }
+  .hgrid > main { grid-row: 1 / 4; }
+  .hgrid .attract,
+  .hgrid .clash-strip { order: 0; }
 }
 
 /* A rule-line heading: the label, then a rule filling what is left. Replaces
@@ -947,4 +949,60 @@ button { font: inherit; color: inherit; }
   line-height: 1.25;
   text-align: center;
   text-wrap: pretty;
+}
+
+/* -------------------------------------------------------------- tap clash --
+ * The party mode's strip under the roll, and the line a guest sees after a
+ * party. Coral is Tap Clash's accent, passed in inline like a cabinet's. */
+
+.clash-strip { padding: 0 14px 14px; }
+.clash-strip > * { position: relative; z-index: 1; }
+
+.clash-strip::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 4px;
+  height: 5px;
+  background-image: radial-gradient(circle at 2.5px 2.5px, var(--arc-accent) 1.7px, transparent 2.1px);
+  background-size: 13px 5px;
+  opacity: 0.9;
+}
+
+.clash-strip-bar { display: flex; align-items: center; justify-content: space-between; padding-top: 16px; }
+.clash-strip-bar h2 { margin: 0; font-size: 15px; letter-spacing: 0.08em; }
+.clash-strip-p { margin: 8px 0 12px; color: var(--arc-screen-soft); font-size: 13.5px; line-height: 1.5; }
+.clash-strip-go { display: grid; grid-template-columns: 1.5fr 1fr; gap: 10px; }
+.clash-strip-join {
+  background: transparent;
+  color: var(--arc-screen-ink);
+  border-color: var(--arc-screen-line);
+  box-shadow: none;
+}
+
+.guestline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 2px solid var(--arc-accent);
+  background: var(--card);
+  color: var(--ink);
+  text-decoration: none;
+}
+.guestline-t { display: grid; gap: 2px; flex: 1; font-size: 13px; color: var(--ink-soft); }
+.guestline-t strong { color: var(--ink); font-size: 14.5px; }
+.guestline-go {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--arc-accent);
+  color: #fff;
+  font-weight: 800;
+  flex: none;
 }

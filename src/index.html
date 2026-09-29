@@ -94,6 +94,13 @@
       <div class="shelf" aria-labelledby="cabsH">
     <!-- games-shelf -->
       </div>
+      <!-- After a party, on a guest's phone only: "You played at Aman's clash."
+           Filled by home.js from this device's storage; under the shelf, so
+           nothing above it moves when it appears. -->
+      <a class="guestline arc" id="guestLine" href="/clash/" hidden style="--accent:#e8503d;--accent-d:#ff5c8a">
+        <span class="guestline-t"><strong id="guestLineH"></strong><span id="guestLineP"></span></span>
+        <span class="guestline-go" aria-hidden="true">&rarr;</span>
+      </a>
       <p class="intro">Eight cabinets, no coins, no queue. Marble Nostalgia when you want to think, Bubble Tap when you very much do not, Word Steps once a day, and Doodle On for when thirty seconds is genuinely all you have. Nothing here asks you to sign up — the board just wants a name to put next to your score.</p>
     </main>
 
@@ -120,6 +127,20 @@
       <div class="arc-screen-foot">
         <a class="arc-link" href="/wall/">All eight cabinets &rarr;</a>
         <span class="arc-honesty">Boards are for fun — scores aren&rsquo;t verified.</span>
+      </div>
+    </section>
+
+    <!-- Tap Clash, the party mode. Plain links: this adds no JavaScript to the
+         homepage, and the party page is the only one that loads party code. -->
+    <section class="arc-screen arc clash-strip" aria-labelledby="clashH" style="--accent:#e8503d;--accent-d:#ff5c8a">
+      <div class="clash-strip-bar">
+        <h2 class="arc-pix" id="clashH">Tap Clash</h2>
+        <span class="arc-chip">2&ndash;10 players</span>
+      </div>
+      <p class="clash-strip-p">One board, everyone&rsquo;s phone, the same moment. Pick a game and a time limit — a podium in a minute or two.</p>
+      <div class="clash-strip-go">
+        <a class="arc-btn arc-btn--primary" href="/clash/">Start a clash</a>
+        <a class="arc-btn arc-btn--ghost clash-strip-join" href="/clash/?join">Join</a>
       </div>
     </section>
 
@@ -152,6 +173,7 @@
 
   <footer class="foot">
     <span>More tiny games coming soon.</span>
+    <a href="/clash/">Tap Clash</a>
     <a href="/wall/">The Arcade</a>
     <a href="/account/">Your player card</a>
   </footer>

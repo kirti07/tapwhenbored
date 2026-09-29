@@ -6,6 +6,8 @@
 @import "../shared/css/howto.css";
 @import "../shared/css/endcard.css";
 @import "../shared/css/leaderboard.css";
+@import "../shared/css/challenge.css";
+@import "../shared/css/clash-round.css";
 
 :root {
   --bg: #f1eefb;
@@ -95,40 +97,24 @@ html, body {
   flex-shrink: 0;
 }
 
-/* ---- challenge banner ---- */
+/* ---- challenge card (layout in shared/css/challenge.css) ---- */
 
-.challenge-banner {
-  position: relative; /* lifts it into its own paint layer so it always draws above
-                          the board even if the board overflows its flex box on short
-                          viewports — see the html,body dvh note above */
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2vw;
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  margin: 0 auto;
-  padding: 0 4vw;
-  border-radius: 999px;
-  background: rgba(139, 127, 224, 0.12);
-  border: 1.5px solid rgba(139, 127, 224, 0.35);
-  color: var(--ink);
-  font-size: clamp(11px, 1.6svh, 13px);
-  letter-spacing: 0.02em;
-  text-align: center;
-  transition: max-height 0.35s ease, opacity 0.3s ease, margin 0.35s ease, padding 0.35s ease;
-  flex-shrink: 0;
-  cursor: pointer;
+.challenge {
+  --challenge-bar: #e8503d;
+  --challenge-bar-ink: #ffffff;
+  --challenge-screen: #1a1c36;
+  --challenge-ink: #f0eeff;
 }
 
-.challenge-banner.show {
-  max-height: 8svh;
-  opacity: 1;
-  margin: 1.4svh auto 0;
-  padding: 1svh 4vw;
+[data-theme="dark"] .challenge {
+  --challenge-bar: #ff5c8a;
+  --challenge-screen: #080915;
 }
+
+/* The board is sized from the viewport height, so the card has to come out of
+   that budget or it pushes the board over it: the card is ~104px, plus room
+   for the counter below the board. */
+.challenge:not([hidden]) ~ .board-area .board-wrap { width: min(88vw, calc(66svh - 124px), 560px); }
 
 /* ---- board area ---- */
 
@@ -479,11 +465,6 @@ html, body {
   background: color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
-[data-theme="dark"] .challenge-banner {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-}
-
 [data-theme="dark"] .overlay {
   background: rgba(13, 14, 26, 0.94);
 }
@@ -493,10 +474,3 @@ html, body {
 }
 
 
-/* The challenge banner collapses with max-height/opacity when there is no
-   challenge, which hides it visually but leaves a 33x2 button in the tab order
-   and in the hit-test — a control that announces itself to a screen reader and
-   can be focused, for a message that does not exist. `visibility` removes it
-   from both, and `.show` puts it back. */
-.challenge-banner { visibility: hidden; }
-.challenge-banner.show { visibility: visible; min-height: 44px; }

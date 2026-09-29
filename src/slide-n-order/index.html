@@ -71,7 +71,15 @@
 
     <p class="tagline">Slide the tiles back into order, 1 to 15.</p>
 
-    <button class="challenge-banner" id="challengeBanner" type="button" aria-live="polite"></button>
+    <section class="challenge" id="challenge" aria-label="Challenge" hidden>
+      <p class="challenge-bar"><span>Challenge</span><span>Same board</span></p>
+      <div class="challenge-body">
+        <p class="challenge-text">
+          <span class="challenge-who" id="challengeWho"></span>
+          <span class="challenge-beat" id="challengeBeat"></span>
+        </p>
+      </div>
+    </section>
 
     <div class="board-area">
       <div class="board-wrap">

@@ -242,6 +242,19 @@ export const pages = [
     changefreq: "weekly",
     priority: "0.7",
   },
+  {
+    slug: "clash",
+    title: "Tap Clash",
+    path: "/clash/",
+    // The party mode's front door is indexed: "play a game together on your
+    // phones" is a search. Room links (?r=CODE, ?join) are not — they carry
+    // X-Robots-Tag: noindex from vercel.json and canonicalise to /clash/.
+    // `ogImage` is the preview every invite link shows in a group chat.
+    ogImage: "/assets/clash-og.jpg",
+    updated: "2026-09-29",
+    changefreq: "monthly",
+    priority: "0.8",
+  },
 ];
 
 export const home = {

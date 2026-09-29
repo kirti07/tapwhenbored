@@ -101,6 +101,26 @@ function isLeaderboardAvailable() {
 }
 
 /**
+ * Whether this run may reach the global boards (ARCHITECTURE.md §27).
+ *
+ * Two kinds of run are unranked, and the rule lives here once so no game has
+ * to remember it:
+ *
+ * - A seeded run — the page URL carries `seed`. That is a challenge link or a
+ *   party round: a board someone picked and passed around, so a time on it is
+ *   not comparable with a time on a random deal, and an easy seed would flood
+ *   the records.
+ * - A framed run — the page is inside another page (a party round). Party
+ *   scores stay inside the party.
+ *
+ * Read from the live URL at submit time, not at load: a game that leaves a
+ * challenge strips the query, and the runs after that are ranked again.
+ */
+function isRanked() {
+  return !new URLSearchParams(location.search).has("seed") && window.self === window.top;
+}
+
+/**
  * Submits a finished run. Resolves with the board's answer, or null.
  *
  * The local day always goes with it, for every game, and no caller passes one.
@@ -318,8 +338,9 @@ export function renderGlobalBest(
   { slug, score, isRecord, label, recordLabel, pending, unavailable, standing },
 ) {
   // Nothing to put on the line, so do not show one at all. A build with no
-  // credentials must read as a missing line, never as an error (§27).
-  if (!isLeaderboardAvailable()) {
+  // credentials must read as a missing line, never as an error (§27), and an
+  // unranked run is never submitted.
+  if (!isLeaderboardAvailable() || !isRanked()) {
     el.hidden = true;
     el.classList.remove("new-global");
     return Promise.resolve(null);

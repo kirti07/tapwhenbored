@@ -40,6 +40,10 @@ export default defineConfig({
     env: {
       SUPABASE_URL: "https://leaderboard.test.invalid",
       SUPABASE_ANON_KEY: "playwright-anon-key",
+      // Tap Clash parties run at 20% of real time, so a four-round party fits
+      // in a test and a 1.6 s results screen can still be read under load. The
+      // preview server serves the room API from memory.
+      CLASH_TIME_SCALE: "0.2",
     },
   },
 });

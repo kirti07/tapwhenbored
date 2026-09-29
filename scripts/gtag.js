@@ -22,6 +22,10 @@
 // Wrapped in try/catch throughout: analytics must never affect whether a game
 // runs (ARCHITECTURE.md §19, §20, §26).
 //
+// A framed page — a game running as a Tap Clash round inside /clash/ — loads
+// no library either: the party page already counts that visit, and a pageview
+// per round would count one party as five visits.
+//
 // The measurement ID is hardcoded rather than read from the environment. It is
 // public by definition — it ships in the HTML of every page — and an env var
 // would only add a way for production to build silently without a tag.
@@ -33,7 +37,7 @@ try {
   window.gtag = function () {
     window.dataLayer.push(arguments);
   };
-  if (location.hostname.indexOf("tapwhenbored.com") > -1) {
+  if (location.hostname.indexOf("tapwhenbored.com") > -1 && window.self === window.top) {
     var s = document.createElement("script");
     s.async = true;
     s.src = "https://www.googletagmanager.com/gtag/js?id=G-NPERHK4GNM";

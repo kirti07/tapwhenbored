@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f3f2fa">
+<!-- theme-bootstrap -->
+<title>Tap Clash — a phone game for the whole room, free and no signup</title>
+<meta name="description" content="Tap Clash is a free party game for 2–10 people in one room: the host picks Flip It or Slide N Order, everyone scans a QR code, and you all race the same board on your own phones. No app, no signup.">
+<link rel="canonical" href="https://www.tapwhenbored.com/clash/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Tap Clash — same board, same moment, everyone's phone">
+<meta property="og:description" content="A free party game for 2–10 people in one room. Scan the code, race the same board. No app, no signup.">
+<meta property="og:url" content="https://www.tapwhenbored.com/clash/">
+<meta property="og:image" content="https://www.tapwhenbored.com/assets/clash-og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Tap Clash — same board, same moment, everyone's phone">
+<meta name="twitter:description" content="A free party game for 2–10 people in one room. Scan the code, race the same board. No app, no signup.">
+<meta name="twitter:image" content="https://www.tapwhenbored.com/assets/clash-og.jpg">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Tap Clash",
+  "url": "https://www.tapwhenbored.com/clash/",
+  "description": "A free party game for 2–10 people in the same room. The host picks Flip It or Slide N Order and a time limit; everyone joins by QR code and races the same board on their own phone.",
+  "applicationCategory": "GameApplication",
+  "operatingSystem": "Any (web browser)",
+  "image": "https://www.tapwhenbored.com/assets/clash-og.jpg",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "isPartOf": { "@type": "WebSite", "name": "Tap When Bored", "url": "https://www.tapwhenbored.com/" }
+}
+</script>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preload" href="/fonts/nunito-latin-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/silkscreen-latin-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/silkscreen-latin-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="clash">
+<div class="wrap page arc">
+  <header class="top">
+    <div>
+      <a class="back-link" href="/">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+        <span>Games</span>
+      </a>
+      <p class="brand-sub clash-brand arc-pix">Tap Clash</p>
+    </div>
+    <div class="top-r">
+      <!-- theme-btn:iconbtn -->
+    </div>
+  </header>
+
+  <main id="main" aria-live="polite">
+    <p class="clash-loading" data-screen="loading">Finding the room…</p>
+
+    <!-- 02 · Host setup: who you are, what the room plays, and for how long. -->
+    <form class="scr" data-screen="setup" id="setupForm" hidden>
+      <h1 class="clash-h">Start a clash</h1>
+      <p class="clash-p">Everyone plays the same board on their own phone.</p>
+      <label class="arc-field">
+        <span class="arc-label">You</span>
+        <input class="arc-input" id="setupName" name="name" maxlength="24" autocomplete="nickname" placeholder="Your name" required>
+      </label>
+      <div class="arc-field">
+        <span class="arc-label" id="setupFaceL">Your face</span>
+        <div class="faces" id="setupFaces" role="radiogroup" aria-labelledby="setupFaceL"></div>
+      </div>
+      <label class="arc-field">
+        <span class="arc-label">Clash name</span>
+        <span class="clash-inline">
+          <input class="arc-input" id="setupParty" maxlength="40" autocomplete="off">
+          <button class="iconbtn" id="setupShuffle" type="button" aria-label="Another name">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>
+          </button>
+        </span>
+      </label>
+      <div class="pick" id="setupPick"></div>
+      <p class="clash-err" id="setupErr" role="alert"></p>
+      <button class="arc-btn arc-btn--primary clash-cta" type="submit" id="setupGo">Open the room</button>
+    </form>
+
+    <!-- Homepage "Join": the four-letter code. -->
+    <form class="scr" data-screen="code" id="codeForm" hidden>
+      <h1 class="clash-h">Join a clash</h1>
+      <p class="clash-p">Type the four letters on the host's screen.</p>
+      <label class="arc-field">
+        <span class="arc-label">Room code</span>
+        <input class="arc-input arc-mono code-input" id="codeInput" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" required>
+      </label>
+      <p class="clash-err" id="codeErr" role="alert"></p>
+      <button class="arc-btn arc-btn--primary clash-cta" type="submit">Find the room</button>
+    </form>
+
+    <!-- 04 · Guest join: straight from the QR or the link. Name and face only. -->
+    <form class="scr" data-screen="join" id="joinForm" hidden>
+      <section class="invite cab">
+        <div class="arc-marquee"><span class="arc-pix">You're invited</span><span class="arc-sub" id="joinCode"></span></div>
+        <div class="invite-in">
+          <p class="invite-by" id="joinBy"></p>
+          <p class="invite-name" id="joinParty"></p>
+          <p class="invite-who" id="joinWho"></p>
+        </div>
+      </section>
+      <label class="arc-field">
+        <span class="arc-label">Your name</span>
+        <input class="arc-input" id="joinName" maxlength="24" autocomplete="nickname" required>
+      </label>
+      <div class="arc-field">
+        <span class="arc-label" id="joinFaceL">Pick your face</span>
+        <div class="faces" id="joinFaces" role="radiogroup" aria-labelledby="joinFaceL"></div>
+      </div>
+      <p class="clash-p" id="joinNote"></p>
+      <p class="clash-err" id="joinErr" role="alert"></p>
+      <button class="arc-btn arc-btn--primary clash-cta" type="submit">Join the clash</button>
+      <p class="clash-fine">No signup. Nothing to install.</p>
+    </form>
+
+    <!-- 03 · Lobby. The host's screen is the one guests scan. -->
+    <section class="scr" data-screen="lobby" hidden>
+      <div class="lobby-screen arc-screen">
+        <div class="arc-marquee"><span class="arc-pix" id="lobbyName"></span><span class="arc-sub">Lobby</span></div>
+        <div class="lobby-in">
+          <div class="qr" id="qr" aria-hidden="true"></div>
+          <p class="code-tiles arc-pix" id="codeTiles" aria-label="Room code"></p>
+          <p class="lobby-url arc-mono" id="lobbyUrl"></p>
+          <p class="lobby-game arc-pix" id="lobbyGame"></p>
+        </div>
+      </div>
+      <button class="arc-btn arc-btn--ghost clash-wide" id="inviteBtn" type="button">Share invite</button>
+      <p class="share-note" id="inviteNote" role="status"></p>
+      <p class="clash-note" id="wakeNote" hidden>Keep this screen on — your guests are scanning it.</p>
+      <p class="clash-note clash-note--hot" id="hostNote" hidden>You're the host now.</p>
+      <div class="room-head"><span class="arc-label" id="roomCount"></span><span class="arc-hint" id="roomHint"></span></div>
+      <ul class="room" id="roomList"></ul>
+      <p class="clash-err" id="lobbyErr" role="alert"></p>
+      <button class="arc-btn arc-btn--primary clash-cta" id="startBtn" type="button" hidden></button>
+      <p class="clash-wait" id="lobbyWait" hidden></p>
+    </section>
+
+    <!-- 05 · Title card: same on every phone, on the server's clock. -->
+    <section class="scr title-card" data-screen="title" hidden>
+      <p class="title-round arc-pix" id="titleRound">Get ready</p>
+      <h1 class="title-game arc-pix" id="titleGame"></h1>
+      <p class="title-rule" id="titleRule"></p>
+      <p class="title-chips"><span class="title-chip arc-pix" id="titleCap"></span><span class="title-chip arc-pix">Same board for all</span></p>
+      <p class="title-count arc-pix" id="titleCount" aria-hidden="true"></p>
+      <p class="title-foot" id="titleFoot"></p>
+    </section>
+
+    <!-- 06 · Playing a round: the party bar over the real game page. -->
+    <section class="scr play" data-screen="play" hidden>
+      <div class="partybar arc-screen" id="partybar">
+        <span class="pb-round"><span class="pb-r arc-pix">Tap Clash</span><span class="pb-g arc-pix" id="pbGame"></span></span>
+        <span class="pb-clock arc-mono" id="pbClock" role="timer"></span>
+        <span class="pb-done"><span class="pb-k arc-pix">Done</span><span class="arc-mono" id="pbDone"></span></span>
+        <span class="pb-bar" aria-hidden="true"><span id="pbFill"></span></span>
+      </div>
+      <p class="toast" id="toast" role="status"></p>
+      <div class="frame-slot" id="frameSlot"></div>
+      <!-- 06C · Solved, waiting — or joined late and watching. -->
+      <div class="sheet" id="sheet" hidden>
+        <p class="sheet-h" id="sheetH"></p>
+        <p class="sheet-sub arc-mono" id="sheetSub"></p>
+        <p class="arc-label">The room</p>
+        <ul class="sheet-list" id="sheetList"></ul>
+        <p class="sheet-foot" id="sheetFoot">Results when everyone's done, or at 0:00.</p>
+        <p class="clash-err" id="endErr" role="alert"></p>
+        <button class="arc-btn arc-btn--ghost clash-cta" id="endBtn" type="button" hidden>End round</button>
+      </div>
+    </section>
+
+    <!-- 07/08 · The finale: the results, then what to do next — share, go
+         again, or host your own. One screen; there is no separate recap. -->
+    <section class="scr" data-screen="final" hidden>
+      <div class="podium-scr arc-screen">
+        <p class="arc-pix podium-party" id="podParty"></p>
+        <h1 class="podium-h" id="podH"></h1>
+        <p class="podium-sub" id="podSub"></p>
+        <ol class="podium" id="podium"></ol>
+        <ol class="res-list" id="resList"></ol>
+        <p class="arc-label podium-aw" id="awardsH">Awards</p>
+        <ul class="awards" id="awards"></ul>
+      </div>
+      <button class="arc-btn arc-btn--primary clash-cta" id="shareBtn" type="button">Share</button>
+      <p class="share-note" id="shareNote" role="status"></p>
+      <div class="final-actions" id="hostActions" hidden>
+        <button class="arc-btn arc-btn--ghost" id="rematchBtn" type="button">Same again</button>
+        <button class="arc-btn arc-btn--ghost" id="changeBtn" type="button" aria-expanded="false" aria-controls="changeForm">Change game</button>
+      </div>
+      <form class="change" id="changeForm" hidden>
+        <div class="pick" id="changePick"></div>
+        <button class="arc-btn arc-btn--primary clash-cta" type="submit">Start the rematch</button>
+      </form>
+      <p class="clash-err" id="rematchErr" role="alert"></p>
+      <p class="clash-wait" id="rematchWait" hidden>The host can start a rematch — you'll be pulled straight in.</p>
+      <a class="arc-btn arc-btn--ghost clash-cta" href="/clash/" id="hostOwn">Host your own</a>
+    </section>
+
+    <!-- A room that is gone, or a seat that was removed. -->
+    <section class="scr" data-screen="gone" hidden>
+      <h1 class="clash-h" id="goneH"></h1>
+      <p class="clash-p" id="goneP"></p>
+      <div class="final-actions">
+        <a class="arc-btn arc-btn--primary" href="/clash/">Start a clash</a>
+        <a class="arc-btn arc-btn--ghost" href="/clash/?join">Enter a code</a>
+      </div>
+    </section>
+  </main>
+
+  <!-- Readable without JavaScript, for people and for crawlers: every screen
+       above is drawn by script, and the first one says only "Finding the
+       room…". Hidden while a round is on, where it would sit under the board. -->
+  <details class="clash-about">
+    <summary>What is Tap Clash?</summary>
+    <p>
+      Tap Clash is a free party game for 2 to 10 people in the same room, played on
+      everyone's own phone. One person starts a clash and picks the game — Flip It, the
+      lights-out puzzle, or Slide N Order, the 15-puzzle — and a time limit. Everyone else
+      scans the QR code or types the four-letter room code, adds a name and a face, and
+      the room races the same board at the same moment. Finish early and you watch the
+      others come in; the results reveal together, with a podium and a few awards. Go
+      again with the same group in one tap, or switch games. No app, no account, no signup.
+    </p>
+  </details>
+</div>
+
+<script type="module" src="./clash.js"></script>
+</body>
+</html>

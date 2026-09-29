@@ -1,0 +1,687 @@
+/* Tap Clash: the party page.
+ *
+ * A clash is one round of one game: the host picks the game and the time
+ * limit, everyone races the same seeded board, and the results are the
+ * finale — with Share, a rematch and "host your own" right under them. A
+ * rematch is the next round, in a new room everyone follows into.
+ *
+ * Which screen is on is never stored anywhere: every tick asks
+ * src/clash/rules.js where the clash is — `derive(room, now)` on the latest
+ * snapshot and the server's clock — and draws that. So a phone that locks,
+ * reloads or joins late lands on exactly the screen everyone else is on.
+ *
+ * The round is the real game page in an iframe (`?clash=1&seed=…`). This page
+ * owns the clock: it tells the frame when the round went live and posts the
+ * frame's result to the room. The contract is written out in each game.
+ *
+ * Everything a player typed reaches the DOM through textContent. The only
+ * innerHTML is the QR code, an SVG built by uqr from this page's own URL.
+ */
+
+import * as R from "./rules.js";
+import { now, post, watch, loadSeat, saveSeat } from "./net.js";
+import { getJSON, setJSON } from "../shared/ui/prefs.js";
+import { getName, setName } from "../shared/ui/player.js";
+import { initShare, createNote } from "../shared/ui/shell.js";
+import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
+import { formatDuration } from "../shared/ui/format.js";
+
+const $ = (id) => document.getElementById(id);
+const FACE_KEY = "clash.face";
+const GUEST_KEY = "clash.guest"; // read by the homepage's guest line
+const TICK_MS = 200;
+const PING_MS = 10_000;
+
+const params = new URLSearchParams(location.search);
+let code = (params.get("r") || "").toUpperCase();
+let me = code ? loadSeat(code) : null; // { seat, token } in this room, or null
+let room = null;
+let feed = null; // the poller
+let screen = null;
+let drawnKey = ""; // what the screen was last built from
+let pending = null; // this phone's own result: { ms, moves, error? }
+const toasted = new Set(); // seats already announced
+let frame = null; // { el, code, ready, went, done }
+let hostBefore = null;
+let wake = null;
+
+// ---------------------------------------------------------------- helpers --
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+const face = (i) => R.FACES[i] || "🙂";
+const game = () => R.GAMES[room.game];
+const player = (seat) => room.players.find((p) => p.seat === seat);
+const nameOf = (seat) => (player(seat) || { name: "Someone" }).name;
+const ordinal = (n) => n + (["th", "st", "nd", "rd"][(n % 100 > 10 && n % 100 < 14) || n % 10 > 3 ? 0 : n % 10]);
+const seconds = (ms) => `${(ms / 1000).toFixed(1)}s`;
+const track = (name, extra) => {
+  try { window.gtag("event", name, extra || {}); } catch (e) { /* analytics never matters */ }
+};
+
+function show(name) {
+  if (screen === name) return;
+  screen = name;
+  for (const s of document.querySelectorAll("[data-screen]")) s.hidden = s.dataset.screen !== name;
+  document.body.dataset.view = name;
+  if (name === "lobby") keepAwake();
+  else if (wake) { wake.release().catch(() => {}); wake = null; }
+}
+
+/** A result as the room reads it: moves for Slide N Order, time for Flip It. */
+function resultText(r) {
+  return game().by === "moves" ? `${r.moves} moves` : formatDuration(r.ms);
+}
+
+/** Emoji buttons as a radio group; returns a getter for the chosen index. */
+function facePicker(container, initial) {
+  let chosen = initial;
+  R.FACES.forEach((f, i) => {
+    const b = el("button", "face", f);
+    b.type = "button";
+    b.setAttribute("role", "radio");
+    b.setAttribute("aria-label", `Face ${i + 1}`);
+    b.setAttribute("aria-checked", String(i === chosen));
+    b.addEventListener("click", () => {
+      chosen = i;
+      for (const x of container.children) x.setAttribute("aria-checked", String(x === b));
+      setJSON(FACE_KEY, i);
+    });
+    container.appendChild(b);
+  });
+  return () => chosen;
+}
+
+function savedFace() {
+  const f = getJSON(FACE_KEY, null);
+  return Number.isInteger(f) && f >= 0 && f < R.FACES.length ? f : Math.floor(Math.random() * R.FACES.length);
+}
+
+/**
+ * The game and the time limit, as two radio groups. The limits are the
+ * game's own presets (rules.js), and switching game resets to its default.
+ * Returns a getter for `{ game, cap }`.
+ */
+function gamePicker(container, initial) {
+  let chosen = { ...initial };
+  const games = el("div", "pick-games");
+  games.setAttribute("role", "radiogroup");
+  games.setAttribute("aria-label", "Game");
+  const caps = el("div", "pick-caps");
+  caps.setAttribute("role", "radiogroup");
+  caps.setAttribute("aria-label", "Time limit");
+
+  function radio(parent, cls, checked, onPick) {
+    const b = el("button", cls);
+    b.type = "button";
+    b.setAttribute("role", "radio");
+    b.setAttribute("aria-checked", String(checked));
+    b.addEventListener("click", () => {
+      for (const x of parent.children) x.setAttribute("aria-checked", String(x === b));
+      onPick();
+    });
+    parent.appendChild(b);
+    return b;
+  }
+
+  function drawCaps() {
+    caps.textContent = "";
+    for (const cap of R.GAMES[chosen.game].caps) {
+      radio(caps, "pick-cap arc-mono", cap === chosen.cap, () => { chosen.cap = cap; }).textContent = `${cap}s`;
+    }
+  }
+
+  for (const [slug, g] of Object.entries(R.GAMES)) {
+    const b = radio(games, `pick-game pick--${slug}`, slug === chosen.game, () => {
+      chosen = { game: slug, cap: g.cap };
+      drawCaps();
+    });
+    b.appendChild(el("strong", "", g.title));
+    b.appendChild(el("span", "", g.win));
+  }
+  drawCaps();
+
+  const label = el("span", "arc-label", "Game");
+  const capLabel = el("span", "arc-label", "Time limit");
+  container.append(label, games, capLabel, caps);
+  return () => chosen;
+}
+
+// ------------------------------------------------------------ the room feed --
+
+/** Watch a room, as `seat` if given, else as whatever seat this phone kept. */
+function enter(newCode, seat) {
+  code = newCode;
+  me = seat || loadSeat(code);
+  if (seat) saveSeat(code, seat.seat, seat.token);
+  history.replaceState(null, "", `/clash/?r=${code}`);
+  feed?.stop();
+  feed = watch(code, {
+    onRoom(r) { room = r; render(); },
+    onGone() { room = null; gone("This clash has ended", "Rooms close three hours after they open, or the code was mistyped."); },
+    // A player on their own board needs nobody else's news every second.
+    relaxed: () => screen === "play" && frame && !frame.done,
+  });
+}
+
+/** Apply a POST's answer, or show why it failed. Returns the data or null. */
+function answer(res, errEl) {
+  if (!res.ok) {
+    if (errEl) errEl.textContent = explain(res.data.error);
+    return null;
+  }
+  if (errEl) errEl.textContent = "";
+  if (res.data.room && feed) feed.accept(res.data.room, res.data.serverNow);
+  return res.data;
+}
+
+function explain(error) {
+  return {
+    offline: "No connection. Try again in a moment.",
+    "room full": "This room is full — ten is the most.",
+    "no such room": "No room with that code. Check the letters?",
+    "slow down": "Too many tries. Wait a minute and try again.",
+    "name required": "Add a name first.",
+    "not enough done": "Half the room has to finish before you can call time.",
+    [`needs ${R.MIN_PLAYERS} players`]: `A clash needs at least ${R.MIN_PLAYERS} players.`,
+  }[error] || "That didn't work. Try again.";
+}
+
+function mySeat() {
+  return me && room ? player(me.seat) : null;
+}
+
+/* Analytics that describe the clash, not the phone, fire once and only from
+   the host's phone — or ten phones would count one clash ten times. */
+const sent = new Set();
+function trackOnce(name, extra) {
+  const k = `${code}:${name}`;
+  if (sent.has(k) || me.seat !== room.host) return;
+  sent.add(k);
+  track(name, extra);
+}
+
+async function act(type, extra, errEl) {
+  return answer(await post({ type, code, seat: me.seat, token: me.token, ...extra }), errEl);
+}
+
+/* Presence: the host's controls pass on once the host has been quiet for the
+   away window, so every phone says it is here for the whole clash — not just
+   on the screens with host controls, or a host who played the round would
+   come back to the results already replaced. Paced by the room's own scale,
+   like the away window it feeds. */
+(function ping() {
+  if (me && room && !document.hidden) act("ping");
+  setTimeout(ping, PING_MS * (room ? room.scale : 1));
+})();
+
+// --------------------------------------------------------------- screens --
+
+function gone(h, p) {
+  $("goneH").textContent = h;
+  $("goneP").textContent = p;
+  show("gone");
+}
+
+function render() {
+  if (!room) return;
+  const mine = mySeat();
+  if (me && !mine) me = null; // a seat from some other room with this code
+  if (!me) return renderJoin();
+  if (mine.kickedAt != null) return gone("You were removed from this clash", "The host took you out of the room. You can start one of your own.");
+
+  const d = R.derive(room, now());
+  if (d.phase === "final" && room.next) return followRematch();
+
+  const key = `${d.phase}:${JSON.stringify(room)}:${JSON.stringify(pending)}`;
+  const fresh = key !== drawnKey;
+  drawnKey = key;
+
+  if (d.phase !== "final") prepareFrame();
+  if (d.phase === "lobby") renderLobby(fresh);
+  else if (d.phase === "title") renderTitle(d, fresh);
+  else if (d.phase === "play") renderPlay(d, fresh);
+  else renderFinal(fresh);
+}
+
+setInterval(render, TICK_MS);
+
+// 04 · join ---------------------------------------------------------------
+
+let joinFace = null;
+function renderJoin() {
+  const host = player(room.host) || room.players[0];
+  const here = room.players.filter((p) => p.kickedAt == null);
+  $("joinCode").textContent = `Room ${room.code}`;
+  $("joinBy").textContent = `${host.name} started`;
+  $("joinParty").textContent = room.name;
+  $("joinWho").textContent = `${here.slice(0, 6).map((p) => face(p.emoji)).join(" ")}  ${here.length} already in`;
+  $("joinNote").textContent = room.start == null
+    ? `${game().title} · ${room.cap}s · one board, everyone at once`
+    : "It's under way — you're in for the next one.";
+  if (!joinFace) {
+    joinFace = facePicker($("joinFaces"), savedFace());
+    $("joinName").value = getName();
+  }
+  show("join");
+}
+
+$("joinForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = $("joinName").value;
+  const data = answer(await post({ type: "join", code, name, emoji: joinFace() }), $("joinErr"));
+  if (!data) return;
+  setName(name);
+  track("player_joined", { late: room.start != null });
+  enter(data.code, { seat: data.seat, token: data.token });
+  feed.accept(data.room, data.serverNow);
+});
+
+// 03 · lobby ----------------------------------------------------------------
+
+let qrFor = "";
+function renderLobby(fresh) {
+  show("lobby");
+  const isHost = me.seat === room.host;
+  const here = room.players.filter((p) => p.kickedAt == null);
+
+  if (hostBefore !== null && hostBefore !== room.host && isHost) $("hostNote").hidden = false;
+  hostBefore = room.host;
+  if (!fresh) return;
+
+  $("lobbyName").textContent = room.name;
+  $("lobbyGame").textContent = `${game().title} · ${room.cap}s`;
+  const url = `${location.origin}/clash/?r=${room.code}`;
+  $("lobbyUrl").textContent = url.replace(/^https?:\/\/(www\.)?/, "");
+  const tiles = $("codeTiles");
+  tiles.textContent = "";
+  tiles.setAttribute("aria-label", `Room code ${room.code.split("").join(" ")}`);
+  for (const ch of room.code) tiles.appendChild(el("span", "tile", ch));
+  if (qrFor !== url) {
+    qrFor = url;
+    import("uqr").then(({ renderSVG }) => {
+      $("qr").innerHTML = renderSVG(url, { border: 1, whiteColor: "#fff", blackColor: "#141527" });
+    });
+  }
+
+  $("roomCount").textContent = `In the room · ${here.length}`;
+  $("roomHint").textContent = isHost && here.length > 1 ? "tap × to remove" : "";
+  const list = $("roomList");
+  list.textContent = "";
+  for (const p of here) {
+    const li = el("li", "room-row" + (p.seat === me.seat ? " is-me" : ""));
+    li.appendChild(el("span", "room-face", face(p.emoji)));
+    li.appendChild(el("span", "room-name", p.name + (p.seat === me.seat ? " (you)" : "")));
+    if (p.seat === room.host) li.appendChild(el("span", "arc-chip room-host", "Host"));
+    else if (isHost) {
+      const x = el("button", "room-kick", "×");
+      x.type = "button";
+      x.setAttribute("aria-label", `Remove ${p.name}`);
+      x.addEventListener("click", () => act("kick", { target: p.seat }, $("lobbyErr")));
+      li.appendChild(x);
+    }
+    list.appendChild(li);
+  }
+
+  const start = $("startBtn");
+  start.hidden = !isHost;
+  start.disabled = here.length < R.MIN_PLAYERS;
+  start.textContent = here.length < R.MIN_PLAYERS
+    ? `Waiting for ${R.MIN_PLAYERS - here.length} more`
+    : `Start · ${here.length} players`;
+  $("lobbyWait").hidden = isHost;
+  $("lobbyWait").textContent = `Waiting for ${nameOf(room.host)} to start…`;
+}
+
+$("startBtn").addEventListener("click", async () => {
+  const data = await act("start", {}, $("lobbyErr"));
+  if (data) trackOnce("round_started", { game: room.game, cap: room.cap });
+});
+
+initShare({
+  btn: $("inviteBtn"),
+  note: $("inviteNote"),
+  title: "Tap Clash",
+  text: () => `Join my Tap Clash "${room.name}" — ${game().title}, room ${room.code}.`,
+  url: () => `${location.origin}/clash/?r=${room.code}`,
+});
+
+/* The host's phone is what guests scan, so it should not sleep. Wake Lock is
+   Safari 16.4+; where it is missing, say so instead. */
+async function keepAwake() {
+  const note = $("wakeNote");
+  if (!("wakeLock" in navigator)) { note.hidden = false; return; }
+  try { wake = await navigator.wakeLock.request("screen"); } catch { note.hidden = false; }
+}
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && screen === "lobby" && !wake) keepAwake();
+});
+
+// 05 · title card -------------------------------------------------------------
+
+function renderTitle(d, fresh) {
+  show("title");
+  const left = Math.ceil((d.playAt - now()) / 1000);
+  $("titleCount").textContent = String(Math.max(1, Math.min(3, left)));
+  if (!fresh) return;
+  document.body.dataset.game = room.game;
+  $("titleGame").textContent = game().title;
+  $("titleRule").textContent = `${game().rule} ${game().win}`;
+  $("titleCap").textContent = `${room.cap} sec`;
+  $("titleFoot").textContent = `${R.eligible(room, d.playAt).length} players ready`;
+}
+
+// 06 · playing ------------------------------------------------------------------
+
+/* The board loads in the lobby, behind everything, so it is ready before the
+   title card ends. One frame per room. */
+function prepareFrame() {
+  if (frame?.code === room.code) return;
+  frame?.el.remove();
+  const g = game();
+  const f = el("iframe", "round-frame");
+  f.title = g.title;
+  f.src = `/${room.game}/?clash=1&seed=${room.seed.toString(36)}${g.level ? `&level=${g.level}` : ""}`;
+  $("frameSlot").appendChild(f);
+  frame = { el: f, code: room.code, ready: false, went: false, done: false };
+}
+
+window.addEventListener("message", (e) => {
+  if (!frame || e.origin !== location.origin || e.source !== frame.el.contentWindow) return;
+  if (e.data?.type === "ready") {
+    frame.ready = true;
+    render();
+  } else if (e.data?.type === "result") submit(e.data);
+});
+
+async function submit(r) {
+  if (pending) return;
+  frame.done = true;
+  pending = { ms: r.ms, moves: r.moves };
+  render();
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await post({ type: "result", code, seat: me.seat, token: me.token, seed: r.seed, ms: r.ms, moves: r.moves });
+    if (res.ok) { answer(res); return; }
+    if (res.status !== 0 && res.status !== 503) break; // refused, not lost
+    await new Promise((ok) => setTimeout(ok, 800));
+  }
+  pending = { ...pending, error: true };
+  render();
+}
+
+function renderPlay(d, fresh) {
+  show("play");
+  const t = now();
+  const eligible = R.eligible(room, d.playAt);
+  const playing = eligible.some((p) => p.seat === me.seat);
+  const mine = room.results[me.seat] || pending;
+
+  // Go, once the frame is ready: tell it how long ago the round began.
+  if (playing && !mine && frame.ready && !frame.went) {
+    frame.went = true;
+    frame.el.contentWindow.postMessage({ type: "go", elapsed: t - d.playAt }, location.origin);
+    frame.el.focus();
+  }
+
+  const left = Math.max(0, d.deadline - t);
+  $("pbClock").textContent = formatDuration(left + 999);
+  $("pbFill").style.width = `${(100 * left) / (d.deadline - d.playAt)}%`;
+  const { done, of } = R.progress(room);
+  $("pbDone").textContent = `${done} / ${of}`;
+
+  if (!fresh) return;
+  document.body.dataset.game = room.game;
+  $("pbGame").textContent = game().title;
+
+  // "Riya cleared it in 0:31" — once per finisher, never for yourself.
+  for (const [seat, r] of Object.entries(room.results)) {
+    if (toasted.has(seat) || Number(seat) === me.seat) continue;
+    toasted.add(seat);
+    const verb = game().by === "moves" ? "solved it in" : "cleared it in";
+    toast(`${face(player(Number(seat)).emoji)} ${nameOf(Number(seat))} ${verb} ${resultText(r)}`);
+  }
+
+  // Finished, or not in this round: wait here with the room, not elsewhere.
+  const sheet = $("sheet");
+  sheet.hidden = playing && !mine;
+  document.body.classList.toggle("is-waiting", !sheet.hidden);
+  if (sheet.hidden) return;
+
+  if (!playing) {
+    $("sheetH").textContent = "You're in for the next one";
+    $("sheetSub").textContent = `Watching ${game().title} — the rematch brings you in.`;
+  } else if (pending?.error) {
+    $("sheetH").textContent = "Your result didn't reach the room";
+    $("sheetSub").textContent = "It counts as didn't finish.";
+  } else {
+    const place = R.placements(room).find((x) => x.seat === me.seat)?.place;
+    $("sheetH").textContent = game().by === "moves" ? `Solved in ${mine.moves} moves` : `Cleared in ${formatDuration(mine.ms)}`;
+    $("sheetSub").textContent = `${formatDuration(mine.ms)} · ${mine.moves} moves${place ? ` · ${ordinal(place)} so far` : ""}`;
+  }
+  const list = $("sheetList");
+  list.textContent = "";
+  for (const p of eligible) {
+    const r = room.results[p.seat];
+    const li = el("li", p.seat === me.seat ? "is-me" : "");
+    li.appendChild(el("span", "room-face", face(p.emoji)));
+    li.appendChild(el("span", "room-name", p.name + (p.seat === me.seat ? " (you)" : "")));
+    li.appendChild(el("span", "sheet-r arc-mono" + (r ? " is-done" : ""), r ? resultText(r) : p.kickedAt != null ? "left" : "playing…"));
+    list.appendChild(li);
+  }
+
+  // The host can call time once half the room is done (rules.js / the API
+  // hold the same line), so one wandering player does not hold everyone.
+  const canEnd = me.seat === room.host && done * 2 >= of && done < of;
+  $("endBtn").hidden = !canEnd;
+  $("sheetFoot").textContent = canEnd
+    ? "Still waiting? Call time — anyone still playing won't finish."
+    : "Results when everyone's done, or at 0:00.";
+}
+
+$("endBtn").addEventListener("click", () => act("end", {}, $("endErr")));
+
+const toastNote = createNote($("toast"));
+function toast(text) { toastNote.show(text); }
+
+// 07/08 · the finale: podium, table, awards, and what next ----------------------------
+
+function renderFinal(fresh) {
+  show("final");
+  if (!fresh) return;
+  const table = R.placements(room);
+  const finishers = table.filter((x) => x.result);
+  const awards = R.awards(room);
+
+  $("podParty").textContent = `${room.name} · ${game().title}`;
+  $("podH").textContent = finishers.length ? `${nameOf(finishers[0].seat)} takes it.` : "Nobody cleared it.";
+  $("podSub").textContent = margin(finishers);
+  drawPodium($("podium"), finishers);
+  drawTable($("resList"), table);
+  drawAwards($("awards"), awards);
+  $("awardsH").hidden = !awards.length;
+
+  const isHost = me.seat === room.host;
+  $("hostActions").hidden = !isHost;
+  $("rematchWait").hidden = isHost;
+
+  remember(table);
+  trackOnce("party_completed", { players: table.length, game: room.game });
+}
+
+/** "Won by 1.2s", "Won by 3 moves", or a tie said out loud. */
+function margin([first, second]) {
+  if (!first) return `Nobody finished inside ${room.cap}s — a rematch, maybe?`;
+  if (!second) return "The only one to finish.";
+  if (second.place === first.place) return "A dead heat at the top.";
+  const moves = second.result.moves - first.result.moves;
+  if (game().by === "moves" && moves > 0) return `Won by ${moves} ${moves === 1 ? "move" : "moves"}.`;
+  return `Won by ${seconds(second.result.ms - first.result.ms)}.`;
+}
+
+function drawPodium(list, finishers) {
+  list.textContent = "";
+  // Drawn 2 · 1 · 3, the way a podium stands.
+  for (const n of [1, 0, 2]) {
+    const x = finishers[n];
+    if (!x) continue;
+    const li = el("li", `step step--${n + 1}`);
+    li.appendChild(el("span", "step-face", face(player(x.seat).emoji)));
+    li.appendChild(el("span", "step-name", nameOf(x.seat)));
+    li.appendChild(el("span", "step-r arc-mono", resultText(x.result)));
+    li.appendChild(el("span", "step-block arc-pix", String(x.place)));
+    list.appendChild(li);
+  }
+}
+
+function drawTable(list, table) {
+  list.textContent = "";
+  for (const x of table) {
+    const li = el("li", "res-row" + (x.seat === me.seat ? " is-me" : ""));
+    li.appendChild(el("span", `medal medal--${x.place && x.place <= 3 ? x.place : "n"}`, x.place ? String(x.place) : "–"));
+    li.appendChild(el("span", "room-face", face(player(x.seat).emoji)));
+    li.appendChild(el("span", "room-name", nameOf(x.seat) + (x.seat === me.seat ? " (you)" : "")));
+    li.appendChild(el("span", "res-r arc-mono", x.result ? resultText(x.result) : "didn't finish"));
+    list.appendChild(li);
+  }
+}
+
+function awardDetail(a) {
+  if (a.id === "photo-finish") return `beat ${nameOf(a.over)} by ${seconds(a.value)}`;
+  if (a.id === "quick-hands") return `fastest hands: ${formatDuration(a.value)}`;
+  return "second, and not by much";
+}
+
+function drawAwards(list, awards) {
+  list.textContent = "";
+  for (const a of awards) {
+    const li = el("li", `award award--${a.id}`);
+    li.appendChild(el("span", "award-t arc-pix", a.title));
+    li.appendChild(el("span", "award-d", awardDetail(a)));
+    li.appendChild(el("span", "award-who", `${face(player(a.seat).emoji)} ${nameOf(a.seat)}`));
+    list.appendChild(li);
+  }
+}
+
+/* The homepage's guest line: "You played at Aman's clash. You came 4th." Kept
+   for guests only — a host does not need inviting to host. */
+function remember(table) {
+  const mine = table.find((x) => x.seat === me.seat);
+  if (me.seat === 0 || !mine) return; // the creator, or someone who only watched
+  setJSON(GUEST_KEY, { host: room.players[0].name, party: room.name, place: mine.place || 0, at: Date.now() });
+}
+
+/* Share the result — every player, not just the host. The link opens the
+   setup page, so whoever it reaches can start one of their own. */
+initShare({
+  btn: $("shareBtn"),
+  note: $("shareNote"),
+  title: "Tap Clash",
+  text: () => {
+    const [first] = R.placements(room);
+    const who = first?.result ? `${nameOf(first.seat)} won` : "We played";
+    return `${who} "${room.name}" — ${game().title} on Tap Clash. Start your own:`;
+  },
+  url: () => `${location.origin}/clash/?from=share`,
+});
+$("shareBtn").addEventListener("click", () => track("result_shared"));
+
+/* The next round is a rematch: same game, or the host picks another. */
+async function rematch(choice) {
+  const data = await act("rematch", choice, $("rematchErr"));
+  if (data?.code && data.token) {
+    resetRound();
+    enter(data.code, { seat: data.seat, token: data.token });
+  }
+}
+
+$("rematchBtn").addEventListener("click", () => rematch({}));
+
+let changeOf = null;
+$("changeBtn").addEventListener("click", () => {
+  const form = $("changeForm");
+  if (!changeOf) changeOf = gamePicker($("changePick"), { game: room.game, cap: room.cap });
+  form.hidden = !form.hidden;
+  $("changeBtn").setAttribute("aria-expanded", String(!form.hidden));
+});
+$("changeForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  rematch(changeOf());
+});
+
+/** Everything that belonged to the last room's round. */
+function resetRound() {
+  drawnKey = "";
+  pending = null;
+  toasted.clear();
+  frame?.el.remove();
+  frame = null;
+}
+
+/* Everyone else follows the host into the rematch room, with the same name
+   and face, without touching anything — including anyone who arrived too
+   late for the round they just watched. */
+let following = false;
+async function followRematch() {
+  if (following) return;
+  following = true;
+  const mine = mySeat();
+  const res = await post({ type: "join", code: room.next, name: mine.name, emoji: mine.emoji });
+  if (res.ok) {
+    resetRound();
+    enter(res.data.code, { seat: res.data.seat, token: res.data.token });
+    feed.accept(res.data.room, res.data.serverNow);
+  }
+  following = false;
+}
+
+// 02 · setup and the code form ---------------------------------------------------------
+
+function renderSetup() {
+  const pickName = () => R.PARTY_NAMES[Math.floor(Math.random() * R.PARTY_NAMES.length)];
+  $("setupParty").value = pickName();
+  $("setupShuffle").addEventListener("click", () => { $("setupParty").value = pickName(); });
+  $("setupName").value = getName();
+  const faceOf = facePicker($("setupFaces"), savedFace());
+  const setupOf = gamePicker($("setupPick"), { game: R.DEFAULT_GAME, cap: R.GAMES[R.DEFAULT_GAME].cap });
+
+  $("setupForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    $("setupGo").disabled = true;
+    const name = $("setupName").value;
+    const res = await post({ type: "create", party: $("setupParty").value, name, emoji: faceOf(), ...setupOf() });
+    $("setupGo").disabled = false;
+    const data = answer(res, $("setupErr"));
+    if (!data) return;
+    setName(name);
+    const guest = getJSON(GUEST_KEY, null);
+    track("party_created", setupOf());
+    if (guest && Date.now() - guest.at < 14 * 24 * 3600 * 1000) track("host_from_guest");
+    enter(data.code, { seat: data.seat, token: data.token });
+    feed.accept(data.room, data.serverNow);
+  });
+  show("setup");
+}
+
+$("codeForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const typed = $("codeInput").value.trim().toUpperCase();
+  // Codes never use vowels, so a typo is caught here rather than by a 404.
+  if (!/^[BCDFGHJKLMNPQRSTVWXZ]{4}$/.test(typed)) {
+    $("codeErr").textContent = "That isn't a room code — check the four letters.";
+    return;
+  }
+  enter(typed, null);
+});
+
+// ---------------------------------------------------------------------- start --
+
+initThemeToggle($("themeBtn"));
+if (params.get("from") === "share") track("share_link_opened");
+if (code) enter(code, null);
+else if (params.has("join")) show("code");
+else renderSetup();

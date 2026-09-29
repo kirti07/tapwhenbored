@@ -18,6 +18,7 @@ import { signature, UNSIGNED } from "./shared/ui/player.js";
 import { initToggle as initThemeToggle } from "./shared/ui/theme.js";
 import { fetchAllBests } from "./shared/ui/leaderboard.js";
 import { formatScore } from "./shared/ui/format.js";
+import { getJSON } from "./shared/ui/prefs.js";
 
 var boarded = games.filter(function (g) { return g.leaderboard !== false; });
 
@@ -154,7 +155,32 @@ async function renderRoll() {
   }
 }
 
+/**
+ * The guest line, after a Tap Clash party: "You played at Aman's clash. You
+ * came 4th. Host one — it takes a minute." Written by the party page on a
+ * guest's phone only, and shown for fourteen days — the window the
+ * guest-to-host measure uses. Local, like the rest of the page's personal state.
+ */
+var GUEST_DAYS = 14;
+function renderGuestLine() {
+  var guest = getJSON("clash.guest", null);
+  var line = document.getElementById("guestLine");
+  if (!line || !guest || typeof guest.host !== "string") return;
+  if (!(Date.now() - guest.at < GUEST_DAYS * 24 * 60 * 60 * 1000)) return;
+  document.getElementById("guestLineH").textContent = "You played at " + guest.host + "\u2019s clash.";
+  document.getElementById("guestLineP").textContent =
+    (guest.place > 0 ? "You came " + ordinal(guest.place) + ". " : "") + "Host one \u2014 it takes a minute.";
+  line.hidden = false;
+}
+
+function ordinal(n) {
+  var s = ["th", "st", "nd", "rd"];
+  var v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
 initThemeToggle(document.getElementById("themeBtn"));
+renderGuestLine();
 renderBests();
 renderPlayer();
 renderBox();

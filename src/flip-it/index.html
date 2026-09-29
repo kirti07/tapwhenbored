@@ -74,7 +74,16 @@
 
     <p class="tagline">Turn off every tile.<br>Tap a tile — it flips its neighbours too.</p>
 
-    <button class="challenge-banner" id="challengeBanner" type="button" aria-live="polite"></button>
+    <section class="challenge" id="challenge" aria-label="Challenge" hidden>
+      <p class="challenge-bar"><span>Challenge</span><span>Same board</span></p>
+      <div class="challenge-body">
+        <p class="challenge-text">
+          <span class="challenge-who" id="challengeWho"></span>
+          <span class="challenge-beat" id="challengeBeat"></span>
+        </p>
+        <span class="challenge-level" id="challengeLevel"></span>
+      </div>
+    </section>
 
     <div class="board-area">
       <div class="board-wrap">
@@ -90,6 +99,10 @@
         <div class="stat">
           <span class="stat-label">Time</span>
           <span class="stat-value" id="timeVal">00:00</span>
+        </div>
+        <div class="stat stat--beat" id="beatStat" hidden>
+          <span class="stat-label">To beat</span>
+          <span class="stat-value" id="beatVal"></span>
         </div>
       </div>
 

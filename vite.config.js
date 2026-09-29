@@ -3,6 +3,8 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { games, home, pages, SITE_URL } from "./src/data/games.js";
+import { createHandler } from "./api/_lib/clash.js";
+import { createMemoryStore } from "./scripts/clash-dev-store.js";
 
 // Absolute, derived from this file's own location. A relative `root: "src"`
 // would be resolved against process.cwd(), which is not necessarily the repo.
@@ -71,6 +73,56 @@ function trailingSlashParity() {
     },
     configurePreviewServer(server) {
       server.middlewares.use(middleware(distDir));
+    },
+  };
+}
+
+/**
+ * Serves the Tap Clash room API in dev and preview, from the same handler the
+ * Vercel function uses (api/_lib/clash.js) over an in-memory store.
+ *
+ * So `npm run dev`, `npm run preview` and the Playwright suite run the real
+ * server code with no network and no database. `CLASH_TIME_SCALE` shrinks
+ * every party duration — the suite sets 0.05 — and rate limits are off here,
+ * because every test runs from one address. Both are production-only concerns
+ * that api.spec.js covers against the handler directly.
+ */
+function clashApi(env) {
+  const handle = createHandler({
+    store: createMemoryStore(),
+    scale: Number(env.CLASH_TIME_SCALE) || 1,
+    limits: null,
+  });
+
+  const middleware = async (req, res, next) => {
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    if (url.pathname !== "/api/clash/" && url.pathname !== "/api/clash") return next();
+
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const headers = new Headers();
+    for (const [k, v] of Object.entries(req.headers)) if (typeof v === "string") headers.set(k, v);
+    headers.set("x-real-ip", req.socket.remoteAddress || "local");
+
+    const response = await handle(
+      new Request(url, {
+        method: req.method,
+        headers,
+        body: req.method === "POST" ? Buffer.concat(chunks) : undefined,
+      }),
+    );
+    res.statusCode = response.status;
+    response.headers.forEach((v, k) => res.setHeader(k, v));
+    res.end(await response.text());
+  };
+
+  return {
+    name: "twb:clash-api",
+    configureServer(server) {
+      server.middlewares.use(middleware);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(middleware);
     },
   };
 }
@@ -596,6 +648,7 @@ export default defineConfig(({ mode }) => {
   appType: "mpa",
   plugins: [
     trailingSlashParity(),
+    clashApi(env),
     themeBootstrap(),
     sharedMarkup(),
     homepageFromRegistry(),
