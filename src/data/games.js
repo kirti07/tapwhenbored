@@ -242,6 +242,14 @@ export const pages = [
     changefreq: "weekly",
     priority: "0.7",
   },
+  {
+    slug: "clash",
+    title: "Tap Clash",
+    path: "/clash/",
+    // A party page: rooms, codes and personal results, nothing to index. It
+    // carries noindex and stays out of the sitemap.
+    sitemap: false,
+  },
 ];
 
 export const home = {

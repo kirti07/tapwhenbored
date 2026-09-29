@@ -1,0 +1,16 @@
+/* A game page running as a Tap Clash round (html[data-clash]).
+ *
+ * The party page draws its own bar above the frame — round, clock, who is
+ * done — so the game shows its board and its counters and nothing else: no
+ * top bar, no restart, no level picker, no end card. The round ends on the
+ * party's clock, not the game's.
+ */
+[data-clash] .topbar,
+[data-clash] .controls,
+[data-clash] .howto-link,
+[data-clash] .seo-info,
+[data-clash] .overlay,
+[data-clash] .challenge { display: none !important; }
+
+/* Until the round goes live the board is on show but cannot be touched. */
+[data-clash="wait"] .board-area { pointer-events: none; }

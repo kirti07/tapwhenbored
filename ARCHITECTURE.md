@@ -72,7 +72,7 @@ The architecture standardizes the things around the games:
 | Deployment             | Vercel                            |
 | PWA                    | Web App Manifest + icons          |
 | Offline gameplay       | No — installable, not offline     |
-| Backend                | None                           |
+| Backend                | Tap Clash rooms only: two Vercel Functions over Upstash Redis (§43) |
 | Leaderboards           | Supabase            |
 | Browser testing        | Playwright                        |
 | Game catalogue         | Central registry                  |
@@ -606,6 +606,9 @@ fails `npm run validate`, which gates the deploy.
 ```text
 /wall/    the boards. Public content, indexed, changes whenever a record does.
 /account/ the player card. Personal, `noindex, follow`, and mostly local data.
+/clash/   Tap Clash, the party page (§43). `noindex, follow`, and `sitemap:
+          false` in the registry keeps it out of the sitemap — the validator
+          requires the two to agree.
 ```
 
 Their field contract is smaller than a game's: `slug`, `title`, `path`,
@@ -619,7 +622,10 @@ a new game appears on both pages without either page being edited.
 One consequence, and the exception to §1's rule that a new page needs no build
 config: that plugin recognises these pages **by path**. Adding a *third*
 non-game page therefore does mean editing `vite.config.js`, unlike adding a
-game. Prefer re-skinning one of these two over adding a third.
+game — *if* it needs rows emitted from the registry. `/clash/` is the third,
+and needs none: it draws everything at runtime, so the only build-config
+changes it brought are the dev/preview API middleware and the sitemap's
+`sitemap: false` filter (§43).
 
 ---
 
@@ -1076,6 +1082,11 @@ queues and goes nowhere.
 
 Neither tag is measured by `check:bundles`, which follows only same-origin
 `/static/*` references (§23).
+
+A **framed** page loads no GA4 library either (`window.self !== window.top`):
+that is a game running as a Tap Clash round inside `/clash/`, and a pageview per
+round would count one party as five visits. `gtag("event", ...)` still queues
+harmlessly. The Vercel tag is a static script and still counts framed rounds.
 
 ---
 
@@ -1956,6 +1967,12 @@ games that opt into the leaderboard
 A missing variable must degrade to "leaderboard unavailable", never to a broken
 game (§26).
 
+Tap Clash adds two **server-only** names, `UPSTASH_REDIS_REST_URL` and
+`UPSTASH_REDIS_REST_TOKEN`. They are read by `api/_lib/redis.js` inside the
+Vercel Functions and appear nowhere in `define`, so the allowlist above is still
+exactly two names and no page can carry them. Dev, preview and the test suite
+never read them: they serve the room API from memory (§43).
+
 ---
 
 # 36. Deployment
@@ -2145,6 +2162,120 @@ Do not introduce these without a strong architectural reason:
 * Treating Supabase as a required backend
 * A client that compares scores, or knows which direction wins
 * A `main.js` that only imports `game.js`
+
+---
+
+# 43. Tap Clash: the Party Mode
+
+Tap Clash is the one feature on the site that needs a server: 2–10 phones in a
+room racing the same seeded board on a shared clock. PRD "Start a Party";
+design `research/tap_clash_design/`.
+
+**A clash is one round of one game.** The host picks the game and a time limit
+from that game's presets (`GAMES` in `src/clash/rules.js` — Flip It 30/60/90 s,
+Slide N Order 60/90/120/180 s); the results are the finale, with Share, the
+host's rematch controls and "Host your own" on the same screen — there is no
+separate recap for these games (a recap card is Doodle On's, Phase 2); a
+rematch is the next round, in a new room everyone follows into, with the same game or another.
+A player who finishes early waits on the clash page with the room, and the host
+can call time once half the room is done.
+
+## Shape
+
+```text
+/clash/ (static page)  ──poll GET /api/clash/?r=CODE (1 s, CDN s-maxage=1)──▶
+                        ──POST /api/clash/ {type, …}──────────────────────────▶ api/clash/index.js
+       │ iframe                                                                  └ api/_lib/clash.js
+       ▼                                                                            └ Upstash Redis
+/flip-it/?clash=1&seed=…   /slide-n-order/?clash=1&seed=…                             (one hash per room)
+```
+
+* **Optional by construction.** Nothing outside `/clash/` calls the API, so
+  every game still plays with it down — it is not a mandatory backend (§41).
+* **One handler, three hosts.** `createHandler({ store, now, scale, limits })`
+  in `api/_lib/clash.js` is the whole server. On Vercel its store is Upstash over
+  REST (`api/_lib/redis.js`, one pipelined `fetch`, no SDK). In `npm run dev`,
+  `npm run preview` and Playwright, `vite.config.js` serves the same handler
+  over an in-memory store (`scripts/clash-dev-store.js`) — no network, no
+  database, and `CLASH_TIME_SCALE` shrinks every duration for tests.
+* **No timers, no socket.** The room stores timestamps only — start, each
+  result's arrival, each removal, the host's "end". `src/clash/rules.js` is a
+  pure module imported by the API *and* by every phone, and
+  `derive(room, now)` computes the phase (lobby → title → play → final) from
+  them. The server uses it to
+  decide whether a result is on time; the page uses it to decide what to draw.
+  They cannot disagree, and a phone that reloads lands on the right screen.
+* **Why not WebSockets** (the PRD's Durable Object): the site stays on Vercel,
+  whose functions cannot hold a socket. Polling a CDN-cached snapshot costs the
+  store at most one read per room per second per edge region, and a hidden
+  phone does not poll at all.
+
+## The room
+
+One hash, `clash:{code}`, expiring three hours after creation. Every field is
+written by exactly one atomic command (`HSETNX`, `HINCRBY` or `HSET`), nothing
+is deleted, and `EXPIRE … NX` rides along with each write so a hash can never
+outlive its TTL. The field list is at the top of `api/_lib/clash.js`. A
+snapshot is built field by field (an allowlist): token hashes (`t:`) and ping
+times (`s:`) never leave the server.
+
+## Rules worth knowing
+
+* Codes are four letters from a 20-consonant alphabet: no words, no O/0.
+* Seats hold a random token; the room keeps its SHA-256. The host is a *field*
+  (`h`), not seat 0: if the host has not pinged for 20 s (scaled), the next
+  ping from the earliest-joined live player moves `h` to them for good.
+  Every phone pings every 10 s (scaled) for the whole clash.
+* The game and time limit are fixed when the room is created and validated
+  against the presets; the server never takes a limit a phone made up,
+  because it closes the round and bounds every result.
+* A result must echo the room's seed, arrive while the round is live, and
+  claim `ms ∈ [2 s, min(cap, time since start + 3 s grace)]` — all scaled.
+* The round closes when everyone is done, at the cap + 3 s grace, or when the
+  host ends it (`end`: host-only, while playing, once half are done). Anyone
+  still playing did not finish.
+* Rate limits by `x-real-ip` (IPv6 by /64): 60 posts a minute, 10 rooms per
+  ten minutes. Origin must equal the request's own origin. Bodies ≤ 4 KB.
+* Scoring, ties, late joiners, removals and awards: `src/clash/rules.js`, with
+  `tests/clash/rules.spec.js` as the worked examples.
+
+## Games as rounds
+
+The round is the real game page in a same-origin iframe. `?clash=1&seed=<base36>`
+(Flip It also `&level=medium`) makes the game deal that seeded board, lock it,
+hide its chrome (`shared/css/clash-round.css`) and wait:
+
+```text
+child  → parent  { type: "ready" }
+parent → child   { type: "go", elapsed }        the round went live `elapsed` ms ago
+child  → parent  { type: "result", seed, ms, moves }
+```
+
+Both sides check `origin` and `source` and post only to `location.origin`. The
+contract is written out in each game (~20 lines) rather than shared: a shared
+module cost both game pages a chunk and a request, and loading it lazily cost
+them Vite's preload helper instead. A framed run is unranked and unrecorded
+(§27). `vercel.json` sends `frame-ancestors 'self'` site-wide, so no other
+site can frame a page that listens for these messages.
+
+## Where it deviates from the PRD
+
+* One game per clash, with a host-chosen time limit, instead of the PRD's
+  multi-round party pack; placement points, running standings and the
+  double-points finale went with it. Awards are the ones a single round can
+  say: Photo Finish, Almost Had It, and Quick Hands for Slide N Order.
+* Upstash + polling, not a Cloudflare Worker + Durable Object + WebSockets.
+* Named Tap Clash at `/clash/`, per the design; the PRD's `/party/`.
+* Host handoff keeps the 20 s rule, measured by pings rather than a socket.
+* Phase 2 adds Doodle On as a third game choice; it uses the game's own
+  shape + direction, not written prompts, and a JPEG rather than vector
+  strokes (not built yet).
+* The guest line sits under the shelf, per the design. It appears on a guest's
+  phone only, so the intro paragraph below it moves once on those visits — the
+  one accepted exception to §34's "nothing moves".
+* No recap for Flip It and Slide N Order: the results screen is the end, and
+  Share sends a link. The PRD's recap card is kept for Doodle On (Phase 2),
+  where the drawings are what people forward.
 
 ---
 

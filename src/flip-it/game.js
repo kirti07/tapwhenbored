@@ -92,6 +92,7 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   var recent = readRecent();
   var bests = readBests();
   var challenge = readChallenge(); // null, or the run a shared link asks you to beat
+  var round = null;      // set when this page is a Tap Clash round
 
   // ---------- storage (all of it optional, none of it load-bearing) ----------
 
@@ -435,6 +436,12 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
     }
     board.classList.add("is-cleared");
 
+    // A party round has no end card: the party page takes it from here.
+    if (round) {
+      round.finish({ seed: seed, ms: Math.round(finalMs), moves: moves });
+      return;
+    }
+
     clearTimeout(rippleHandle);
     rippleHandle = setTimeout(showResult, furthest * RIPPLE_STEP_MS + 340);
   }
@@ -448,8 +455,9 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   }
 
 
-  function startClock() {
-    startedAt = performance.now();
+  /** `elapsed`: how long ago the clock should have started (a party round). */
+  function startClock(elapsed) {
+    startedAt = performance.now() - (elapsed || 0);
     finalMs = null;
     clearInterval(tickHandle);
     tickHandle = setInterval(updateHud, TICK_MS);
@@ -716,13 +724,68 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
     label: "Game over",
   });
 
-  if (challenge) {
-    level = challenge.level; // not written to prefs: the link's level is theirs
-    showChallenge();
-    load(generate(level, challenge.seed), challenge.seed);
-    track("challenge_link_opened");
-  } else {
-    deal();
+  // ---------- party rounds ----------
+  //
+  // Inside /clash/ the page plays one seeded board on the party's clock: the
+  // board is dealt at once and locked, and the clock starts when the party
+  // page says the round went live — not on the first tap, so every player
+  // races the same seconds. The contract is below.
+
+  /* The Tap Clash round contract (ARCHITECTURE.md, "Tap Clash"). Written out
+     in each game rather than shared: a shared module would cost both game
+     pages a chunk and a request for ~20 lines. Both directions check origin
+     and source, and post to this origin only.
+       child  → parent  { type: "ready" }
+       parent → child   { type: "go", elapsed }   live since `elapsed` ms
+       child  → parent  { type: "result", seed, ms, moves } */
+  function readRound() {
+    var params = new URLSearchParams(location.search);
+    var raw = params.get("seed") || "";
+    if (params.get("clash") !== "1" || window.self === window.top) return null;
+    if (!/^[0-9a-z]{1,7}$/.test(raw) || parseInt(raw, 36) > 0xffffffff) return null;
+    return { seed: parseInt(raw, 36), level: params.get("level") };
   }
-  syncLevelButtons();
+
+  function joinRound(onGo) {
+    window.addEventListener("message", function (e) {
+      if (e.origin !== location.origin || e.source !== window.parent) return;
+      if (e.data && e.data.type === "go" && Number.isFinite(e.data.elapsed)) onGo(Math.max(0, e.data.elapsed));
+    });
+    window.parent.postMessage({ type: "ready" }, location.origin);
+    return {
+      finish: function (result) {
+        window.parent.postMessage(Object.assign({ type: "result" }, result), location.origin);
+      },
+    };
+  }
+
+  function playRound(r) {
+    level = r.level;
+    document.documentElement.dataset.clash = "wait";
+    load(generate(level, r.seed), r.seed);
+    ended = true; // locked until the round goes live
+    syncLevelButtons();
+    round = joinRound(function (elapsed) {
+      if (startedAt !== null) return;
+      document.documentElement.dataset.clash = "on";
+      ended = false;
+      startClock(elapsed);
+    });
+  }
+
+  function startSolo() {
+    if (challenge) {
+      level = challenge.level; // not written to prefs: the link's level is theirs
+      showChallenge();
+      load(generate(level, challenge.seed), challenge.seed);
+      track("challenge_link_opened");
+    } else {
+      deal();
+    }
+    syncLevelButtons();
+  }
+
+  var asRound = readRound();
+  if (asRound && LEVELS[asRound.level]) playRound(asRound);
+  else startSolo(); // including a round URL opened on its own
 })();

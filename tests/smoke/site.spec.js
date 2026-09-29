@@ -369,7 +369,10 @@ test.describe("routing", () => {
   test("sitemap lists exactly the registry", async ({ request }) => {
     const xml = await (await request.get("/sitemap.xml")).text();
     const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]).sort();
-    const expected = [home, ...pages, ...games].map((e) => `${SITE_URL}${e.path}`).sort();
+    const expected = [home, ...pages, ...games]
+      .filter((e) => e.sitemap !== false)
+      .map((e) => `${SITE_URL}${e.path}`)
+      .sort();
     expect(locs).toEqual(expected);
   });
 });

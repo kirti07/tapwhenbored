@@ -43,6 +43,9 @@ function key(slug) {
  * to learn one boolean would put every other game's metadata in its bundle.
  */
 export function recordPlay(slug, score, lowerIsBetter) {
+  // A game framed by /clash/ is a party round: party results stay in the
+  // party, and a round is not this browser playing the cabinet (§27).
+  if (window.self !== window.top) return false;
   var day = localDay();
   var previous = getJSON(key(slug), null);
   var next = Number.isFinite(score) ? score : null;

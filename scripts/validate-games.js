@@ -419,6 +419,12 @@ for (const p of pages) {
   const relative = html.match(/(?:href|src)="assets\//);
   if (relative) err(`${where}: relative asset reference — use an absolute /assets/... path`);
 
+  // Out of the sitemap and out of the index are one decision, made once in
+  // the registry: a page that is not listed must say noindex, and vice versa.
+  const noindex = /<meta name="robots" content="noindex/.test(html);
+  if (p.sitemap === false && !noindex)
+    err(`${where}: pages["${p.slug}"] is kept out of the sitemap but has no robots noindex`);
+
   // Any page drawing stickers has to ask for the sprite.
   if (html.includes("<use ") && !html.includes("<!-- sprite -->"))
     err(`${where}: draws stickers but has no <!-- sprite --> marker`);

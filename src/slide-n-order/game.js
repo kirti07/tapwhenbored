@@ -12,6 +12,9 @@ import { getName, clean } from "../shared/ui/player.js";
   var SIZE = 4;
   var TOTAL = SIZE * SIZE;
   var SHUFFLE_MOVES = 160;
+  // A party round is a race against the room inside 90 seconds, so its
+  // scramble is short enough that most players finish; solo keeps 160.
+  var ROUND_SHUFFLE_MOVES = 26;
   var BEST_KEY = "slide-n-order.best";
   var MAX_BEAT_MOVES = 9999; // a longer "moves to beat" is a broken link
 
@@ -53,6 +56,8 @@ import { getName, clean } from "../shared/ui/player.js";
   var best = getInt(BEST_KEY);
   var seed = 0;          // what built this scramble; a challenge link carries it
   var challenge = readChallenge(); // null, or the run a shared link asks you to beat
+  var round = null;      // set when this page is a Tap Clash round
+  var goAt = null;       // performance.now() when the round went live
 
 
   function writeBest(v) {
@@ -113,13 +118,13 @@ import { getName, clean } from "../shared/ui/player.js";
     return (Math.random() * 4294967296) >>> 0;
   }
 
-  /** The scramble a seed builds — a pure function of the seed. */
-  function shuffleBoard(seedValue) {
+  /** The scramble a seed builds — a pure function of the seed (and length). */
+  function shuffleBoard(seedValue, length) {
     var rand = mulberry32(seedValue);
     seed = seedValue;
     buildSolved();
     var prevBlank = -1;
-    for (var n = 0; n < SHUFFLE_MOVES; n++) {
+    for (var n = 0; n < (length || SHUFFLE_MOVES); n++) {
       var candidates = neighborIndices(blankIndex).filter(function (idx) { return idx !== prevBlank; });
       if (!candidates.length) candidates = neighborIndices(blankIndex);
       var chosen = candidates[Math.floor(rand() * candidates.length)];
@@ -415,6 +420,11 @@ import { getName, clean } from "../shared/ui/player.js";
   function checkWin() {
     if (isSolved()) {
       ended = true;
+      // A party round has no end card: the party page takes it from here.
+      if (round) {
+        round.finish({ seed: seed, ms: Math.round(performance.now() - goAt), moves: moves });
+        return;
+      }
       // Before the 350ms overlay delay below, not inside it.
       recordPlay("slide-n-order", moves, true);
       var isNewBest = best == null || moves < best;
@@ -603,15 +613,69 @@ import { getName, clean } from "../shared/ui/player.js";
     slideTile(i);
   });
 
-  buildDom();
-  if (challenge) {
-    showChallenge();
-    shuffleBoard(challenge.seed);
-    track("challenge_link_opened");
-  } else {
-    shuffleBoard(randomSeed());
+  // ---------- party rounds ----------
+  //
+  // Inside /clash/ the page plays one short seeded scramble on the party's
+  // clock: dealt at once and locked, timed from the moment the party page
+  // says the round went live. The contract is below.
+
+  /* The Tap Clash round contract (ARCHITECTURE.md, "Tap Clash"). Written out
+     in each game rather than shared: a shared module would cost both game
+     pages a chunk and a request for ~20 lines. Both directions check origin
+     and source, and post to this origin only.
+       child  → parent  { type: "ready" }
+       parent → child   { type: "go", elapsed }   live since `elapsed` ms
+       child  → parent  { type: "result", seed, ms, moves } */
+  function readRound() {
+    var params = new URLSearchParams(location.search);
+    var raw = params.get("seed") || "";
+    if (params.get("clash") !== "1" || window.self === window.top) return null;
+    if (!/^[0-9a-z]{1,7}$/.test(raw) || parseInt(raw, 36) > 0xffffffff) return null;
+    return { seed: parseInt(raw, 36), level: params.get("level") };
   }
-  renderTiles();
-  updateMovesHud();
-  updateBestHud();
+
+  function joinRound(onGo) {
+    window.addEventListener("message", function (e) {
+      if (e.origin !== location.origin || e.source !== window.parent) return;
+      if (e.data && e.data.type === "go" && Number.isFinite(e.data.elapsed)) onGo(Math.max(0, e.data.elapsed));
+    });
+    window.parent.postMessage({ type: "ready" }, location.origin);
+    return {
+      finish: function (result) {
+        window.parent.postMessage(Object.assign({ type: "result" }, result), location.origin);
+      },
+    };
+  }
+
+  function playRound(r) {
+    document.documentElement.dataset.clash = "wait";
+    ended = true; // locked until the round goes live
+    shuffleBoard(r.seed, ROUND_SHUFFLE_MOVES);
+    renderTiles();
+    updateMovesHud();
+    round = joinRound(function (elapsed) {
+      if (goAt !== null) return;
+      goAt = performance.now() - elapsed;
+      document.documentElement.dataset.clash = "on";
+      ended = false;
+    });
+  }
+
+  function startSolo() {
+    if (challenge) {
+      showChallenge();
+      shuffleBoard(challenge.seed);
+      track("challenge_link_opened");
+    } else {
+      shuffleBoard(randomSeed());
+    }
+    renderTiles();
+    updateMovesHud();
+    updateBestHud();
+  }
+
+  buildDom();
+  var asRound = readRound();
+  if (asRound) playRound(asRound);
+  else startSolo(); // including a round URL opened on its own
 })();
