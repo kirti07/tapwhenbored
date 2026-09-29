@@ -298,6 +298,15 @@ body[data-game="slide-n-order"] { --game: var(--slide); }
 .sheet-list .is-me { border-color: color-mix(in srgb, var(--arc-accent) 55%, var(--line)); }
 .sheet-r { color: var(--ink-dim); padding-right: 8px; }
 .sheet-r.is-done { color: var(--arc-ok); }
+.sheet-still { margin: 0; text-align: center; font-size: 13px; color: var(--ink-soft); }
+/* A new finisher lands with one flash; the list itself never moves. */
+.sheet-list .is-new { animation: sheet-new 1.2s ease-out; }
+@keyframes sheet-new {
+  from { border-color: var(--arc-accent); background: color-mix(in srgb, var(--arc-accent) 18%, var(--card)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet-list .is-new { animation: none; }
+}
 .sheet-foot { margin: 4px 0 0; text-align: center; font-size: 12.5px; color: var(--ink-dim); }
 
 /* ------------------------------------------------------------ final table -- */

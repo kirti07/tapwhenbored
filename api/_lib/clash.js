@@ -41,6 +41,10 @@ const MAX_NAME = 24;
 const MAX_PARTY_NAME = 40;
 const TYPES = ["create", "join", "ping", "start", "result", "end", "kick", "rematch"];
 const HOST_ONLY = ["start", "end", "kick", "rematch"];
+// Not rate-limited: a seat's own presence and its one result. A party shares
+// one Wi-Fi address, and ten phones pinging every 10 s would otherwise spend
+// the whole per-minute budget, and a result refused for it would be lost.
+const UNLIMITED = ["ping", "result"];
 
 const roomKey = (code) => `clash:${code}`;
 
@@ -160,18 +164,26 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
     return { out, room: parseRoom(code, out[out.length - 1]).room };
   }
 
-  async function rateLimit(request, type) {
-    if (!limits) return;
+  /**
+   * The rate-limit counters this request bumps, as commands to run ahead of
+   * the room read in the same round trip. A rematch is not a new room here:
+   * only the host of a finished round can ask for one, so a party playing
+   * round after round on one Wi-Fi never runs out.
+   */
+  function limitCommands(request, type) {
+    if (!limits || UNLIMITED.includes(type)) return [];
     const ip = clientKey(request);
     const t = now();
     const minute = `rl:${ip}:${Math.floor(t / 60000)}`;
     const commands = [["INCR", minute], ["EXPIRE", minute, 120]];
     const tenMin = `rlc:${ip}:${Math.floor(t / 600000)}`;
-    if (type === "create" || type === "rematch") commands.push(["INCR", tenMin], ["EXPIRE", tenMin, 1200]);
-    const out = await store.pipeline(commands);
-    if (out[0] > limits.post || (out[2] !== undefined && out[2] > limits.create)) {
-      reject(429, "slow down");
-    }
+    if (type === "create") commands.push(["INCR", tenMin], ["EXPIRE", tenMin, 1200]);
+    return commands;
+  }
+
+  function checkLimits(out) {
+    if (!out.length) return;
+    if (out[0] > limits.post || (out[2] !== undefined && out[2] > limits.create)) reject(429, "slow down");
   }
 
   function player(body) {
@@ -223,7 +235,10 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
       return openRoom(body.party, player(body), setup(body, { game, cap: R.GAMES[game]?.cap }));
     },
 
-    async join(body, { code }) {
+    /* Joining closes when the host starts: the round is whoever is in the
+       room at that moment. */
+    async join(body, { code, room }) {
+      if (room.start != null) reject(409, "already started");
       const who = player(body);
       const key = roomKey(code);
       const [n] = await store.pipeline([["HINCRBY", key, "seats", 1]]);
@@ -313,12 +328,17 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
     try { body = JSON.parse(text); } catch { reject(400, "bad json"); }
     if (!body || typeof body !== "object" || !TYPES.includes(body.type)) reject(400, "bad type");
 
-    await rateLimit(request, body.type);
-    if (body.type === "create") return actions.create(body);
+    const limit = limitCommands(request, body.type);
+    if (body.type === "create") {
+      if (limit.length) checkLimits(await store.pipeline(limit));
+      return actions.create(body);
+    }
 
     const code = body.code;
     if (!CODE.test(code || "")) reject(400, "bad code");
-    const found = await read(code);
+    const out = await store.pipeline([...limit, ["HGETALL", roomKey(code)]]);
+    checkLimits(out.slice(0, limit.length));
+    const found = parseRoom(code, out[limit.length]);
     if (!found) reject(404, "no such room");
     const ctx = { code, room: found.room, pings: found.pings };
 

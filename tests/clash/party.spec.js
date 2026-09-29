@@ -97,9 +97,26 @@ test("a clash: pick a game, join by link and by code, end the round, podium, rem
   // The round: two solve and wait on the sheet; the third never touches the
   // board, so the host calls time.
   await host.click("#startBtn");
+
+  // Joining closes when the host starts: a fourth phone opening the link now
+  // is told so, not offered a seat.
+  const lateP = await phone(browser, errors, "late");
+  await lateP.goto(`/clash/?r=${code}`);
+  await expect(screen(lateP, "gone")).toBeVisible();
+  await expect(lateP.locator("#goneH")).toHaveText("This clash has already started");
+  await lateP.context().close();
+
   await Promise.all([play(host, "flip-it"), play(riya, "flip-it")]);
   await expect(host.locator("#sheet")).toBeVisible();
-  await expect(host.locator("#sheetList")).toContainText("playing…");
+  // The sheet lists only who has finished, ranked, and counts the rest.
+  const finished = host.locator("#sheetList li");
+  await expect(finished).toHaveCount(2);
+  await expect(host.locator("#sheetList")).toContainText("Aman");
+  await expect(host.locator("#sheetList")).toContainText("Riya");
+  await expect(host.locator("#sheetList")).not.toContainText(EVIL.slice(0, 12));
+  await expect(finished.first().locator(".medal")).toHaveText("1");
+  await expect(host.locator("#sheetLabel")).toHaveText("Finished · 2 of 3");
+  await expect(host.locator("#sheetStill")).toHaveText("1 still playing");
   await expect(riya.locator("#endBtn")).toBeHidden();
   await host.click("#endBtn");
 

@@ -41,6 +41,7 @@ let screen = null;
 let drawnKey = ""; // what the screen was last built from
 let pending = null; // this phone's own result: { ms, moves, error? }
 const toasted = new Set(); // seats already announced
+const listed = new Set(); // seats already on the waiting sheet's list
 let frame = null; // { el, code, ready, went, done }
 let hostBefore = null;
 let wake = null;
@@ -176,7 +177,9 @@ function answer(res, errEl) {
     return null;
   }
   if (errEl) errEl.textContent = "";
-  if (res.data.room && feed) feed.accept(res.data.room, res.data.serverNow);
+  // Only this room's snapshot: a rematch answers with the new room, and a
+  // raced one with the old room, and neither belongs in the feed on screen.
+  if (res.data.room?.code === code && feed) feed.accept(res.data.room, res.data.serverNow);
   return res.data;
 }
 
@@ -188,6 +191,7 @@ function explain(error) {
     "slow down": "Too many tries. Wait a minute and try again.",
     "name required": "Add a name first.",
     "not enough done": "Half the room has to finish before you can call time.",
+    "already started": "This clash has already started — joining closed when it began.",
     [`needs ${R.MIN_PLAYERS} players`]: `A clash needs at least ${R.MIN_PLAYERS} players.`,
   }[error] || "That didn't work. Try again.";
 }
@@ -255,15 +259,16 @@ setInterval(render, TICK_MS);
 
 let joinFace = null;
 function renderJoin() {
+  if (room.start != null) {
+    return gone("This clash has already started", "Joining closes when the host starts. Ask for the next one, or start your own.");
+  }
   const host = player(room.host) || room.players[0];
   const here = room.players.filter((p) => p.kickedAt == null);
   $("joinCode").textContent = `Room ${room.code}`;
   $("joinBy").textContent = `${host.name} started`;
   $("joinParty").textContent = room.name;
   $("joinWho").textContent = `${here.slice(0, 6).map((p) => face(p.emoji)).join(" ")}  ${here.length} already in`;
-  $("joinNote").textContent = room.start == null
-    ? `${game().title} · ${room.cap}s · one board, everyone at once`
-    : "It's under way — you're in for the next one.";
+  $("joinNote").textContent = `${game().title} · ${room.cap}s · one board, everyone at once`;
   if (!joinFace) {
     joinFace = facePicker($("joinFaces"), savedFace());
     $("joinName").value = getName();
@@ -273,11 +278,17 @@ function renderJoin() {
 
 $("joinForm").addEventListener("submit", async (e) => {
   e.preventDefault();
+  // One tap, one seat: a second tap while the first is on its way would
+  // join twice, and the extra seat would hold the round open to the limit.
+  const go = $("joinForm").querySelector("[type=submit]");
+  if (go.disabled) return;
+  go.disabled = true;
   const name = $("joinName").value;
   const data = answer(await post({ type: "join", code, name, emoji: joinFace() }), $("joinErr"));
+  go.disabled = false;
   if (!data) return;
   setName(name);
-  track("player_joined", { late: room.start != null });
+  track("player_joined");
   enter(data.code, { seat: data.seat, token: data.token });
   feed.accept(data.room, data.serverNow);
 });
@@ -463,16 +474,27 @@ function renderPlay(d, fresh) {
     $("sheetH").textContent = game().by === "moves" ? `Solved in ${mine.moves} moves` : `Cleared in ${formatDuration(mine.ms)}`;
     $("sheetSub").textContent = `${formatDuration(mine.ms)} · ${mine.moves} moves${place ? ` · ${ordinal(place)} so far` : ""}`;
   }
+  // Who has finished, ranked so far — for Slide N Order that is by moves,
+  // not by who got there first. Everyone else is one line under it.
+  $("sheetLabel").textContent = `Finished · ${done} of ${of}`;
   const list = $("sheetList");
   list.textContent = "";
-  for (const p of eligible) {
-    const r = room.results[p.seat];
-    const li = el("li", p.seat === me.seat ? "is-me" : "");
-    li.appendChild(el("span", "room-face", face(p.emoji)));
-    li.appendChild(el("span", "room-name", p.name + (p.seat === me.seat ? " (you)" : "")));
-    li.appendChild(el("span", "sheet-r arc-mono" + (r ? " is-done" : ""), r ? resultText(r) : p.kickedAt != null ? "left" : "playing…"));
+  for (const x of R.placements(room)) {
+    if (!x.result) continue;
+    const isMe = x.seat === me.seat;
+    const isNew = !listed.has(x.seat) && !isMe;
+    listed.add(x.seat);
+    const li = el("li", (isMe ? "is-me" : "") + (isNew ? " is-new" : ""));
+    li.appendChild(el("span", `medal${x.place <= 3 ? ` medal--${x.place}` : ""}`, String(x.place)));
+    li.appendChild(el("span", "room-face", face(player(x.seat).emoji)));
+    li.appendChild(el("span", "room-name", nameOf(x.seat) + (isMe ? " (you)" : "")));
+    li.appendChild(el("span", "sheet-r arc-mono is-done", resultText(x.result)));
     list.appendChild(li);
   }
+  const removed = eligible.filter((p) => p.kickedAt != null).length;
+  const still = of - done;
+  $("sheetStill").hidden = !still && !removed;
+  $("sheetStill").textContent = [still && `${still} still playing`, removed && `${removed} left`].filter(Boolean).join(" · ");
 
   // The host can call time once half the room is done (rules.js / the API
   // hold the same line), so one wandering player does not hold everyone.
@@ -590,13 +612,23 @@ initShare({
 });
 $("shareBtn").addEventListener("click", () => track("result_shared"));
 
-/* The next round is a rematch: same game, or the host picks another. */
+/* The next round is a rematch: same game, or the host picks another.
+   While it is on its way the old room can already name the new one, and
+   following it then would seat the host in their own rematch twice. */
+let rematching = false;
 async function rematch(choice) {
+  if (rematching) return;
+  rematching = true;
+  const btns = [$("rematchBtn"), $("changeForm").querySelector("[type=submit]")];
+  for (const b of btns) b.disabled = true;
   const data = await act("rematch", choice, $("rematchErr"));
+  for (const b of btns) b.disabled = false;
   if (data?.code && data.token) {
     resetRound();
     enter(data.code, { seat: data.seat, token: data.token });
+    feed.accept(data.room, data.serverNow);
   }
+  rematching = false;
 }
 
 $("rematchBtn").addEventListener("click", () => rematch({}));
@@ -616,27 +648,35 @@ $("changeForm").addEventListener("submit", (e) => {
 /** Everything that belonged to the last room's round. */
 function resetRound() {
   drawnKey = "";
+  followAfter = 0;
   pending = null;
   toasted.clear();
+  listed.clear();
   frame?.el.remove();
   frame = null;
 }
 
 /* Everyone else follows the host into the rematch room, with the same name
-   and face, without touching anything — including anyone who arrived too
-   late for the round they just watched. */
+   and face, without touching anything. */
 let following = false;
+let followAfter = 0; // no retry before this; Infinity once it cannot work
 async function followRematch() {
-  if (following) return;
+  if (following || rematching || Date.now() < followAfter) return;
   following = true;
   const mine = mySeat();
   const res = await post({ type: "join", code: room.next, name: mine.name, emoji: mine.emoji });
+  following = false;
   if (res.ok) {
     resetRound();
     enter(res.data.code, { seat: res.data.seat, token: res.data.token });
     feed.accept(res.data.room, res.data.serverNow);
+  } else if (res.status === 0 || res.status === 429 || res.status >= 500) {
+    followAfter = Date.now() + 2000; // lost or busy: try again, gently
+  } else {
+    // Started without us, full, or gone: joining again will not change that.
+    followAfter = Infinity;
+    gone("The next round started without you", "Joining closes when the host starts. You can start a clash of your own.");
   }
-  following = false;
 }
 
 // 02 · setup and the code form ---------------------------------------------------------
