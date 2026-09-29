@@ -14,6 +14,36 @@
       ]
     },
     {
+      "source": "/clash/",
+      "has": [
+        {
+          "type": "query",
+          "key": "r"
+        }
+      ],
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        }
+      ]
+    },
+    {
+      "source": "/clash/",
+      "has": [
+        {
+          "type": "query",
+          "key": "join"
+        }
+      ],
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        }
+      ]
+    },
+    {
       "source": "/static/(.*)",
       "headers": [
         {

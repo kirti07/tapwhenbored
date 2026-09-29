@@ -246,9 +246,14 @@ export const pages = [
     slug: "clash",
     title: "Tap Clash",
     path: "/clash/",
-    // A party page: rooms, codes and personal results, nothing to index. It
-    // carries noindex and stays out of the sitemap.
-    sitemap: false,
+    // The party mode's front door is indexed: "play a game together on your
+    // phones" is a search. Room links (?r=CODE, ?join) are not — they carry
+    // X-Robots-Tag: noindex from vercel.json and canonicalise to /clash/.
+    // `ogImage` is the preview every invite link shows in a group chat.
+    ogImage: "/assets/clash-og.jpg",
+    updated: "2026-09-29",
+    changefreq: "monthly",
+    priority: "0.8",
   },
 ];
 

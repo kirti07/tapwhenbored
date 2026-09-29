@@ -5,10 +5,34 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f3f2fa">
 <!-- theme-bootstrap -->
-<title>Tap Clash — one board, everyone's phone</title>
-<meta name="description" content="Tap Clash: one host, everyone else scans a code, and the room races the same board of Flip It or Slide N Order on their own phones. Free, no signup.">
-<meta name="robots" content="noindex, follow">
+<title>Tap Clash — a phone game for the whole room, free and no signup</title>
+<meta name="description" content="Tap Clash is a free party game for 2–10 people in one room: the host picks Flip It or Slide N Order, everyone scans a QR code, and you all race the same board on your own phones. No app, no signup.">
 <link rel="canonical" href="https://www.tapwhenbored.com/clash/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Tap Clash — same board, same moment, everyone's phone">
+<meta property="og:description" content="A free party game for 2–10 people in one room. Scan the code, race the same board. No app, no signup.">
+<meta property="og:url" content="https://www.tapwhenbored.com/clash/">
+<meta property="og:image" content="https://www.tapwhenbored.com/assets/clash-og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Tap Clash — same board, same moment, everyone's phone">
+<meta name="twitter:description" content="A free party game for 2–10 people in one room. Scan the code, race the same board. No app, no signup.">
+<meta name="twitter:image" content="https://www.tapwhenbored.com/assets/clash-og.jpg">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Tap Clash",
+  "url": "https://www.tapwhenbored.com/clash/",
+  "description": "A free party game for 2–10 people in the same room. The host picks Flip It or Slide N Order and a time limit; everyone joins by QR code and races the same board on their own phone.",
+  "applicationCategory": "GameApplication",
+  "operatingSystem": "Any (web browser)",
+  "image": "https://www.tapwhenbored.com/assets/clash-og.jpg",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "isPartOf": { "@type": "WebSite", "name": "Tap When Bored", "url": "https://www.tapwhenbored.com/" }
+}
+</script>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="preload" href="/fonts/nunito-latin-700.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/silkscreen-latin-400.woff2" as="font" type="font/woff2" crossorigin>
@@ -186,6 +210,22 @@
       </div>
     </section>
   </main>
+
+  <!-- Readable without JavaScript, for people and for crawlers: every screen
+       above is drawn by script, and the first one says only "Finding the
+       room…". Hidden while a round is on, where it would sit under the board. -->
+  <details class="clash-about">
+    <summary>What is Tap Clash?</summary>
+    <p>
+      Tap Clash is a free party game for 2 to 10 people in the same room, played on
+      everyone's own phone. One person starts a clash and picks the game — Flip It, the
+      lights-out puzzle, or Slide N Order, the 15-puzzle — and a time limit. Everyone else
+      scans the QR code or types the four-letter room code, adds a name and a face, and
+      the room races the same board at the same moment. Finish early and you watch the
+      others come in; the results reveal together, with a podium and a few awards. Go
+      again with the same group in one tap, or switch games. No app, no account, no signup.
+    </p>
+  </details>
 </div>
 
 <script type="module" src="./clash.js"></script>

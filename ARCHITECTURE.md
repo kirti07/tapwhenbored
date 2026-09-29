@@ -606,9 +606,10 @@ fails `npm run validate`, which gates the deploy.
 ```text
 /wall/    the boards. Public content, indexed, changes whenever a record does.
 /account/ the player card. Personal, `noindex, follow`, and mostly local data.
-/clash/   Tap Clash, the party page (§43). `noindex, follow`, and `sitemap:
-          false` in the registry keeps it out of the sitemap — the validator
-          requires the two to agree.
+/clash/   Tap Clash, the party page (§43). Indexed, in the sitemap, with its
+          own share preview (`ogImage` in the registry, checked by the
+          validator). Room links — `?r=CODE`, `?join` — get
+          `X-Robots-Tag: noindex` from vercel.json and canonicalise to /clash/.
 ```
 
 Their field contract is smaller than a game's: `slug`, `title`, `path`,
@@ -624,8 +625,8 @@ config: that plugin recognises these pages **by path**. Adding a *third*
 non-game page therefore does mean editing `vite.config.js`, unlike adding a
 game — *if* it needs rows emitted from the registry. `/clash/` is the third,
 and needs none: it draws everything at runtime, so the only build-config
-changes it brought are the dev/preview API middleware and the sitemap's
-`sitemap: false` filter (§43).
+change it brought is the dev/preview API middleware (§43). Its crawlable
+text is a static "What is Tap Clash?" block in the page itself (§28).
 
 ---
 

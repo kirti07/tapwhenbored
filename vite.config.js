@@ -493,7 +493,7 @@ function homepageFromRegistry() {
  */
 function sitemap() {
   const render = () => {
-    const entries = [home, ...pages, ...games].filter((e) => e.sitemap !== false);
+    const entries = [home, ...pages, ...games];
     const urls = entries
       .map(
         (e) =>

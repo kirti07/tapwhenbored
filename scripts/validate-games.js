@@ -419,11 +419,17 @@ for (const p of pages) {
   const relative = html.match(/(?:href|src)="assets\//);
   if (relative) err(`${where}: relative asset reference — use an absolute /assets/... path`);
 
-  // Out of the sitemap and out of the index are one decision, made once in
-  // the registry: a page that is not listed must say noindex, and vice versa.
-  const noindex = /<meta name="robots" content="noindex/.test(html);
-  if (p.sitemap === false && !noindex)
-    err(`${where}: pages["${p.slug}"] is kept out of the sitemap but has no robots noindex`);
+  // A page with a social preview: the image exists, is raster, and is the one
+  // the page's own og:image names — the same rules the homepage's follows.
+  if (p.ogImage) {
+    if (!p.ogImage.startsWith("/assets/") || /\.svg$/i.test(p.ogImage))
+      err(`games.js pages["${p.slug}"]: ogImage must be a raster "/assets/..." path`);
+    else if (!existsSync(path.join(publicDir, p.ogImage.slice(1))))
+      err(`games.js pages["${p.slug}"]: ogImage ${p.ogImage} does not exist in public/`);
+    const og = html.match(/<meta property="og:image" content="([^"]+)"/);
+    if (!og || og[1] !== `${SITE_URL}${p.ogImage}`)
+      err(`${where}: og:image must be "${SITE_URL}${p.ogImage}"`);
+  }
 
   // Any page drawing stickers has to ask for the sprite.
   if (html.includes("<use ") && !html.includes("<!-- sprite -->"))
