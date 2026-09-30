@@ -18,7 +18,8 @@ import { getName, setName, clean, UNSIGNED } from "../shared/ui/player.js";
 import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 import { formatScore } from "../shared/ui/format.js";
 import { showState } from "../shared/ui/slot.js";
-import { fetchStanding, savePlayer, deletePlayer } from "../shared/ui/leaderboard.js";
+import { fetchStanding, savePlayer, deletePlayer, isLeaderboardAvailable } from "../shared/ui/leaderboard.js";
+import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
 
 var body = document.getElementById("bestsBody");
 var nameSlot = document.getElementById("nameSlot");
@@ -31,6 +32,21 @@ var youMeta = document.getElementById("youMeta");
    `clean()` deliberately does not enforce it, so nothing is rewritten under
    somebody as they type. */
 var BOARD_NAME = /^[A-Za-z0-9 _'-]+$/;
+
+// One line per reason a board write can come back with (leaderboard.js write).
+// Save, rename and Delete all read from here so they cannot drift apart.
+var SAY = {
+  busy: "Too many tries from this network. Try again in a minute.",
+  offline: "You’re offline.",
+  error: "Couldn’t reach the boards. Try again in a minute.",
+  denied: "This browser can’t change that player: its saved key doesn’t match.",
+  blocked: "This name can’t go on the boards.",
+  bad_name: "That name can’t go on a board — letters, numbers, spaces, hyphen and ' only.",
+  bad_email: "That address does not look right.",
+};
+
+// Whether this browser has saved an email. The boards never send it back.
+var EMAIL_SAVED = "account.email";
 
 var boarded = games.filter(function (g) { return g.leaderboard !== false; });
 
@@ -168,33 +184,27 @@ function sayName(text, bad) {
 }
 
 /**
- * Send the name to the boards. Never awaited, never throws.
- *
- * `savePlayer()` resolves false for a refused name, a wrong token, a throttled
- * caller and an unreachable board alike, so the likely cause is worked out here
- * the same way the email field already does it (`initPrefs` below): test the
- * value against what the boards accept, and only blame the network when the
- * name itself is fine.
- *
- * The second sentence of the failure copy is the important one. The name is
- * still saved on this device — a player who is told "couldn't save" and nothing
- * else has no way to know whether they have lost it.
+ * Send the name to the boards. Never awaited, never throws. A failure always
+ * says the name is still on this device, or the player can't tell if it's lost.
  */
 function pushName() {
   var name = getName();
   sayName("Saving…");
 
-  savePlayer({ name: name }).then(function (ok) {
-    if (ok) {
+  savePlayer({ name: name }).then(function (why) {
+    if (why === "ok") {
       sayName(name ? "Saved. It shows on every board you’re on." : "Name cleared.");
       return;
     }
-    sayName(
-      name && !BOARD_NAME.test(name)
-        ? "That name can’t go on a board — letters, numbers, spaces, hyphen and ' only."
-        : "Couldn’t save your name to the boards. It’s still on this device — try again in a minute.",
-      true,
-    );
+    if (why === "unavailable") {
+      sayName("Saved on this device.");
+      return;
+    }
+    // A database without the v2 functions can't say why; infer it.
+    if (why === "refused") why = name && !BOARD_NAME.test(name) ? "bad_name" : "error";
+    var text = SAY[why] || SAY.error;
+    if (why !== "bad_name" && why !== "blocked") text += " Your name is still on this device.";
+    sayName(text, true);
   });
 }
 
@@ -254,35 +264,79 @@ function initNameEditor() {
 // ---------- the optional half ----------
 
 function initPrefs() {
+  var section = document.getElementById("pingH");
   var email = document.getElementById("emailInp");
   var displaced = document.getElementById("prefDisplaced");
   var streak = document.getElementById("prefStreak");
   var save = document.getElementById("savePrefs");
+  var removeEmail = document.getElementById("removeEmail");
   var remove = document.getElementById("deleteBtn");
   var status = document.getElementById("prefStatus");
-  if (!save || !remove || !status) return;
+  if (!section || !save || !removeEmail || !remove || !status) return;
+
+  // No boards in this build: nothing here could be saved.
+  if (!isLeaderboardAvailable()) {
+    section.hidden = true;
+    section.nextElementSibling.hidden = true;
+    return;
+  }
 
   function say(text, bad) {
     status.textContent = text;
     status.classList.toggle("arc-status--bad", Boolean(bad));
   }
 
+  /* The boards never send the address back, so the field is always empty on a
+     return visit. Say when one is saved rather than implying there is none. */
+  function showEmailState() {
+    var saved = getPref(EMAIL_SAVED) === "1";
+    email.placeholder = saved ? "Email saved. Type to replace it." : "you@example.com";
+    removeEmail.hidden = !saved;
+  }
+  showEmailState();
+
+  function busy(on) {
+    save.disabled = removeEmail.disabled = remove.disabled = on;
+  }
+
   save.addEventListener("click", async function () {
-    save.disabled = true;
+    var address = email.value.trim();
+    if (address && !email.checkValidity()) {
+      say(SAY.bad_email, true);
+      return;
+    }
+    busy(true);
     say("Saving…");
-    var ok = await savePlayer({
-      email: email.value,
+    // An empty field leaves a saved address alone; Remove my email clears it.
+    var why = await savePlayer({
+      email: address || undefined,
       notifyDisplaced: displaced.checked,
       notifyStreak: streak.checked,
     });
-    save.disabled = false;
-    if (ok) say("Saved.");
-    else say(
-      email.value && !email.checkValidity()
-        ? "That address does not look right."
-        : "Could not save. Try again in a minute.",
-      true,
-    );
+    busy(false);
+    if (why !== "ok") {
+      say(why === "refused" ? "Could not save. Try again in a minute." : SAY[why] || SAY.error, true);
+      return;
+    }
+    if (address) setPref(EMAIL_SAVED, "1");
+    email.value = "";
+    showEmailState();
+    var wantsMail = displaced.checked || streak.checked;
+    say(wantsMail && getPref(EMAIL_SAVED) !== "1" ? "Saved. Add an email above to get these." : "Saved.");
+  });
+
+  removeEmail.addEventListener("click", async function () {
+    busy(true);
+    say("Removing…");
+    var why = await savePlayer({ email: "" });
+    busy(false);
+    if (why !== "ok") {
+      say(why === "refused" ? "Could not remove it. Try again in a minute." : SAY[why] || SAY.error, true);
+      return;
+    }
+    setPref(EMAIL_SAVED, "");
+    showEmailState();
+    say("Email removed.");
   });
 
   /* Two taps, because it cannot be undone. The confirm is the browser's own: a
@@ -290,25 +344,27 @@ function initPrefs() {
   remove.addEventListener("click", async function () {
     if (!window.confirm("Delete your name, your email address and every board row? Your bests on this device are untouched.")) return;
 
-    remove.disabled = true;
+    busy(true);
     say("Deleting…");
-    var ok = await deletePlayer();
-    remove.disabled = false;
-    if (!ok) {
-      say("Could not delete. Try again in a minute.", true);
+    var why = await deletePlayer();
+    busy(false);
+    if (why !== "ok" && why !== "not_found") {
+      say(why === "refused" ? "Could not delete. Try again in a minute." : SAY[why] || SAY.error, true);
       return;
     }
     // Locally too, or the page would still show a name the boards have lost.
     setName("");
+    setPref(EMAIL_SAVED, "");
+    showEmailState();
     renderName();
     renderMeta();
-    // And drop whatever the name editor last reported: it described a name that
-    // no longer exists anywhere.
     sayName("");
     body.querySelectorAll("[data-rank]").forEach(function (cell) {
       if (cell.textContent.charAt(0) === "#") cell.textContent = "";
     });
-    say("Deleted.");
+    say(why === "ok"
+      ? "Deleted."
+      : "Nothing was on the boards from this browser. Your name here is cleared.");
   });
 }
 

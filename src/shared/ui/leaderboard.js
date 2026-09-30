@@ -63,7 +63,7 @@ async function read(path) {
   }
 }
 
-function isLeaderboardAvailable() {
+export function isLeaderboardAvailable() {
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 }
 
@@ -150,8 +150,35 @@ export async function fetchStanding({ slug, period = "day", day = localDay() }) 
 }
 
 /**
- * Saves any of name, email and notification preferences. Resolves true only
- * when the write landed; never throws. `name: ""` clears; omit to leave alone.
+ * A write the account page words for the player. Resolves the server's reason
+ * ("ok", "not_found", "busy", "denied", "blocked", "bad_name", "bad_email"),
+ * "refused" from a database without the v2 functions, or "offline", "error"
+ * or "unavailable". Never rejects. Tries `<name>_v2` and falls back to the
+ * boolean original until the v2 SQL is deployed (ARCHITECTURE.md §19).
+ */
+async function write(name, body) {
+  if (!isLeaderboardAvailable()) return "unavailable";
+  for (const fn of [`${name}_v2`, name]) {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+        method: "POST",
+        headers: { ...auth(), "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (res.status === 404 && fn !== name) continue;
+      if (!res.ok) return "error";
+      const out = await res.json();
+      return out === true ? "ok" : out === false ? "refused" : String(out);
+    } catch {
+      return navigator.onLine === false ? "offline" : "error";
+    }
+  }
+}
+
+/**
+ * Saves any of name, email and notification preferences; resolves a reason
+ * (see write). `name: ""` or `email: ""` clears; omit to leave alone.
  */
 export async function savePlayer({ name, email, notifyDisplaced, notifyStreak } = {}) {
   const who = identity();
@@ -166,7 +193,7 @@ export async function savePlayer({ name, email, notifyDisplaced, notifyStreak } 
     body.p_tz = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
   } catch { /* no Intl, no reminder */ }
 
-  return (await rpc("save_player", body)) === true;
+  return write("save_player", body);
 }
 
 /**
@@ -175,10 +202,7 @@ export async function savePlayer({ name, email, notifyDisplaced, notifyStreak } 
  */
 export async function deletePlayer() {
   const who = identity();
-  return (await rpc("delete_player", {
-    p_player_id: who.id,
-    p_write_token: who.token,
-  })) === true;
+  return write("delete_player", { p_player_id: who.id, p_write_token: who.token });
 }
 
 /**

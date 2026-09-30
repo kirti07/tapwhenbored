@@ -1634,10 +1634,18 @@ that is a wiring mistake and should be loud.
 The other three functions:
 
 ```text
-save_player(p_player_id, p_write_token, name, email, prefs…) → boolean
-delete_player(p_player_id, p_write_token)                    → boolean
-my_standing(p_slug, p_period_kind, p_day, p_player_id)       → json
+save_player_v2(p_player_id, p_write_token, name, email, prefs…) → text
+delete_player_v2(p_player_id, p_write_token)                    → text
+my_standing(p_slug, p_period_kind, p_day, p_player_id)          → json
 ```
+
+The two writes return a reason — `ok`, `not_found`, `busy`, `denied`,
+`blocked`, `bad_name`, `bad_email` — and the account page words each one from a
+single table, so "nothing to delete" or "you're offline" never reads as "try
+again in a minute". `save_player()` and `delete_player()` remain as boolean
+wrappers for cached older builds, and the client falls back to them when a
+`_v2` function is missing. An empty email field sends no `p_email`: clearing an
+address is its own action, because the boards never send it back to prefill.
 
 `my_standing()` is the only **read** that cannot be a plain PostgREST query,
 because rank and board size are not columns. The boards themselves are a table

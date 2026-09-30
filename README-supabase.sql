@@ -725,12 +725,13 @@ $$;
 -- ============================================================
 
 -- Everything the player can choose about themselves, in one call. Every field
--- is optional; a null argument leaves that field alone, and '' clears a name.
+-- is optional; a null argument leaves that field alone, and '' clears a name
+-- or the email.
 --
--- Returns false rather than raising on a bad name, a bad email, a wrong token
--- or a throttled caller: this is called from an end card, and a rejected
--- rename must not take the overlay down with it.
-create or replace function save_player(
+-- Returns a reason rather than raising, so the page can say what happened:
+-- 'ok', 'denied' (no id or wrong token), 'busy' (throttled), 'blocked',
+-- 'bad_name' or 'bad_email'.
+create or replace function save_player_v2(
   p_player_id        uuid,
   p_write_token      uuid,
   p_name             text default null,
@@ -739,7 +740,7 @@ create or replace function save_player(
   p_notify_streak    boolean default null,
   p_tz               text default null
 )
-returns boolean
+returns text
 language plpgsql
 security definer
 set search_path = public
@@ -750,10 +751,10 @@ declare
   v_email  text;
 begin
   if p_player_id is null or p_write_token is null then
-    return false;
+    return 'denied';
   end if;
   if not rate_ok('save:' || client_ip_hash(), 20, interval '1 minute') then
-    return false;
+    return 'busy';
   end if;
 
   select * into v_row from players where player_id = p_player_id;
@@ -765,21 +766,18 @@ begin
     select * into v_row from players where player_id = p_player_id;
   end if;
 
-  -- Fail closed. A missing row leaves write_token null, and `null <> x` is
-  -- null, which IF treats as false — i.e. it would fall straight through.
+  -- Fail closed: a missing row leaves write_token null, and `null <> x` is null.
   if v_row.player_id is null or v_row.write_token is distinct from p_write_token then
-    return false;
+    return 'denied';
   end if;
 
-  -- '' normalises to null and clears the name, which is how a player gets back
-  -- to Unsigned. A name that fails the shape is refused instead.
   if p_name is not null then
     if v_row.blocked then
-      return false;
+      return 'blocked';
     end if;
     v_name := norm_player_name(p_name);
     if not player_name_ok(v_name) then
-      return false;
+      return 'bad_name';
     end if;
     update players set name = v_name where player_id = p_player_id;
   end if;
@@ -789,7 +787,7 @@ begin
     if v_email is not null
        and (char_length(v_email) > 254
             or v_email !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$') then
-      return false;
+      return 'bad_email';
     end if;
     update players set email = v_email where player_id = p_player_id;
   end if;
@@ -800,18 +798,40 @@ begin
          tz               = coalesce(nullif(btrim(p_tz), ''), tz)
    where player_id = p_player_id;
 
-  return true;
+  return 'ok';
 end;
+$$;
+
+-- The boolean original, kept for builds cached before v2 (ARCHITECTURE.md §19).
+create or replace function save_player(
+  p_player_id        uuid,
+  p_write_token      uuid,
+  p_name             text default null,
+  p_email            text default null,
+  p_notify_displaced boolean default null,
+  p_notify_streak    boolean default null,
+  p_tz               text default null
+)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select save_player_v2(p_player_id, p_write_token, p_name, p_email,
+                        p_notify_displaced, p_notify_streak, p_tz) = 'ok';
 $$;
 
 -- "Delete my data". Removes the player and, by cascade, every board row they
 -- hold. A game-wide record they happen to own survives as a number with no
 -- holder, which is the honest outcome: the score was real, the name is gone.
-create or replace function delete_player(
+--
+-- Returns 'ok', 'not_found' (this browser never saved anything), 'denied' or
+-- 'busy'.
+create or replace function delete_player_v2(
   p_player_id   uuid,
   p_write_token uuid
 )
-returns boolean
+returns text
 language plpgsql
 security definer
 set search_path = public
@@ -820,20 +840,35 @@ declare
   v_token uuid;
 begin
   if p_player_id is null or p_write_token is null then
-    return false;
+    return 'denied';
   end if;
   if not rate_ok('del:' || client_ip_hash(), 10, interval '1 minute') then
-    return false;
+    return 'busy';
   end if;
 
   select write_token into v_token from players where player_id = p_player_id;
-  if v_token is null or v_token <> p_write_token then
-    return false;
+  if not found then
+    return 'not_found';
+  end if;
+  if v_token is distinct from p_write_token then
+    return 'denied';
   end if;
 
   delete from players where player_id = p_player_id;
-  return true;
+  return 'ok';
 end;
+$$;
+
+create or replace function delete_player(
+  p_player_id   uuid,
+  p_write_token uuid
+)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select delete_player_v2(p_player_id, p_write_token) = 'ok';
 $$;
 
 -- ============================================================
@@ -845,11 +880,15 @@ revoke execute on function submit_game_run(text, int, date, uuid, uuid, uuid, te
 revoke execute on function my_standing(text, text, date, uuid) from public;
 revoke execute on function save_player(uuid, uuid, text, text, boolean, boolean, text) from public;
 revoke execute on function delete_player(uuid, uuid) from public;
+revoke execute on function save_player_v2(uuid, uuid, text, text, boolean, boolean, text) from public;
+revoke execute on function delete_player_v2(uuid, uuid) from public;
 
 grant execute on function submit_game_run(text, int, date, uuid, uuid, uuid, text) to anon, authenticated;
 grant execute on function my_standing(text, text, date, uuid) to anon, authenticated;
 grant execute on function save_player(uuid, uuid, text, text, boolean, boolean, text) to anon, authenticated;
 grant execute on function delete_player(uuid, uuid) to anon, authenticated;
+grant execute on function save_player_v2(uuid, uuid, text, text, boolean, boolean, text) to anon, authenticated;
+grant execute on function delete_player_v2(uuid, uuid) to anon, authenticated;
 
 -- A read that takes three seconds is either a mistake or an attack; either
 -- way the browser gave up on it after four (leaderboard.js TIMEOUT_MS).
