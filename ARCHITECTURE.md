@@ -2182,6 +2182,11 @@ finale, with Share, the host's rematch controls and "Host your own" on the
 same screen — there is no separate recap for the puzzles (a recap card is
 Doodle On's, see below); a
 rematch is the next round, in a new room everyone follows into, with the same game or another.
+The setup screen is game-first: the games are cards grouped by `kind` in
+`GAMES` (competitive: Flip It, Slide N Order; social: Doodle On), each with a
+one-line `pitch`, then the time limit, then the host's name. The face is one
+button that opens the faces, and the party name is a line with a pencil —
+both optional. "Change game" on the results uses the same picker.
 A player who finishes early waits on the party page with the room, seeing who
 else has finished, ranked so far, and how many are still playing; the host
 can call time once half the room is done.

@@ -106,8 +106,11 @@ function keepDoodle(change) {
   setJSON(DOODLE_KEY, kept);
 }
 
-/** Emoji buttons as a radio group; returns a getter for the chosen index. */
-function facePicker(container, initial) {
+/**
+ * Emoji buttons as a radio group; returns a getter for the chosen index.
+ * `onPick(index)`, if given, hears each choice.
+ */
+function facePicker(container, initial, onPick) {
   let chosen = initial;
   R.FACES.forEach((f, i) => {
     const b = el("button", "face", f);
@@ -119,6 +122,7 @@ function facePicker(container, initial) {
       chosen = i;
       for (const x of container.children) x.setAttribute("aria-checked", String(x === b));
       setJSON(FACE_KEY, i);
+      onPick?.(i);
     });
     container.appendChild(b);
   });
@@ -130,10 +134,19 @@ function savedFace() {
   return Number.isInteger(f) && f >= 0 && f < R.FACES.length ? f : Math.floor(Math.random() * R.FACES.length);
 }
 
+/* The picker's two halves, in the order they are shown. */
+const KINDS = {
+  competitive: ["Competitive", "race the room on the same board"],
+  social: ["Social", "draw together, vote for the funniest"],
+};
+const icon = (name) => $("pickIcons").content.querySelector(`[data-i="${name}"]`).cloneNode(true);
+
 /**
- * The game and the time limit, as two radio groups. The limits are the
- * game's own presets (rules.js), and switching game resets to its default.
- * Returns a getter for `{ game, cap }`.
+ * The game and the time limit, as two radio groups. The games are cards,
+ * grouped by kind (rules.js) under a one-line label — still one radio group,
+ * so one choice. The limits are the game's own presets, and switching game
+ * resets to its default. Used by setup and by "Change game". Returns a
+ * getter for `{ game, cap }`.
  */
 function gamePicker(container, initial) {
   let chosen = { ...initial };
@@ -144,13 +157,13 @@ function gamePicker(container, initial) {
   caps.setAttribute("role", "radiogroup");
   caps.setAttribute("aria-label", "Time limit");
 
-  function radio(parent, cls, checked, onPick) {
+  function radio(group, parent, cls, checked, onPick) {
     const b = el("button", cls);
     b.type = "button";
     b.setAttribute("role", "radio");
     b.setAttribute("aria-checked", String(checked));
     b.addEventListener("click", () => {
-      for (const x of parent.children) x.setAttribute("aria-checked", String(x === b));
+      for (const x of group.querySelectorAll("[role=radio]")) x.setAttribute("aria-checked", String(x === b));
       onPick();
     });
     parent.appendChild(b);
@@ -160,23 +173,34 @@ function gamePicker(container, initial) {
   function drawCaps() {
     caps.textContent = "";
     for (const cap of R.GAMES[chosen.game].caps) {
-      radio(caps, "pick-cap arc-mono", cap === chosen.cap, () => { chosen.cap = cap; }).textContent = `${cap}s`;
+      radio(caps, caps, "pick-cap arc-mono", cap === chosen.cap, () => { chosen.cap = cap; }).textContent = `${cap}s`;
     }
   }
 
-  for (const [slug, g] of Object.entries(R.GAMES)) {
-    const b = radio(games, `pick-game pick--${slug}`, slug === chosen.game, () => {
-      chosen = { game: slug, cap: g.cap };
-      drawCaps();
-    });
-    b.appendChild(el("strong", "", g.title));
-    b.appendChild(el("span", "", g.win));
+  for (const [kind, [title, hint]] of Object.entries(KINDS)) {
+    const section = el("div", `pick-kind pick-kind--${kind}`);
+    section.setAttribute("role", "group");
+    const head = el("p", "pick-kind-h");
+    head.id = `${container.id}-${kind}`;
+    head.append(icon(kind), el("b", "", title), ` · ${hint}`);
+    section.setAttribute("aria-labelledby", head.id);
+    section.appendChild(head);
+    for (const [slug, g] of Object.entries(R.GAMES)) {
+      if (g.kind !== kind) continue;
+      const b = radio(games, section, `pick-game pick--${slug}`, slug === chosen.game, () => {
+        chosen = { game: slug, cap: g.cap };
+        drawCaps();
+      });
+      const text = el("span", "pick-t");
+      text.append(el("strong", "", g.title), el("span", "", g.pitch));
+      b.append(el("span", "pick-ico"), text, el("span", "pick-mark"));
+      b.firstChild.appendChild(icon(slug));
+    }
+    games.appendChild(section);
   }
   drawCaps();
 
-  const label = el("span", "arc-label", "Game");
-  const capLabel = el("span", "arc-label", "Time limit");
-  container.append(label, games, capLabel, caps);
+  container.append(games, el("span", "arc-label", "Time limit"), caps);
   return () => chosen;
 }
 
@@ -962,12 +986,34 @@ async function followRematch() {
 // 02 · setup and the code form ---------------------------------------------------------
 
 function renderSetup() {
-  const pickName = () => R.PARTY_NAMES[Math.floor(Math.random() * R.PARTY_NAMES.length)];
-  $("setupParty").value = pickName();
-  $("setupShuffle").addEventListener("click", () => { $("setupParty").value = pickName(); });
-  $("setupName").value = getName();
-  const faceOf = facePicker($("setupFaces"), savedFace());
   const setupOf = gamePicker($("setupPick"), { game: R.DEFAULT_GAME, cap: R.GAMES[R.DEFAULT_GAME].cap });
+  $("setupName").value = getName();
+
+  // The face is optional: a button showing the one picked (a random one
+  // until someone chooses), which opens the faces and closes on a choice.
+  const faceBtn = $("setupFaceBtn");
+  const faces = $("setupFaces");
+  const openFaces = (open) => {
+    faces.hidden = !open;
+    faceBtn.setAttribute("aria-expanded", String(open));
+  };
+  const faceOf = facePicker(faces, savedFace(), (i) => {
+    faceBtn.textContent = face(i);
+    openFaces(false);
+    faceBtn.focus();
+  });
+  faceBtn.textContent = face(faceOf());
+  faceBtn.addEventListener("click", () => openFaces(faces.hidden));
+
+  // The party name is a line until someone wants to change it.
+  const pickName = () => R.PARTY_NAMES[Math.floor(Math.random() * R.PARTY_NAMES.length)];
+  $("setupParty").value = $("setupPartyText").textContent = pickName();
+  $("setupShuffle").addEventListener("click", () => { $("setupParty").value = pickName(); });
+  $("setupPartyEdit").addEventListener("click", () => {
+    $("setupPartyLine").hidden = true;
+    $("setupPartyField").hidden = false;
+    $("setupParty").focus();
+  });
 
   $("setupForm").addEventListener("submit", async (e) => {
     e.preventDefault();

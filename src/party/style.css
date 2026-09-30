@@ -67,46 +67,101 @@
 
 /* ------------------------------------------------------------ game picker -- */
 
-.pick { display: grid; gap: 8px; }
-.pick-games { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; }
+/* The games are the page: cards, grouped by kind under a one-line label.
+   Selected is the game's own colour — a tinted card and a ticked mark. The
+   selected card's border is 1px thicker, so its padding is 1px less and
+   nothing shifts. */
+.pick { display: grid; gap: 10px; }
+.pick-games { display: grid; gap: 16px; margin-bottom: 4px; }
+.pick-kind { display: grid; gap: 8px; }
+.pick-kind--competitive { --kind: var(--arc-accent); }
+.pick-kind--social { --kind: var(--doodle); }
+/* Plain flowing text, so a narrow phone wraps the hint like a sentence. */
+.pick-kind-h { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--ink-soft); }
+.pick-kind-h svg { width: 14px; height: 14px; margin-right: 5px; vertical-align: -2px; color: var(--kind); }
+.pick-kind-h b { font-size: 10.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--kind); }
 
 .pick-game {
-  display: grid;
-  gap: 2px;
-  text-align: left;
-  min-height: 64px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 2px solid var(--line-2);
-  border-top: 6px solid var(--pick);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 76px;
+  padding: 13px 15px;
+  border-radius: 16px;
+  border: 1px solid var(--line-2);
   background: var(--card);
   color: var(--ink);
   font: inherit;
+  text-align: left;
   cursor: pointer;
 }
-.pick-game span { font-size: 12px; color: var(--ink-soft); }
 .pick--flip-it { --pick: var(--flip); }
 .pick--slide-n-order { --pick: var(--slide); }
 .pick--doodle-on { --pick: var(--doodle); }
-/* An odd one out takes the whole row. */
-.pick-game:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .pick-game[aria-checked="true"] {
-  border-color: var(--pick);
+  padding: 12px 14px;
+  border: 2px solid var(--pick);
   background: color-mix(in srgb, var(--pick) 12%, var(--card));
 }
 
-.pick-caps { display: flex; gap: 8px; flex-wrap: wrap; }
+.pick-ico { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; flex: none; background: var(--pick); color: #252037; }
+.pick-ico svg { width: 24px; height: 24px; }
+.pick-t { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.pick-t strong { font-family: var(--font-display); font-weight: 800; font-size: 19px; line-height: 1.15; }
+.pick-t span { font-size: 12.5px; line-height: 1.35; color: var(--ink-soft); }
+
+/* The radio mark: a ring, and when chosen a ring in the game's colour with
+   a tick drawn from two borders. */
+.pick-mark { position: relative; width: 20px; height: 20px; flex: none; border-radius: 50%; border: 2px solid var(--ink-dim); }
+.pick-game[aria-checked="true"] .pick-mark { border-color: color-mix(in srgb, var(--pick) 70%, var(--ink)); }
+.pick-game[aria-checked="true"] .pick-mark::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 4px;
+  height: 8px;
+  border: solid color-mix(in srgb, var(--pick) 70%, var(--ink));
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.pick-caps { display: flex; gap: 8px; }
 .pick-cap {
-  min-width: 64px;
+  flex: 1;
+  min-width: 0;
   min-height: 44px;
-  border-radius: 999px;
-  border: 2px solid var(--line-2);
+  border-radius: 10px;
+  border: 1px solid var(--line-2);
   background: var(--card);
-  color: var(--ink);
+  color: var(--ink-soft);
   font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
 }
-.pick-cap[aria-checked="true"] { border-color: var(--arc-accent); background: color-mix(in srgb, var(--arc-accent) 12%, var(--card)); font-weight: 800; }
+.pick-cap[aria-checked="true"] { border-color: var(--ink); background: var(--ink); color: var(--card); }
+
+/* The face is optional: one button beside the name, showing the chosen one. */
+.face-btn {
+  flex: none;
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  border: 2px solid var(--line-2);
+  background: var(--card);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+.face-btn[aria-expanded="true"] { border-color: var(--arc-accent); }
+.faces:not([hidden]) { margin-top: 4px; }
+
+/* The party name, as a quiet line until someone renames it. */
+.party-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -4px 0 0; color: var(--ink-soft); font-size: 13.5px; }
+.party-edit { width: 44px; height: 44px; margin-right: -12px; display: grid; place-items: center; border: 0; border-radius: 10px; background: transparent; color: var(--ink-soft); cursor: pointer; }
+.party-edit svg { width: 16px; height: 16px; }
+.party-edit:hover { background: var(--card-2); }
 
 .change { display: grid; gap: 12px; }
 

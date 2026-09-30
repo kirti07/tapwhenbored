@@ -264,3 +264,50 @@ test("a Doodle On party: draw, name it, vote anonymously, the reveal", async ({ 
 
   expect(errors).toEqual([]);
 });
+
+test("setup: the games first, grouped by kind; the face and the party name stay optional", async ({ browser }) => {
+  const errors = [];
+  const host = await phone(browser, errors, "host");
+  await host.goto("/party/");
+
+  // Two groups, each a labelled half of one radio group.
+  const kinds = host.locator("#setupPick .pick-kind");
+  await expect(kinds).toHaveCount(2);
+  await expect(kinds.nth(0)).toContainText("Competitive");
+  await expect(kinds.nth(0).locator(".pick-game")).toHaveCount(2);
+  await expect(kinds.nth(1)).toContainText("Social");
+  await expect(kinds.nth(1).locator(".pick--doodle-on")).toContainText("Draw it, then the room votes.");
+  await expect(host.locator('#setupPick [role=radiogroup][aria-label="Game"] [aria-checked=true]')).toHaveCount(1);
+
+  // Picking across groups keeps one choice, and the limits follow the game.
+  await host.locator("#setupPick .pick--doodle-on").click();
+  await expect(host.locator("#setupPick .pick-game[aria-checked=true]")).toHaveCount(1);
+  await expect(host.locator("#setupPick .pick-cap")).toHaveText(["30s", "45s", "60s"]);
+  await expect(host.locator('#setupPick .pick-cap[aria-checked="true"]')).toHaveText("30s");
+  await host.locator("#setupPick .pick--slide-n-order").focus();
+  await host.keyboard.press("Enter");
+  await expect(host.locator("#setupPick .pick--slide-n-order")).toHaveAttribute("aria-checked", "true");
+  await expect(host.locator("#setupPick .pick-cap")).toHaveCount(4);
+
+  // The face is a button showing the chosen one; the grid opens on demand.
+  await expect(host.locator("#setupFaces")).toBeHidden();
+  await host.click("#setupFaceBtn");
+  await expect(host.locator("#setupFaceBtn")).toHaveAttribute("aria-expanded", "true");
+  await host.locator("#setupFaces .face").nth(2).click();
+  await expect(host.locator("#setupFaces")).toBeHidden();
+  await expect(host.locator("#setupFaceBtn")).toHaveText("🦖");
+
+  // The party name is a line until it is renamed.
+  await expect(host.locator("#setupPartyField")).toBeHidden();
+  await host.click("#setupPartyEdit");
+  await expect(host.locator("#setupParty")).toBeFocused();
+  await host.fill("#setupParty", "Game Night");
+
+  await host.fill("#setupName", "Aman");
+  await host.click("#setupGo");
+  await expect(screen(host, "lobby")).toBeVisible();
+  await expect(host.locator("#lobbyName")).toHaveText("Game Night");
+  await expect(host.locator("#lobbyGame")).toHaveText("Slide N Order · 90s");
+  await expect(host.locator("#roomList")).toContainText("🦖");
+  expect(errors).toEqual([]);
+});

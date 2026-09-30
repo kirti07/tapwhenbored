@@ -22,13 +22,17 @@
  * No DOM, no storage, no network here.
  */
 
-/* The games a party can be, and the time limits a host may pick. Presets,
+/* The games a party can be, and the time limits a host may pick. `kind` and
+ * `pitch` are what the setup screen says about each: the puzzles are a race,
+ * Doodle On is for laughs. Presets,
  * not a free number: a limit is fair only if most of the room can finish, and
  * the server checks every result against it. Flip It is pinned to Medium —
  * Easy's 3–4-move boards clear in under two seconds and tie the room. */
 export const GAMES = {
   "flip-it": {
     title: "Flip It",
+    kind: "competitive",
+    pitch: "Turn off every tile. Fastest clear wins.",
     by: "time",
     level: "medium",
     rule: "Turn off every tile.",
@@ -38,6 +42,8 @@ export const GAMES = {
   },
   "slide-n-order": {
     title: "Slide N Order",
+    kind: "competitive",
+    pitch: "Sort 1 to 15. Fewest moves wins.",
     by: "moves",
     rule: "Slide 1 to 15 back into order.",
     win: "Fewest moves wins; time breaks ties.",
@@ -46,6 +52,8 @@ export const GAMES = {
   },
   "doodle-on": {
     title: "Doodle On",
+    kind: "social",
+    pitch: "Draw it, then the room votes.",
     by: "votes",
     rule: "Turn the shape into the idea.",
     win: "The room votes; most votes wins.",

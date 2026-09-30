@@ -248,3 +248,10 @@ test("Doodle On's time limits", () => {
   expect(R.validSetup("doodle-on", 45)).toBe(true);
   expect(R.validSetup("doodle-on", 90)).toBe(false);
 });
+
+test("every game says what kind it is and what it is, for the setup screen", () => {
+  for (const g of Object.values(R.GAMES)) {
+    expect(["competitive", "social"]).toContain(g.kind);
+    expect(g.pitch.length).toBeGreaterThan(10);
+  }
+});
