@@ -129,3 +129,122 @@ test("only the listed games and time limits are playable", () => {
   expect(R.validSetup("toString", 60)).toBe(false);
   for (const g of Object.values(R.GAMES)) expect(g.caps).toContain(g.cap);
 });
+
+// ---------------------------------------------------------------- Doodle On --
+
+/** A started Doodle On room, `n` players, with a vote-ready shape. */
+function doodleRoom(n = 3, cap = 30) {
+  return { ...room(n, "doodle-on", cap), votes: {} };
+}
+const drawn = (r, seat, ms) => {
+  r.results[seat] = { ms, at: at(r, ms + 50) };
+};
+
+test("Doodle On draws, then votes, then shows the results", () => {
+  const r = doodleRoom(3);
+  drawn(r, 0, 10_000);
+  drawn(r, 1, 20_000);
+  drawn(r, 2, 25_000);
+  const t = R.timetable(r);
+  expect(t.endAt).toBe(at(r, 25_050));
+  expect(t.voteEnd).toBe(t.endAt + R.VOTE_MS);
+  expect(R.derive(r, t.endAt - 1).phase).toBe("play");
+  expect(R.derive(r, t.endAt).phase).toBe("vote");
+  expect(R.derive(r, t.voteEnd).phase).toBe("final");
+});
+
+test("Doodle On waits longer for a drawing in flight at 0:00", () => {
+  const t = R.timetable(doodleRoom(3));
+  expect(t.closeAt - t.deadline).toBe(6000);
+  expect(t.endAt).toBe(t.closeAt);
+});
+
+test("with fewer than two doodles there is nothing to vote on", () => {
+  const r = doodleRoom(3);
+  expect(R.timetable(r).voteEnd).toBe(R.timetable(r).endAt);
+  drawn(r, 0, 10_000);
+  const t = R.timetable(r);
+  expect(t.voteEnd).toBe(t.endAt);
+  expect(R.derive(r, t.endAt).phase).toBe("final");
+});
+
+test("the vote ends a few seconds after the last of the room has voted", () => {
+  const r = doodleRoom(3);
+  for (const s of [0, 1, 2]) drawn(r, s, 10_000 + s);
+  const { endAt } = R.timetable(r);
+  r.votes = { 0: endAt + 4000, 1: endAt + 6000 };
+  expect(R.timetable(r).voteEnd).toBe(endAt + R.VOTE_MS);
+  expect(R.voteProgress(r)).toEqual({ done: 2, of: 3 });
+  r.votes[2] = endAt + 8000;
+  expect(R.timetable(r).voteEnd).toBe(endAt + 8000 + R.SETTLE_MS);
+  // Someone removed does not hold the vote open.
+  delete r.votes[2];
+  r.players[2].kickedAt = endAt + 1000;
+  expect(R.timetable(r).voteEnd).toBe(endAt + 6000 + R.SETTLE_MS);
+});
+
+test("Doodle On ranks on votes; ties share; no doodle did not draw", () => {
+  const r = doodleRoom(4);
+  drawn(r, 0, 10_000);
+  drawn(r, 1, 12_000);
+  drawn(r, 2, 14_000);
+  r.tally = [
+    { tag: "a", seat: 0, votes: 1, title: "" },
+    { tag: "b", seat: 1, votes: 2, title: "" },
+    { tag: "c", seat: 2, votes: 1, title: "" },
+  ];
+  expect(R.placements(r).map((x) => [x.seat, x.place, x.votes])).toEqual([[1, 1, 2], [0, 2, 1], [2, 2, 1], [3, null, 0]]);
+});
+
+test("two players: one vote each, always a shared first place", () => {
+  const r = doodleRoom(2);
+  drawn(r, 0, 10_000);
+  drawn(r, 1, 12_000);
+  r.tally = [{ tag: "a", seat: 0, votes: 1 }, { tag: "b", seat: 1, votes: 1 }];
+  expect(R.placements(r).map((x) => x.place)).toEqual([1, 1]);
+});
+
+test("Doodle On awards: Almost Had It, Speed Sketcher, Buzzer Beater", () => {
+  const r = doodleRoom(4);
+  drawn(r, 0, 20_000); // wins
+  drawn(r, 1, 8_000); // second, and quickest
+  drawn(r, 2, 29_000); // at the buzzer, liked
+  drawn(r, 3, 5_000); // quickest of all, but nobody voted for it
+  r.tally = [
+    { seat: 0, votes: 2 }, { seat: 1, votes: 1 }, { seat: 2, votes: 1 }, { seat: 3, votes: 0 },
+  ];
+  const byId = Object.fromEntries(R.awards(r).map((a) => [a.id, a]));
+  expect(byId["almost-had-it"].seat).toBe(1);
+  // Seat 1 already holds one, so the next-quickest liked doodle gets it.
+  expect(byId["speed-sketcher"].seat).toBe(2);
+  expect(byId["buzzer-beater"].seat).toBe(2);
+  expect(byId["photo-finish"]).toBeUndefined();
+});
+
+test("a Doodle On prompt is the same on every phone, and sometimes about someone in the room", () => {
+  const r = doodleRoom(3);
+  expect(R.doodleRound(r)).toEqual(R.doodleRound(structuredClone(r)));
+  let about = 0;
+  for (let seed = 1; seed <= 300; seed++) {
+    const p = R.doodleRound({ ...r, seed });
+    expect(p.shape).toMatch(/^(circle|square|triangle|arc|zigzag|spiral|cross|dot)$/);
+    if (/P\d/.test(p.direction)) {
+      about++;
+      expect(p.direction).not.toContain("{name}");
+    }
+  }
+  expect(about).toBeGreaterThan(60); // about one in three
+  expect(about).toBeLessThan(140);
+  // A name is text, never a replacement pattern.
+  for (const p of r.players) p.name = "$&$'";
+  for (let seed = 1; seed <= 50; seed++) {
+    const q = R.doodleRound({ ...r, seed });
+    if (q.direction.includes("$")) expect(q.direction).toContain("$&$'");
+  }
+});
+
+test("Doodle On's time limits", () => {
+  expect(R.validSetup("doodle-on", 30)).toBe(true);
+  expect(R.validSetup("doodle-on", 45)).toBe(true);
+  expect(R.validSetup("doodle-on", 90)).toBe(false);
+});

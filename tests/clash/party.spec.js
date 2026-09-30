@@ -171,3 +171,96 @@ test("a clash: pick a game, join by link and by code, end the round, podium, rem
   for (const p of [riya, evil]) expect(await p.evaluate(() => window.__pwned)).toBeUndefined();
   expect(errors).toEqual([]);
 });
+
+/** Scribble on the round's canvas, inside the frame, then hand it in. */
+async function scribble(page) {
+  await expect(screen(page, "play")).toBeVisible({ timeout: 20_000 });
+  const frame = page.frameLocator("iframe.round-frame");
+  await expect(frame.locator("html")).toHaveAttribute("data-clash", "on");
+  await expect(frame.locator("#promptDir")).not.toBeEmpty();
+  // Faster than the scaled minimum drawing time would be refused.
+  await page.waitForTimeout(500);
+  const box = await frame.locator("#canvas").boundingBox();
+  await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.5, { steps: 8 });
+  await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.8, { steps: 8 });
+  await page.mouse.up();
+  await frame.locator("#doneBtn").click();
+}
+
+test("a Doodle On clash: draw, name it, vote anonymously, the reveal", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const errors = [];
+
+  const host = await phone(browser, errors, "host");
+  await host.goto("/clash/");
+  await host.fill("#setupName", "Aman");
+  await host.locator("#setupPick .pick--doodle-on").click();
+  await expect(host.locator("#setupPick .pick-cap")).toHaveText(["30s", "45s", "60s"]);
+  await host.click("#setupGo");
+  await expect(host.locator("#lobbyGame")).toHaveText("Doodle On · 30s");
+  const code = new URL(host.url()).searchParams.get("r");
+
+  const guests = [];
+  for (const name of ["Riya", "Dev"]) {
+    const p = await phone(browser, errors, name);
+    await p.goto(`/clash/?r=${code}`);
+    await expect(p.locator("#joinNote")).toHaveText(/everyone draws, then the room votes/);
+    await p.fill("#joinName", name);
+    await p.click("#joinForm button[type=submit]");
+    await expect(screen(p, "lobby")).toBeVisible();
+    guests.push(p);
+  }
+  const [riya, dev] = guests;
+
+  await host.click("#startBtn");
+  // The title card says what to draw — the same on every phone.
+  await expect(screen(riya, "title")).toBeVisible();
+  const rule = await riya.locator("#titleRule").textContent();
+  expect(rule).toMatch(/^Turn this \w+ into .+\.$/);
+  await expect(host.locator("#titleRule")).toHaveText(rule);
+
+  // Aman and Riya draw; Dev never touches the page.
+  await Promise.all([scribble(host), scribble(riya)]);
+  await expect(host.locator("#sheetH")).toHaveText("Your doodle's in");
+  await expect(host.locator("#sheetStill")).toHaveText(/still drawing/);
+  await expect(dev.locator("#toast")).toContainText("is done");
+  // Aman names it — secret until the reveal.
+  await host.fill("#titleInput", "a very sleepy shark");
+  await host.click("#titleForm button[type=submit]");
+  await expect(host.locator("#titleNote")).toHaveText(/^Saved/);
+  await host.click("#endBtn");
+
+  // The vote: two doodles, no names; your own is greyed.
+  for (const p of [host, riya, dev]) await expect(screen(p, "vote")).toBeVisible({ timeout: 20_000 });
+  for (const p of [host, riya, dev]) await expect(p.locator("#voteGrid .vote-tile")).toHaveCount(2);
+  await expect(host.locator("#voteGrid")).not.toContainText("Aman");
+  await expect(host.locator(".vote-tile.is-own")).toHaveCount(1);
+  await expect(host.locator(".vote-tile.is-own")).toBeDisabled();
+  await expect(dev.locator(".vote-tile.is-own")).toHaveCount(0);
+  const tag = await host.locator(".vote-tile.is-own").getAttribute("data-tag");
+  await host.locator(".vote-tile:not(.is-own)").click();
+  await riya.locator(".vote-tile:not(.is-own)").click();
+  await dev.locator(`.vote-tile[data-tag="${tag}"]`).click();
+  await expect(dev.locator(`.vote-tile[data-tag="${tag}"]`)).toHaveClass(/is-picked/);
+
+  // Everyone voted: the reveal, with the title as the answer.
+  for (const p of [host, riya, dev]) await expect(screen(p, "final")).toBeVisible({ timeout: 20_000 });
+  await expect(riya.locator("#podH")).toHaveText("Aman takes it.");
+  await expect(riya.locator("#topTitle")).toHaveText("“a very sleepy shark”");
+  await expect(riya.locator("#topBy")).toContainText("Aman · 2 votes");
+  await expect(riya.locator("#restDoodles .doodle")).toHaveCount(1);
+  await expect(riya.locator("#resList .res-row")).toHaveCount(3);
+  await expect(riya.locator("#resList .res-row").nth(2)).toContainText("didn't draw");
+  await expect.poll(() => riya.locator("#topImg").evaluate((img) => img.naturalWidth)).toBe(256);
+  await expect(riya.locator("#recapOpt")).toBeVisible();
+
+  // Share makes the recap card: a file on phones that take one, else a download.
+  const download = riya.waitForEvent("download");
+  await riya.evaluate(() => { navigator.canShare = undefined; });
+  await riya.click("#shareBtn");
+  expect((await download).suggestedFilename()).toBe("tap-clash.jpg");
+
+  expect(errors).toEqual([]);
+});

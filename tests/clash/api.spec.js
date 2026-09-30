@@ -94,7 +94,7 @@ test.describe("creating and reading a room", () => {
     expect(res.status).toBe(200);
     expect(res.cache).toBe("public, s-maxage=1");
     expect(Object.keys(res.body.room).sort()).toEqual(
-      ["cap", "code", "endedAt", "game", "host", "name", "next", "players", "results", "scale", "seed", "start"],
+      ["cap", "code", "endedAt", "game", "host", "name", "next", "players", "results", "scale", "seed", "start", "votes"],
     );
     const text = JSON.stringify(res.body);
     expect(text).not.toMatch(/"t:|"s:|token/);
@@ -328,5 +328,187 @@ test.describe("the host", () => {
     api.clock.advance(120_000);
     const changed = await q.as(0, { type: "rematch", game: "slide-n-order", cap: 120 });
     expect(changed.body.room).toMatchObject({ game: "slide-n-order", cap: 120 });
+  });
+});
+
+// ---------------------------------------------------------------- Doodle On --
+
+/** A JPEG as far as the server can tell: the magic bytes, then padding. */
+const jpeg = (n = 500) => {
+  const b = new Uint8Array(n);
+  b.set([0xff, 0xd8, 0xff, 0xe0]);
+  b[n - 1] = n % 251;
+  return b;
+};
+
+/** POST a doodle the way the page does: raw bytes, the action in a header. */
+async function draw(api, p, n, { ms = 10_000, bytes = jpeg(), seed, type = "image/jpeg" } = {}) {
+  const room = await p.room();
+  const res = await api.handle(
+    new Request(URL_, {
+      method: "POST",
+      headers: {
+        "Content-Type": type,
+        Origin: ORIGIN,
+        "x-clash": JSON.stringify({ type: "doodle", code: p.code, seat: p.seats[n].seat, token: p.seats[n].token, seed: seed ?? room.seed, ms }),
+      },
+      body: bytes,
+    }),
+  );
+  return { status: res.status, body: await res.json() };
+}
+
+async function image(api, code, tag, seed) {
+  const res = await api.handle(new Request(`${URL_}?r=${code}&d=${tag}&s=${seed}`));
+  return { status: res.status, type: res.headers.get("content-type"), cache: res.headers.get("cache-control"), res };
+}
+
+/** A Doodle On room with everyone drawn: `{ p, tags: { seat: tag } }`, in the vote. */
+async function drawnRoom(api, guests = 2) {
+  const p = await party(api, guests, { game: "doodle-on", cap: 30 });
+  await toPlay(api, p);
+  api.clock.advance(3000);
+  const tags = {};
+  for (let n = 0; n <= guests; n++) {
+    const res = await draw(api, p, n, { ms: 3000, bytes: jpeg(400 + n) });
+    expect(res.status).toBe(200);
+    tags[n] = res.body.tag;
+  }
+  return { p, tags };
+}
+
+test.describe("Doodle On", () => {
+  test("a doodle is a small JPEG, sent while drawing, on the room's board", async () => {
+    const api = setup();
+    const p = await party(api, 2, { game: "doodle-on", cap: 30 });
+    expect((await draw(api, p, 1)).status).toBe(409); // not started
+    await toPlay(api, p);
+    api.clock.advance(5000);
+    expect((await draw(api, p, 1, { bytes: new TextEncoder().encode("<svg>".padEnd(300)) })).body.error).toBe("not a jpeg");
+    expect((await draw(api, p, 1, { bytes: jpeg(20_000) })).status).toBe(413);
+    expect((await draw(api, p, 1, { seed: 1 })).body.error).toBe("wrong board");
+    expect((await draw(api, p, 1, { ms: 999_999 })).body.error).toBe("implausible time");
+    // Not as JSON, and not as a puzzle result.
+    expect((await p.as(1, { type: "doodle", seed: 0, ms: 5000 })).status).toBe(400);
+    expect((await p.as(1, { type: "result", seed: (await p.room()).seed, ms: 5000, moves: 3 })).body.error).toBe("wrong game");
+
+    const first = await draw(api, p, 1, { ms: 5000 });
+    expect(first.status).toBe(200);
+    expect(first.body.tag).toMatch(/^[0-9a-f]{12}$/);
+    expect(first.body.room.results[1]).toEqual({ ms: 5000, at: api.clock.now() });
+    // The first doodle counts.
+    api.clock.advance(100);
+    expect((await draw(api, p, 1, { ms: 5100 })).body.room.results[1].ms).toBe(5000);
+
+    // A Flip It room takes no doodles.
+    const flip = await party(api, 1);
+    await toPlay(api, flip);
+    api.clock.advance(5000);
+    expect((await draw(api, flip, 1)).body.error).toBe("wrong game");
+  });
+
+  test("nobody can tell who drew what until the final — and the secret never ships", async () => {
+    const api = setup();
+    const p = await party(api, 2, { game: "doodle-on", cap: 30 });
+    await toPlay(api, p);
+    api.clock.advance(3000);
+    const tags = {};
+    for (const n of [0, 1]) tags[n] = (await draw(api, p, n, { ms: 3000 })).body.tag;
+    // Still drawing: no tags at all, or the toasts would give them away.
+    expect((await p.room()).doodles).toBeUndefined();
+    const t2 = (await draw(api, p, 2, { ms: 3000 })).body.tag;
+    tags[2] = t2;
+
+    const [flat] = await api.store.pipeline([["HGETALL", `clash:${p.code}`]]);
+    const secret = flat[flat.indexOf("k") + 1];
+    expect(secret).toMatch(/^[0-9a-f-]{36}$/);
+
+    // Voting: the tags, sorted, with no seat and no votes against them.
+    await p.as(0, { type: "title", title: "  a very   sleepy shark " });
+    const voting = await api.get(p.code);
+    expect(voting.body.room.doodles).toEqual(Object.values(tags).sort());
+    expect(voting.body.room.tally).toBeUndefined();
+    const text = JSON.stringify(voting.body);
+    expect(text).not.toContain(secret);
+    expect(text).not.toContain("sleepy");
+
+    await p.as(0, { type: "vote", tag: tags[1] });
+    await p.as(1, { type: "vote", tag: tags[0] });
+    await p.as(2, { type: "vote", tag: tags[1] });
+    const mid = JSON.stringify((await api.get(p.code)).body);
+    expect(mid).not.toContain('"tag"'); // who voted for what stays on the server
+    expect((await p.room()).votes).toEqual({ 0: api.clock.now(), 1: api.clock.now(), 2: api.clock.now() });
+
+    // Everyone voted: the vote settles, then the tally says it all.
+    api.clock.advance(R.SETTLE_MS);
+    const final = (await api.get(p.code)).body.room;
+    expect(JSON.stringify(final)).not.toContain(secret);
+    expect(final.tally).toContainEqual({ tag: tags[1], seat: 1, votes: 2, title: "" });
+    expect(final.tally).toContainEqual({ tag: tags[0], seat: 0, votes: 1, title: "a very sleepy shark" });
+    expect(final.tally).toContainEqual({ tag: tags[2], seat: 2, votes: 0, title: "" });
+  });
+
+  test("votes: only during the vote, for a real doodle, never your own, and changeable", async () => {
+    const api = setup();
+    const p = await party(api, 2, { game: "doodle-on", cap: 30 });
+    await toPlay(api, p);
+    api.clock.advance(3000);
+    const t0 = (await draw(api, p, 0, { ms: 3000 })).body.tag;
+    expect((await p.as(1, { type: "vote", tag: t0 })).body.error).toBe("not voting");
+    const t1 = (await draw(api, p, 1, { ms: 3000 })).body.tag;
+    const t2 = (await draw(api, p, 2, { ms: 3000 })).body.tag;
+    expect((await p.as(0, { type: "vote", tag: t0 })).body.error).toBe("your own");
+    expect((await p.as(0, { type: "vote", tag: "000000000000" })).body.error).toBe("bad doodle");
+    expect((await p.as(0, { type: "vote", tag: { $ne: 1 } })).body.error).toBe("bad doodle");
+    expect((await p.as(0, { type: "vote", tag: t1 })).status).toBe(200);
+    api.clock.advance(1000);
+    expect((await p.as(0, { type: "vote", tag: t2 })).status).toBe(200); // changed
+    api.clock.advance(R.VOTE_MS);
+    expect((await p.as(0, { type: "vote", tag: t1 })).body.error).toBe("not voting");
+    const final = (await p.room()).tally;
+    expect(final.find((d) => d.seat === 2).votes).toBe(1);
+    expect(final.find((d) => d.seat === 1).votes).toBe(0);
+  });
+
+  test("a drawing is served from the vote on, by tag and seed, for good", async () => {
+    const api = setup();
+    const p = await party(api, 1, { game: "doodle-on", cap: 30 });
+    await toPlay(api, p);
+    api.clock.advance(3000);
+    const t0 = (await draw(api, p, 0, { ms: 3000, bytes: jpeg(321) })).body.tag;
+    const seed = (await p.room()).seed;
+    expect((await image(api, p.code, t0, seed)).status).toBe(409); // still drawing
+    await draw(api, p, 1, { ms: 3000 });
+    const got = await image(api, p.code, t0, seed);
+    expect(got).toMatchObject({ status: 200, type: "image/jpeg", cache: "public, max-age=31536000, immutable" });
+    expect(got.res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(new Uint8Array(await got.res.arrayBuffer())).toEqual(jpeg(321));
+    expect((await image(api, p.code, t0, seed + 1)).status).toBe(404);
+    expect((await image(api, p.code, "0123456789ab", seed)).status).toBe(404);
+    expect((await image(api, p.code, "../../etc", seed)).status).toBe(400);
+  });
+
+  test("titles: the artist's own, cleaned, until the vote is over", async () => {
+    const api = setup();
+    const { p } = await drawnRoom(api, 2);
+    const long = "x".repeat(60);
+    expect((await p.as(1, { type: "title", title: long })).status).toBe(200);
+    expect((await p.as(1, { type: "title", title: "   " })).status).toBe(400);
+    api.clock.advance(R.VOTE_MS);
+    expect((await p.as(1, { type: "title", title: "late" })).body.error).toBe("too late");
+    expect((await p.room()).tally.find((d) => d.seat === 1).title).toBe("x".repeat(40));
+  });
+
+  test("one doodle is no contest: straight to the results", async () => {
+    const api = setup();
+    const p = await party(api, 1, { game: "doodle-on", cap: 30 });
+    await toPlay(api, p);
+    api.clock.advance(3000);
+    await draw(api, p, 0, { ms: 3000 });
+    // The other player never draws; the host calls time.
+    await p.as(0, { type: "end" });
+    const room = await p.room();
+    expect(R.derive(room, api.clock.now()).phase).toBe("final");
+    expect(room.tally).toEqual([expect.objectContaining({ seat: 0, votes: 0 })]);
   });
 });

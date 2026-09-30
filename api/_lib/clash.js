@@ -1,8 +1,12 @@
 // The Tap Clash room API, as one request handler.
 //
-//   GET  /api/clash/?r=CODE   the room's snapshot (CDN-cached for 1 s)
+//   GET  /api/clash/?r=CODE              the room's snapshot (CDN-cached for 1 s)
+//   GET  /api/clash/?r=CODE&d=TAG&s=SEED one Doodle On drawing, as a JPEG
 //   POST /api/clash/          { type, ... } → a fresh, uncached snapshot
 //        create | join | ping | start | result | end | kick | rematch
+//        | title | vote
+//   POST /api/clash/          a raw JPEG, with { type: "doodle", ... } in
+//                             the x-clash header — no base64 on party Wi-Fi
 //
 // `createHandler({ store, now, scale, limits })` returns `(Request) => Response`.
 // The store is anything with `pipeline(commands)` — Upstash in production
@@ -14,6 +18,8 @@
 // created. Its fields, and the one command that ever writes each:
 //
 //   seed        HSETNX   the room's seed, which is the board's seed
+//   k           HSET     a secret: a doodle's tag is hash(k, seat), so no
+//                        phone can tell who drew what until the final
 //   name scale  HSET     clash name; duration scale (1 in production)
 //   g cap       HSET     the game and its time limit, fixed at creation
 //   seats       HINCRBY  seat counter; the creator is seat 0
@@ -25,7 +31,13 @@
 //   t:{seat}    HSET     SHA-256 of the seat's token — never leaves the server
 //   s:{seat}    HSET     last ping — never leaves the server
 //   x:{seat}    HSETNX   when the seat was removed
-//   r:{seat}    HSETNX   { ms, moves, at }
+//   r:{seat}    HSETNX   { ms, moves, at } — Doodle On: { ms, at }, "drew"
+//   c:{seat}    HSET     Doodle On: the artist's title for their doodle
+//   v:{seat}    HSET     Doodle On: { tag, at }, this seat's vote (changeable)
+//
+// A doodle is its own key, clash:{code}:{seed}:d:{seat} (SET NX EX), so a
+// snapshot stays small; the seed is in it because codes are reused after a
+// room expires, and a doodle outlives its room by the time it took to draw.
 //
 // Nothing is ever deleted and every write is one atomic command, so two
 // phones racing can only ever both succeed or have the second one no-op.
@@ -39,14 +51,19 @@ const TTL_S = 3 * 60 * 60;
 const MAX_BODY = 4096;
 const MAX_NAME = 24;
 const MAX_PARTY_NAME = 40;
-const TYPES = ["create", "join", "ping", "start", "result", "end", "kick", "rematch"];
+const MAX_TITLE = 40;
+const MAX_IMAGE = 16384; // a 256 px JPEG of a doodle is ~8 KB
+const TYPES = ["create", "join", "ping", "start", "result", "end", "kick", "rematch", "doodle", "title", "vote"];
 const HOST_ONLY = ["start", "end", "kick", "rematch"];
-// Not rate-limited: a seat's own presence and its one result. A party shares
-// one Wi-Fi address, and ten phones pinging every 10 s would otherwise spend
-// the whole per-minute budget, and a result refused for it would be lost.
-const UNLIMITED = ["ping", "result"];
+// Not rate-limited: a seat's own presence, its one result or doodle, and what
+// it says about doodles. A party shares one Wi-Fi address, and ten phones
+// pinging every 10 s would otherwise spend the whole per-minute budget, and a
+// result refused for it would be lost.
+const UNLIMITED = ["ping", "result", "doodle", "title", "vote"];
+const TAG = /^[0-9a-f]{12}$/;
 
 const roomKey = (code) => `clash:${code}`;
+const doodleKey = (code, seed, seat) => `clash:${code}:${seed}:d:${seat}`;
 
 class Reject extends Error {
   constructor(status, message) {
@@ -80,6 +97,14 @@ function randomCode() {
 
 const randomSeed = () => crypto.getRandomValues(new Uint32Array(1))[0];
 
+function toBase64(bytes) {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+const fromBase64 = (text) => Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
+const isJpeg = (b) => b.length >= 100 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
+
 /** The caller's rate-limit bucket: its IP, with IPv6 cut to the /64. */
 function clientKey(request) {
   const ip = (request.headers.get("x-real-ip") || request.headers.get("x-forwarded-for") || "local")
@@ -89,9 +114,10 @@ function clientKey(request) {
 }
 
 /**
- * A room hash as `{ room, tokens, pings }`. `room` is built field by field —
- * an allowlist — so a token hash or a ping time cannot reach a snapshot by
- * accident. It is exactly the shape src/clash/rules.js works on.
+ * A room hash as `{ room, tokens, pings, secret, picks, titles }`. `room` is
+ * built field by field — an allowlist — so a token hash, a ping time, the
+ * secret or who voted for what cannot reach a snapshot by accident. It is
+ * exactly the shape src/clash/rules.js works on.
  */
 export function parseRoom(code, flat) {
   if (!flat || !flat.length) return null;
@@ -112,11 +138,14 @@ export function parseRoom(code, flat) {
     host: Number(f.h || 0),
     players: [],
     results: {},
+    votes: {},
   };
   const tokens = {};
   const pings = {};
+  const picks = {};
+  const titles = {};
   for (const [k, v] of Object.entries(f)) {
-    const m = /^(p|t|s|r):(\d+)$/.exec(k);
+    const m = /^(p|t|s|r|v|c):(\d+)$/.exec(k);
     if (!m) continue;
     const seat = Number(m[2]);
     if (m[1] === "p") {
@@ -130,10 +159,48 @@ export function parseRoom(code, flat) {
       });
     } else if (m[1] === "t") tokens[seat] = v;
     else if (m[1] === "s") pings[seat] = Number(v);
-    else room.results[seat] = JSON.parse(v);
+    else if (m[1] === "c") titles[seat] = v;
+    else if (m[1] === "v") {
+      const vote = JSON.parse(v);
+      picks[seat] = vote.tag;
+      room.votes[seat] = vote.at;
+    } else room.results[seat] = JSON.parse(v);
   }
   room.players.sort((a, b) => a.seat - b.seat);
-  return { room, tokens, pings };
+  return { room, tokens, pings, secret: f.k || "", picks, titles };
+}
+
+/** Doodle On: `[{ tag, seat }]` for every seat that drew, in tag order. */
+async function ballot({ room, secret }) {
+  const drew = R.drew(room, R.timetable(room).playAt);
+  const out = await Promise.all(
+    drew.map(async (p) => ({ tag: (await sha256(`${secret}:${p.seat}`)).slice(0, 12), seat: p.seat })),
+  );
+  return out.sort((a, b) => (a.tag < b.tag ? -1 : 1));
+}
+
+/**
+ * The room as a phone may see it at `t`. Doodle On adds the doodles' tags
+ * from the vote on, and only in the final phase says whose each one is, with
+ * its votes and its title. Votes of anyone removed from the room do not count.
+ */
+export async function snapshot(found, t) {
+  const { room } = found;
+  if (R.GAMES[room.game]?.by !== "votes" || room.start == null) return room;
+  const phase = R.derive(room, t).phase;
+  if (phase !== "vote" && phase !== "final") return room;
+  const tags = await ballot(found);
+  const view = { ...room, doodles: tags.map((d) => d.tag) };
+  if (phase === "final") {
+    const counted = room.players.filter((p) => p.kickedAt == null).map((p) => found.picks[p.seat]);
+    view.tally = tags.map((d) => ({
+      tag: d.tag,
+      seat: d.seat,
+      votes: counted.filter((tag) => tag === d.tag).length,
+      title: found.titles[d.seat] || "",
+    }));
+  }
+  return view;
 }
 
 /**
@@ -161,8 +228,27 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
     // EXPIRE NX sets the TTL only if the hash has none, so a write that lands
     // just as a room expires cannot leave behind a hash that lives forever.
     const out = await store.pipeline([...commands, ["EXPIRE", key, TTL_S, "NX"], ["HGETALL", key]]);
-    return { out, room: parseRoom(code, out[out.length - 1]).room };
+    return { out, room: await snapshot(parseRoom(code, out[out.length - 1]), now()) };
   }
+
+  /**
+   * A finished run, checked: live round, in it, this board, a plausible
+   * time. Returns the time.
+   */
+  function onTime(room, seat, body) {
+    const t = now();
+    const d = R.derive(room, t);
+    if (d.phase !== "play") reject(409, "round not live");
+    // Removed seats were already refused in post(); this is "joined too late".
+    if (!R.eligible(room, d.playAt).some((p) => p.seat === seat)) reject(403, "not in this round");
+    if (body.seed !== room.seed) reject(400, "wrong board");
+    const maxMs = Math.min(room.cap * 1000 * room.scale, t - d.playAt + R.graceOf(room.game) * room.scale);
+    const ms = body.ms;
+    if (!Number.isInteger(ms) || ms < R.MIN_SOLVE_MS * room.scale || ms > maxMs) reject(400, "implausible time");
+    return t;
+  }
+
+  const votes = (room) => R.GAMES[room.game].by === "votes";
 
   /**
    * The rate-limit counters this request bumps, as commands to run ahead of
@@ -217,6 +303,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
         "scale", scale,
         "g", game,
         "cap", cap,
+        "k", crypto.randomUUID(),
         "seats", 1,
         "h", 0,
         "p:0", JSON.stringify({ name: host.name, emoji: host.emoji, joinedAt: t }),
@@ -274,18 +361,50 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
     },
 
     async result(body, { code, room, seat }) {
-      const t = now();
-      const d = R.derive(room, t);
-      if (d.phase !== "play") reject(409, "round not live");
-      // Removed seats were already refused in post(); this is "joined too late".
-      if (!R.eligible(room, d.playAt).some((p) => p.seat === seat)) reject(403, "not in this round");
-      if (body.seed !== room.seed) reject(400, "wrong board");
-      const maxMs = Math.min(room.cap * 1000 * room.scale, t - d.playAt + R.GRACE_MS * room.scale);
+      if (votes(room)) reject(400, "wrong game");
+      const t = onTime(room, seat, body);
       const { ms, moves } = body;
-      if (!Number.isInteger(ms) || ms < R.MIN_SOLVE_MS * room.scale || ms > maxMs) reject(400, "implausible time");
       if (!Number.isInteger(moves) || moves < 1 || moves > R.MAX_MOVES) reject(400, "implausible moves");
       const result = JSON.stringify({ ms, moves, at: t });
       return { room: (await write(code, [["HSETNX", roomKey(code), `r:${seat}`, result]])).room };
+    },
+
+    /* Doodle On's result: the drawing itself. The first one counts. */
+    async doodle(body, { code, room, seat, found }) {
+      if (!votes(room)) reject(400, "wrong game");
+      const t = onTime(room, seat, body);
+      if (!isJpeg(body.image)) reject(400, "not a jpeg");
+      const { room: next } = await write(code, [
+        ["SET", doodleKey(code, room.seed, seat), toBase64(body.image), "NX", "EX", TTL_S],
+        ["HSETNX", roomKey(code), `r:${seat}`, JSON.stringify({ ms: body.ms, at: t })],
+      ]);
+      const tag = (await sha256(`${found.secret}:${seat}`)).slice(0, 12);
+      return { room: next, tag };
+    },
+
+    /* The artist names their doodle, until the vote is over. It is shown
+       only in the final phase, as the answer to "what is it really?". */
+    async title(body, { code, room, seat }) {
+      const phase = R.derive(room, now()).phase;
+      if (!votes(room) || (phase !== "play" && phase !== "vote")) reject(409, "too late");
+      if (!room.results[seat]) reject(409, "no doodle");
+      const title = clean(body.title, MAX_TITLE);
+      if (!title) reject(400, "title required");
+      return { room: (await write(code, [["HSET", roomKey(code), `c:${seat}`, title]])).room };
+    },
+
+    /* One vote per seat, for someone else's doodle; it can change until the
+       vote ends. */
+    async vote(body, { code, room, seat, found }) {
+      const t = now();
+      const d = R.derive(room, t);
+      if (d.phase !== "vote") reject(409, "not voting");
+      if (!R.eligible(room, d.playAt).some((p) => p.seat === seat)) reject(403, "not in this round");
+      const target = TAG.test(body.tag || "") && (await ballot(found)).find((x) => x.tag === body.tag);
+      if (!target) reject(400, "bad doodle");
+      if (target.seat === seat) reject(400, "your own");
+      const vote = JSON.stringify({ tag: target.tag, at: t });
+      return { room: (await write(code, [["HSET", roomKey(code), `v:${seat}`, vote]])).room };
     },
 
     /* The host calls time once at least half the room is done, so one player
@@ -319,14 +438,34 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
     },
   };
 
+  /**
+   * The body of a POST. A doodle is the raw JPEG, with its action in the
+   * x-clash header; everything else is a small JSON object.
+   */
+  async function readBody(request) {
+    const image = request.headers.get("content-type") === "image/jpeg";
+    if (Number(request.headers.get("content-length")) > (image ? MAX_IMAGE : MAX_BODY)) reject(413, "too large");
+    let body;
+    if (image) {
+      const bytes = new Uint8Array(await request.arrayBuffer());
+      if (bytes.length > MAX_IMAGE) reject(413, "too large");
+      try { body = JSON.parse(request.headers.get("x-clash") || ""); } catch { reject(400, "bad json"); }
+      if (body?.type !== "doodle") reject(400, "bad type");
+      body.image = bytes;
+    } else {
+      const text = await request.text();
+      if (text.length > MAX_BODY) reject(413, "too large");
+      try { body = JSON.parse(text); } catch { reject(400, "bad json"); }
+      if (body?.type === "doodle") reject(400, "bad type");
+    }
+    if (!body || typeof body !== "object" || !TYPES.includes(body.type)) reject(400, "bad type");
+    return body;
+  }
+
   async function post(request) {
     const origin = request.headers.get("origin");
     if (origin !== new URL(request.url).origin) reject(403, "bad origin");
-    const text = await request.text();
-    if (text.length > MAX_BODY) reject(413, "too large");
-    let body;
-    try { body = JSON.parse(text); } catch { reject(400, "bad json"); }
-    if (!body || typeof body !== "object" || !TYPES.includes(body.type)) reject(400, "bad type");
+    const body = await readBody(request);
 
     const limit = limitCommands(request, body.type);
     if (body.type === "create") {
@@ -340,7 +479,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
     checkLimits(out.slice(0, limit.length));
     const found = parseRoom(code, out[limit.length]);
     if (!found) reject(404, "no such room");
-    const ctx = { code, room: found.room, pings: found.pings };
+    const ctx = { code, room: found.room, pings: found.pings, found };
 
     if (body.type !== "join") {
       const seat = body.seat;
@@ -353,16 +492,41 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
     return actions[body.type](body, ctx);
   }
 
+  /* A doodle, from the vote on, by its tag. The seed is in the URL so the
+     URL names one drawing forever — codes are reused — and the CDN can keep
+     it for good. */
+  async function doodle(code, tag, seed) {
+    if (!TAG.test(tag)) return json({ error: "bad doodle" }, 400, "no-store");
+    const found = await read(code);
+    if (!found || String(found.room.seed) !== seed) return json({ error: "no such doodle" }, 404, "no-store");
+    const phase = found.room.start == null ? "lobby" : R.derive(found.room, now()).phase;
+    if (phase !== "vote" && phase !== "final") return json({ error: "not yet" }, 409, "no-store");
+    const hit = (await ballot(found)).find((x) => x.tag === tag);
+    const [data] = hit ? await store.pipeline([["GET", doodleKey(code, seed, hit.seat)]]) : [null];
+    if (!data) return json({ error: "no such doodle" }, 404, "no-store");
+    return new Response(fromBase64(data), {
+      status: 200,
+      headers: {
+        "Content-Type": "image/jpeg",
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  }
+
   return async function handle(request) {
     try {
       if (request.method === "GET") {
-        const code = new URL(request.url).searchParams.get("r") || "";
+        const params = new URL(request.url).searchParams;
+        const code = params.get("r") || "";
         if (!CODE.test(code)) return json({ error: "bad code" }, 400, "no-store");
+        if (params.has("d")) return await doodle(code, params.get("d"), params.get("s") || "");
         const found = await read(code);
         // 404s are cached too: a phone polling a dead room costs the store
         // one read a second, not one per phone.
         if (!found) return json({ error: "no such room" }, 404, "public, s-maxage=1");
-        return json({ room: found.room, serverNow: now() }, 200, "public, s-maxage=1");
+        const t = now();
+        return json({ room: await snapshot(found, t), serverNow: t }, 200, "public, s-maxage=1");
       }
       if (request.method === "POST") {
         const out = await post(request);

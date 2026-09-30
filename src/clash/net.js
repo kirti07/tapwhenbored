@@ -34,13 +34,22 @@ export function now() {
  * POST an action. Resolves `{ ok, status, data }` and never rejects: a party
  * screen shows what failed rather than stalling on an exception.
  */
-export async function post(body) {
+export function post(body) {
+  return send({ "Content-Type": "application/json" }, JSON.stringify(body));
+}
+
+/**
+ * POST a Doodle On drawing: the JPEG as the body, as bytes — base64 inside
+ * JSON would be a third bigger, on the party's one Wi-Fi — and the action
+ * (`{ type: "doodle", code, seat, token, seed, ms }`) in a header.
+ */
+export function postDoodle(action, image) {
+  return send({ "Content-Type": "image/jpeg", "x-clash": JSON.stringify(action) }, image);
+}
+
+async function send(headers, body) {
   try {
-    const res = await fetch(API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const res = await fetch(API, { method: "POST", headers, body });
     const data = await res.json();
     sample(data.serverNow);
     return { ok: res.ok, status: res.status, data };
@@ -48,6 +57,9 @@ export async function post(body) {
     return { ok: false, status: 0, data: { error: "offline" } };
   }
 }
+
+/** Where a room's doodle is, by its tag; the CDN keeps it for good. */
+export const doodleUrl = (room, tag) => `${API}?r=${room.code}&d=${tag}&s=${room.seed}`;
 
 /**
  * Poll a room. `onRoom(room)` gets each snapshot newer than the last one it

@@ -113,7 +113,8 @@ function clashApi(env) {
     );
     res.statusCode = response.status;
     response.headers.forEach((v, k) => res.setHeader(k, v));
-    res.end(await response.text());
+    // Bytes, not text: a doodle is a JPEG.
+    res.end(Buffer.from(await response.arrayBuffer()));
   };
 
   return {

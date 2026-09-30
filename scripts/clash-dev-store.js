@@ -7,7 +7,7 @@
 // behave differently here than in production.
 
 export function createMemoryStore(now = Date.now) {
-  const data = new Map(); // key -> Map (hash) | number (counter)
+  const data = new Map(); // key -> Map (hash) | number (counter) | string
   const expires = new Map(); // key -> ms
 
   function live(key) {
@@ -30,6 +30,19 @@ export function createMemoryStore(now = Date.now) {
 
   const commands = {
     PING: () => "PONG",
+    // Only the forms the handler sends: SET key value [NX] [EX seconds].
+    SET(key, value, ...opts) {
+      if (opts.includes("NX") && live(key) !== undefined) return null;
+      data.set(key, String(value));
+      expires.delete(key);
+      const ex = opts.indexOf("EX");
+      if (ex >= 0) expires.set(key, now() + Number(opts[ex + 1]) * 1000);
+      return "OK";
+    },
+    GET(key) {
+      const v = live(key);
+      return typeof v === "string" ? v : null;
+    },
     HGETALL(key) {
       const h = live(key);
       return h instanceof Map ? [...h].flat() : [];

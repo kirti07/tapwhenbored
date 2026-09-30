@@ -17,6 +17,7 @@
   --arc-accent-ink: #ffffff;
   --flip: #f0b429;
   --slide: #8b7fe0;
+  --doodle: #ff5f96;
   --game: var(--arc-accent);
 }
 
@@ -86,6 +87,9 @@
 .pick-game span { font-size: 12px; color: var(--ink-soft); }
 .pick--flip-it { --pick: var(--flip); }
 .pick--slide-n-order { --pick: var(--slide); }
+.pick--doodle-on { --pick: var(--doodle); }
+/* An odd one out takes the whole row. */
+.pick-game:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .pick-game[aria-checked="true"] {
   border-color: var(--pick);
   background: color-mix(in srgb, var(--pick) 12%, var(--card));
@@ -179,7 +183,8 @@
 
 /* Screens that are the whole phone drop the site header. */
 body[data-view="title"] .top,
-body[data-view="play"] .top { display: none; }
+body[data-view="play"] .top,
+body[data-view="vote"] .top { display: none; }
 
 /* ------------------------------------------------------------ title card -- */
 
@@ -197,6 +202,7 @@ body[data-view="play"] .top { display: none; }
 
 body[data-game="flip-it"] { --game: var(--flip); }
 body[data-game="slide-n-order"] { --game: var(--slide); }
+body[data-game="doodle-on"] { --game: var(--doodle); }
 
 .title-round { margin: 0; font-size: 11px; letter-spacing: 0.2em; color: var(--arc-screen-soft); }
 .title-game { margin: 8px 0 0; font-size: clamp(30px, 9vw, 44px); color: var(--game); }
@@ -309,6 +315,35 @@ body[data-game="slide-n-order"] { --game: var(--slide); }
 }
 .sheet-foot { margin: 4px 0 0; text-align: center; font-size: 12.5px; color: var(--ink-dim); }
 
+.title-form { display: grid; gap: 4px; margin-top: 4px; }
+.title-form .sheet-foot { margin: 0; text-align: left; }
+
+/* ------------------------------------------------------------------- vote -- */
+
+.vote { margin-top: 0; max-width: 560px; gap: 10px; }
+.vote-h { margin: 6px 0 0; text-align: center; font-family: var(--font-display); font-weight: 700; font-size: 22px; line-height: 1.2; }
+.vote-p { text-align: center; font-size: 13px; }
+.vote-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.vote-wait { grid-column: 1 / -1; padding: 40px 0; text-align: center; color: var(--ink-soft); }
+
+.vote-tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 3px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--card);
+  cursor: pointer;
+}
+.vote-tile img { display: block; width: 100%; height: auto; aspect-ratio: 1; }
+.vote-tile.is-picked { border-color: var(--game); box-shadow: 0 0 0 3px color-mix(in srgb, var(--game) 30%, transparent); }
+.vote-tile.is-own { opacity: 0.45; cursor: default; }
+.vote-chip { position: absolute; top: 8px; left: 8px; padding: 4px 8px; border-radius: 999px; font-size: 9px; background: var(--game); color: #fff; }
+.vote-chip:empty { display: none; }
+.vote-tile.is-own .vote-chip { background: var(--ink-dim); }
+
 /* ------------------------------------------------------------ final table -- */
 
 .res-list { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 6px; text-align: left; }
@@ -387,10 +422,50 @@ body[data-game="slide-n-order"] { --game: var(--slide); }
 
 .final-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
+/* D4 · Doodle On's reveal. The order is animation-delay alone: the rest
+   fewest votes first (set per item), the top doodle at --in, its "what is
+   it?" a beat later, and the artist's answer after the room has guessed. */
+
+.top-doodle { margin: 16px 0 0; display: grid; gap: 8px; }
+.top-doodle img {
+  display: block;
+  width: min(100%, 300px);
+  height: auto;
+  aspect-ratio: 1;
+  margin: 0 auto;
+  border-radius: 16px;
+  border: 4px solid var(--arc-gold);
+  background: #fff;
+  animation: doodle-top 0.7s cubic-bezier(0.2, 1.4, 0.4, 1) var(--in, 0s) backwards;
+}
+.top-doodle figcaption { display: grid; gap: 4px; }
+.top-guess { margin: 0; font-weight: 800; font-size: 17px; animation: doodle-in 0.4s ease-out calc(var(--in, 0s) + 0.6s) backwards; }
+.top-title,
+.top-by { margin: 0; animation: doodle-in 0.5s ease-out calc(var(--in, 0s) + 2.6s) backwards; }
+.top-title { font-family: var(--font-display); font-weight: 700; font-size: 22px; color: var(--arc-gold); }
+.top-by { font-size: 13px; color: var(--arc-screen-soft); }
+
+.doodles { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 8px; }
+.doodle { display: grid; gap: 2px; min-width: 0; font-size: 12px; animation: doodle-in 0.5s ease-out backwards; }
+.doodle img { display: block; width: 100%; height: auto; aspect-ratio: 1; border-radius: 10px; background: #fff; }
+.doodle-who,
+.doodle-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doodle-who { font-weight: 700; }
+.doodle-title { color: var(--arc-screen-soft); font-size: 11px; }
+
+@keyframes doodle-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes doodle-top { from { opacity: 0; transform: scale(0.6) rotate(-4deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .doodle, .top-doodle img, .top-guess, .top-title, .top-by { animation: none; }
+}
+
+.recap-opt { display: flex; gap: 8px; align-items: center; justify-content: center; min-height: 44px; margin-top: -6px; font-size: 13px; color: var(--ink-soft); }
+
 /* ------------------------------------------------------------------ about -- */
 
 .clash-about { max-width: 480px; margin: 28px auto 0; color: var(--ink-soft); font-size: 13.5px; line-height: 1.55; }
 .clash-about summary { min-height: 44px; display: flex; align-items: center; justify-content: center; font-weight: 700; cursor: pointer; }
 .clash-about p { margin: 4px 0 0; }
 body[data-view="title"] .clash-about,
-body[data-view="play"] .clash-about { display: none; }
+body[data-view="play"] .clash-about,
+body[data-view="vote"] .clash-about { display: none; }
