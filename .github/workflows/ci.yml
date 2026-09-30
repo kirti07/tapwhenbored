@@ -33,9 +33,8 @@ jobs:
       - name: Production build
         run: npm run build
 
-      # Guards ARCHITECTURE.md §23. Deliberately a warning-level check on
-      # per-page JS, not a hard cap, so a justified increase is a conversation
-      # rather than a blocked deploy.
+      # ARCHITECTURE.md §23. Warns rather than fails, so a justified increase
+      # is not a blocked deploy.
       - name: Check bundle sizes
         run: node scripts/check-bundles.js
 
@@ -55,15 +54,9 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-  # A scaffold is a copy of the page template frozen at the moment someone last
-  # edited it, so it goes stale silently — it once emitted `dvh` where §16 asks
-  # for `svh`, and preloaded a webfont weight no new game renders. Nothing
-  # failed, because nothing ran it. This runs it: scaffold a throwaway game,
-  # give it placeholder art, validate, play its own smoke tests, then delete it
-  # and prove the tree is clean again.
-  #
-  # A separate job from `verify` on purpose. It mutates the working tree, and a
-  # mutated tree must never be what reaches the deploy path.
+  # Keeps the scaffold from going stale: scaffold a throwaway game, validate,
+  # smoke-test it, then delete it and prove the tree is clean. A separate job
+  # because it mutates the working tree, which must never reach the deploy path.
   scaffold:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -81,13 +74,9 @@ jobs:
       - name: Scaffold a probe game
         run: node scripts/new-game.js ci-probe
 
-      # Validation requires the og image on disk (§29), so borrow an existing
-      # game's. The probe never renders it; it only has to resolve. There is no
-      # thumbnail to stage — the shelf draws a glyph from the shared sprite.
-      #
-      # The scaffold writes `sticker: "st-TODO"` and tells the author to add the
-      # symbol by hand, which is right for a person and impossible for CI. So
-      # stage that too, and revert it below alongside the registry.
+      # Validation requires the og image on disk (§29), so borrow one. The
+      # scaffold's `st-todo` sticker symbol is added by hand normally, so stage
+      # it here and revert it below alongside the registry.
       - name: Stage placeholder art
         run: |
           cp public/assets/untangle-og.jpg public/assets/ci-probe-og.jpg
