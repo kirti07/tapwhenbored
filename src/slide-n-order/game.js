@@ -56,7 +56,7 @@ import { getName, clean } from "../shared/ui/player.js";
   var best = getInt(BEST_KEY);
   var seed = 0;          // what built this scramble; a challenge link carries it
   var challenge = readChallenge(); // null, or the run a shared link asks you to beat
-  var round = null;      // set when this page is a Tap Clash round
+  var round = null;      // set when this page is a Tap Party round
   var goAt = null;       // performance.now() when the round went live
 
 
@@ -615,11 +615,11 @@ import { getName, clean } from "../shared/ui/player.js";
 
   // ---------- party rounds ----------
   //
-  // Inside /clash/ the page plays one short seeded scramble on the party's
+  // Inside /party/ the page plays one short seeded scramble on the party's
   // clock: dealt at once and locked, timed from the moment the party page
   // says the round went live. The contract is below.
 
-  /* The Tap Clash round contract (ARCHITECTURE.md, "Tap Clash"). Written out
+  /* The Tap Party round contract (ARCHITECTURE.md, "Tap Party"). Written out
      in each game rather than shared: a shared module would cost both game
      pages a chunk and a request for ~20 lines. Both directions check origin
      and source, and post to this origin only.
@@ -629,7 +629,7 @@ import { getName, clean } from "../shared/ui/player.js";
   function readRound() {
     var params = new URLSearchParams(location.search);
     var raw = params.get("seed") || "";
-    if (params.get("clash") !== "1" || window.self === window.top) return null;
+    if (params.get("party") !== "1" || window.self === window.top) return null;
     if (!/^[0-9a-z]{1,7}$/.test(raw) || parseInt(raw, 36) > 0xffffffff) return null;
     return { seed: parseInt(raw, 36), level: params.get("level") };
   }
@@ -648,7 +648,7 @@ import { getName, clean } from "../shared/ui/player.js";
   }
 
   function playRound(r) {
-    document.documentElement.dataset.clash = "wait";
+    document.documentElement.dataset.party = "wait";
     ended = true; // locked until the round goes live
     shuffleBoard(r.seed, ROUND_SHUFFLE_MOVES);
     renderTiles();
@@ -656,7 +656,7 @@ import { getName, clean } from "../shared/ui/player.js";
     round = joinRound(function (elapsed) {
       if (goAt !== null) return;
       goAt = performance.now() - elapsed;
-      document.documentElement.dataset.clash = "on";
+      document.documentElement.dataset.party = "on";
       ended = false;
     });
   }

@@ -1,26 +1,27 @@
-/* Tap Clash: the party page.
+/* Tap Party: the party page.
  *
  * Built on the site's own page stylesheet — the arcade chrome (marquee, dark
  * screen, buttons, inputs, chips) the homepage, the wall and the player card
  * already use — so a party looks like the arcade it came from. Coral is Tap
- * Clash's accent: the logo's red, and in dark mode the logo's pink.
+ * Party's accent: the logo's red, and in dark mode the logo's pink.
  *
- * Every screen is a `[data-screen]` section; clash.js shows one at a time.
+ * Every screen is a `[data-screen]` section; party.js shows one at a time.
  * Decoration is CSS only, and nothing here animates forever.
  */
 
 @import "../style.css";
 
-.clash {
+.party {
   --accent: #e8503d;
   --accent-d: #ff5c8a;
   --arc-accent-ink: #ffffff;
   --flip: #f0b429;
   --slide: #8b7fe0;
+  --doodle: #ff5f96;
   --game: var(--arc-accent);
 }
 
-.clash-brand { color: var(--arc-accent); margin: 2px 0 0; }
+.party-brand { color: var(--arc-accent); margin: 2px 0 0; }
 
 .scr {
   display: grid;
@@ -29,18 +30,18 @@
   margin: 18px auto 0;
 }
 
-.clash-loading { text-align: center; color: var(--ink-soft); margin-top: 30vh; }
-.clash-h { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 28px; line-height: 1.15; }
-.clash-p { margin: 0; color: var(--ink-soft); font-size: 14px; }
-.clash-fine { margin: 0; text-align: center; color: var(--ink-dim); font-size: 12.5px; }
-.clash-err { margin: 0; min-height: 1.3em; color: var(--arc-danger); font-weight: 700; font-size: 13.5px; }
-.clash-err:empty { display: none; }
-.clash-cta, .clash-wide { width: 100%; }
-.clash-wait { margin: 0; text-align: center; color: var(--ink-soft); font-weight: 700; }
-.clash-note { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--card-2); font-size: 13px; color: var(--ink-soft); }
-.clash-note--hot { background: color-mix(in srgb, var(--arc-accent) 14%, var(--card)); color: var(--ink); font-weight: 700; }
-.clash-inline { display: flex; gap: 8px; align-items: center; }
-.clash-inline .iconbtn { flex: none; width: 48px; height: 48px; }
+.party-loading { text-align: center; color: var(--ink-soft); margin-top: 30vh; }
+.party-h { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 28px; line-height: 1.15; }
+.party-p { margin: 0; color: var(--ink-soft); font-size: 14px; }
+.party-fine { margin: 0; text-align: center; color: var(--ink-dim); font-size: 12.5px; }
+.party-err { margin: 0; min-height: 1.3em; color: var(--arc-danger); font-weight: 700; font-size: 13.5px; }
+.party-err:empty { display: none; }
+.party-cta, .party-wide { width: 100%; }
+.party-wait { margin: 0; text-align: center; color: var(--ink-soft); font-weight: 700; }
+.party-note { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--card-2); font-size: 13px; color: var(--ink-soft); }
+.party-note--hot { background: color-mix(in srgb, var(--arc-accent) 14%, var(--card)); color: var(--ink); font-weight: 700; }
+.party-inline { display: flex; gap: 8px; align-items: center; }
+.party-inline .iconbtn { flex: none; width: 48px; height: 48px; }
 
 .share-note { margin: 0; text-align: center; font-size: 13px; color: var(--ink-soft); min-height: 1.3em; opacity: 0; }
 .share-note.show { opacity: 1; }
@@ -66,43 +67,101 @@
 
 /* ------------------------------------------------------------ game picker -- */
 
-.pick { display: grid; gap: 8px; }
-.pick-games { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; }
+/* The games are the page: cards, grouped by kind under a one-line label.
+   Selected is the game's own colour — a tinted card and a ticked mark. The
+   selected card's border is 1px thicker, so its padding is 1px less and
+   nothing shifts. */
+.pick { display: grid; gap: 10px; }
+.pick-games { display: grid; gap: 16px; margin-bottom: 4px; }
+.pick-kind { display: grid; gap: 8px; }
+.pick-kind--competitive { --kind: var(--arc-accent); }
+.pick-kind--social { --kind: var(--doodle); }
+/* Plain flowing text, so a narrow phone wraps the hint like a sentence. */
+.pick-kind-h { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--ink-soft); }
+.pick-kind-h svg { width: 14px; height: 14px; margin-right: 5px; vertical-align: -2px; color: var(--kind); }
+.pick-kind-h b { font-size: 10.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--kind); }
 
 .pick-game {
-  display: grid;
-  gap: 2px;
-  text-align: left;
-  min-height: 64px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 2px solid var(--line-2);
-  border-top: 6px solid var(--pick);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 76px;
+  padding: 13px 15px;
+  border-radius: 16px;
+  border: 1px solid var(--line-2);
   background: var(--card);
   color: var(--ink);
   font: inherit;
+  text-align: left;
   cursor: pointer;
 }
-.pick-game span { font-size: 12px; color: var(--ink-soft); }
 .pick--flip-it { --pick: var(--flip); }
 .pick--slide-n-order { --pick: var(--slide); }
+.pick--doodle-on { --pick: var(--doodle); }
 .pick-game[aria-checked="true"] {
-  border-color: var(--pick);
+  padding: 12px 14px;
+  border: 2px solid var(--pick);
   background: color-mix(in srgb, var(--pick) 12%, var(--card));
 }
 
-.pick-caps { display: flex; gap: 8px; flex-wrap: wrap; }
+.pick-ico { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; flex: none; background: var(--pick); color: #252037; }
+.pick-ico svg { width: 24px; height: 24px; }
+.pick-t { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.pick-t strong { font-family: var(--font-display); font-weight: 800; font-size: 19px; line-height: 1.15; }
+.pick-t span { font-size: 12.5px; line-height: 1.35; color: var(--ink-soft); }
+
+/* The radio mark: a ring, and when chosen a ring in the game's colour with
+   a tick drawn from two borders. */
+.pick-mark { position: relative; width: 20px; height: 20px; flex: none; border-radius: 50%; border: 2px solid var(--ink-dim); }
+.pick-game[aria-checked="true"] .pick-mark { border-color: color-mix(in srgb, var(--pick) 70%, var(--ink)); }
+.pick-game[aria-checked="true"] .pick-mark::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 4px;
+  height: 8px;
+  border: solid color-mix(in srgb, var(--pick) 70%, var(--ink));
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.pick-caps { display: flex; gap: 8px; }
 .pick-cap {
-  min-width: 64px;
+  flex: 1;
+  min-width: 0;
   min-height: 44px;
-  border-radius: 999px;
-  border: 2px solid var(--line-2);
+  border-radius: 10px;
+  border: 1px solid var(--line-2);
   background: var(--card);
-  color: var(--ink);
+  color: var(--ink-soft);
   font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
 }
-.pick-cap[aria-checked="true"] { border-color: var(--arc-accent); background: color-mix(in srgb, var(--arc-accent) 12%, var(--card)); font-weight: 800; }
+.pick-cap[aria-checked="true"] { border-color: var(--ink); background: var(--ink); color: var(--card); }
+
+/* The face is optional: one button beside the name, showing the chosen one. */
+.face-btn {
+  flex: none;
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  border: 2px solid var(--line-2);
+  background: var(--card);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+.face-btn[aria-expanded="true"] { border-color: var(--arc-accent); }
+.faces:not([hidden]) { margin-top: 4px; }
+
+/* The party name, as a quiet line until someone renames it. */
+.party-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -4px 0 0; color: var(--ink-soft); font-size: 13.5px; }
+.party-edit { width: 44px; height: 44px; margin-right: -12px; display: grid; place-items: center; border: 0; border-radius: 10px; background: transparent; color: var(--ink-soft); cursor: pointer; }
+.party-edit svg { width: 16px; height: 16px; }
+.party-edit:hover { background: var(--card-2); }
 
 .change { display: grid; gap: 12px; }
 
@@ -179,7 +238,8 @@
 
 /* Screens that are the whole phone drop the site header. */
 body[data-view="title"] .top,
-body[data-view="play"] .top { display: none; }
+body[data-view="play"] .top,
+body[data-view="vote"] .top { display: none; }
 
 /* ------------------------------------------------------------ title card -- */
 
@@ -197,6 +257,7 @@ body[data-view="play"] .top { display: none; }
 
 body[data-game="flip-it"] { --game: var(--flip); }
 body[data-game="slide-n-order"] { --game: var(--slide); }
+body[data-game="doodle-on"] { --game: var(--doodle); }
 
 .title-round { margin: 0; font-size: 11px; letter-spacing: 0.2em; color: var(--arc-screen-soft); }
 .title-game { margin: 8px 0 0; font-size: clamp(30px, 9vw, 44px); color: var(--game); }
@@ -309,6 +370,35 @@ body[data-game="slide-n-order"] { --game: var(--slide); }
 }
 .sheet-foot { margin: 4px 0 0; text-align: center; font-size: 12.5px; color: var(--ink-dim); }
 
+.title-form { display: grid; gap: 4px; margin-top: 4px; }
+.title-form .sheet-foot { margin: 0; text-align: left; }
+
+/* ------------------------------------------------------------------- vote -- */
+
+.vote { margin-top: 0; max-width: 560px; gap: 10px; }
+.vote-h { margin: 6px 0 0; text-align: center; font-family: var(--font-display); font-weight: 700; font-size: 22px; line-height: 1.2; }
+.vote-p { text-align: center; font-size: 13px; }
+.vote-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.vote-wait { grid-column: 1 / -1; padding: 40px 0; text-align: center; color: var(--ink-soft); }
+
+.vote-tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 3px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--card);
+  cursor: pointer;
+}
+.vote-tile img { display: block; width: 100%; height: auto; aspect-ratio: 1; }
+.vote-tile.is-picked { border-color: var(--game); box-shadow: 0 0 0 3px color-mix(in srgb, var(--game) 30%, transparent); }
+.vote-tile.is-own { opacity: 0.45; cursor: default; }
+.vote-chip { position: absolute; top: 8px; left: 8px; padding: 4px 8px; border-radius: 999px; font-size: 9px; background: var(--game); color: #fff; }
+.vote-chip:empty { display: none; }
+.vote-tile.is-own .vote-chip { background: var(--ink-dim); }
+
 /* ------------------------------------------------------------ final table -- */
 
 .res-list { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 6px; text-align: left; }
@@ -387,10 +477,50 @@ body[data-game="slide-n-order"] { --game: var(--slide); }
 
 .final-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
+/* D4 · Doodle On's reveal. The order is animation-delay alone: the rest
+   fewest votes first (set per item), the top doodle at --in, its "what is
+   it?" a beat later, and the artist's answer after the room has guessed. */
+
+.top-doodle { margin: 16px 0 0; display: grid; gap: 8px; }
+.top-doodle img {
+  display: block;
+  width: min(100%, 300px);
+  height: auto;
+  aspect-ratio: 1;
+  margin: 0 auto;
+  border-radius: 16px;
+  border: 4px solid var(--arc-gold);
+  background: #fff;
+  animation: doodle-top 0.7s cubic-bezier(0.2, 1.4, 0.4, 1) var(--in, 0s) backwards;
+}
+.top-doodle figcaption { display: grid; gap: 4px; }
+.top-guess { margin: 0; font-weight: 800; font-size: 17px; animation: doodle-in 0.4s ease-out calc(var(--in, 0s) + 0.6s) backwards; }
+.top-title,
+.top-by { margin: 0; animation: doodle-in 0.5s ease-out calc(var(--in, 0s) + 2.6s) backwards; }
+.top-title { font-family: var(--font-display); font-weight: 700; font-size: 22px; color: var(--arc-gold); }
+.top-by { font-size: 13px; color: var(--arc-screen-soft); }
+
+.doodles { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 8px; }
+.doodle { display: grid; gap: 2px; min-width: 0; font-size: 12px; animation: doodle-in 0.5s ease-out backwards; }
+.doodle img { display: block; width: 100%; height: auto; aspect-ratio: 1; border-radius: 10px; background: #fff; }
+.doodle-who,
+.doodle-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doodle-who { font-weight: 700; }
+.doodle-title { color: var(--arc-screen-soft); font-size: 11px; }
+
+@keyframes doodle-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes doodle-top { from { opacity: 0; transform: scale(0.6) rotate(-4deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .doodle, .top-doodle img, .top-guess, .top-title, .top-by { animation: none; }
+}
+
+.recap-opt { display: flex; gap: 8px; align-items: center; justify-content: center; min-height: 44px; margin-top: -6px; font-size: 13px; color: var(--ink-soft); }
+
 /* ------------------------------------------------------------------ about -- */
 
-.clash-about { max-width: 480px; margin: 28px auto 0; color: var(--ink-soft); font-size: 13.5px; line-height: 1.55; }
-.clash-about summary { min-height: 44px; display: flex; align-items: center; justify-content: center; font-weight: 700; cursor: pointer; }
-.clash-about p { margin: 4px 0 0; }
-body[data-view="title"] .clash-about,
-body[data-view="play"] .clash-about { display: none; }
+.party-about { max-width: 480px; margin: 28px auto 0; color: var(--ink-soft); font-size: 13.5px; line-height: 1.55; }
+.party-about summary { min-height: 44px; display: flex; align-items: center; justify-content: center; font-weight: 700; cursor: pointer; }
+.party-about p { margin: 4px 0 0; }
+body[data-view="title"] .party-about,
+body[data-view="play"] .party-about,
+body[data-view="vote"] .party-about { display: none; }

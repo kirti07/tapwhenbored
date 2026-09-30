@@ -2,12 +2,12 @@
 // the Playwright suite — so none of them needs a network or a database.
 //
 // It implements `pipeline(commands)` for exactly the commands
-// api/_lib/clash.js sends, with Redis's semantics for each, and nothing else:
+// api/_lib/party.js sends, with Redis's semantics for each, and nothing else:
 // an unknown command throws, so a new one in the handler cannot silently
 // behave differently here than in production.
 
 export function createMemoryStore(now = Date.now) {
-  const data = new Map(); // key -> Map (hash) | number (counter)
+  const data = new Map(); // key -> Map (hash) | number (counter) | string
   const expires = new Map(); // key -> ms
 
   function live(key) {
@@ -30,6 +30,19 @@ export function createMemoryStore(now = Date.now) {
 
   const commands = {
     PING: () => "PONG",
+    // Only the forms the handler sends: SET key value [NX] [EX seconds].
+    SET(key, value, ...opts) {
+      if (opts.includes("NX") && live(key) !== undefined) return null;
+      data.set(key, String(value));
+      expires.delete(key);
+      const ex = opts.indexOf("EX");
+      if (ex >= 0) expires.set(key, now() + Number(opts[ex + 1]) * 1000);
+      return "OK";
+    },
+    GET(key) {
+      const v = live(key);
+      return typeof v === "string" ? v : null;
+    },
     HGETALL(key) {
       const h = live(key);
       return h instanceof Map ? [...h].flat() : [];
@@ -72,7 +85,7 @@ export function createMemoryStore(now = Date.now) {
     async pipeline(list) {
       return list.map(([name, ...args]) => {
         const run = commands[name];
-        if (!run) throw new Error(`clash-dev-store: ${name} is not implemented`);
+        if (!run) throw new Error(`party-dev-store: ${name} is not implemented`);
         return run(...args);
       });
     },

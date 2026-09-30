@@ -7,7 +7,7 @@
 @import "../shared/css/endcard.css";
 @import "../shared/css/leaderboard.css";
 @import "../shared/css/challenge.css";
-@import "../shared/css/clash-round.css";
+@import "../shared/css/party-round.css";
 
 :root {
   --bg: #f1eefb;

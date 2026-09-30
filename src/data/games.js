@@ -243,14 +243,14 @@ export const pages = [
     priority: "0.7",
   },
   {
-    slug: "clash",
-    title: "Tap Clash",
-    path: "/clash/",
+    slug: "party",
+    title: "Tap Party",
+    path: "/party/",
     // The party mode's front door is indexed: "play a game together on your
     // phones" is a search. Room links (?r=CODE, ?join) are not — they carry
-    // X-Robots-Tag: noindex from vercel.json and canonicalise to /clash/.
+    // X-Robots-Tag: noindex from vercel.json and canonicalise to /party/.
     // `ogImage` is the preview every invite link shows in a group chat.
-    ogImage: "/assets/clash-og.jpg",
+    ogImage: "/assets/party-og.jpg",
     updated: "2026-09-29",
     changefreq: "monthly",
     priority: "0.8",

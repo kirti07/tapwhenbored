@@ -15,7 +15,7 @@
       ]
     },
     {
-      "source": "/clash/",
+      "source": "/party/",
       "has": [
         {
           "type": "query",
@@ -30,7 +30,7 @@
       ]
     },
     {
-      "source": "/clash/",
+      "source": "/party/",
       "has": [
         {
           "type": "query",

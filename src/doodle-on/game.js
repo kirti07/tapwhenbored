@@ -10,13 +10,16 @@ import { recordPlay } from "../shared/ui/progress.js";
   // ---------- tuning ----------
   var LINE_WIDTH = 3;       // px, CSS space
   var SHAPE_WIDTH = 2.5;    // the given shape is thinner than the player's line
-  var SHAPE_SPAN = 0.52;    // of the short side, leaving room to draw around it
+  var SHAPE_SPAN = 0.40;    // of the short side, leaving room to draw around it
+  var SHAPE_MAX = 180;      // px: a big desktop canvas must not grow it back
   var PALETTE = ["#ff9a3d", "#ff5f96", "#a970ff", "#4fb8ff", "#2ee6b8", "#ffd93d"];
   var STOP_DIST = 130;      // px of drawn distance per palette stop, then it loops
   var ROUND_MS = 30000;
   var URGENT_MS = 5000;
   var FINISH_MS = 900;      // must match the doodle-present keyframe
   var ALPHA_TOL = 20;       // stroke-layer alpha at or above this is a fill wall
+  var EXPORT_PX = 256;      // a Tap Party doodle: ~8 kB as a JPEG
+  var EXPORT_Q = 0.6;
 
   function hexToRgb(hex) {
     var n = parseInt(hex.slice(1), 16);
@@ -104,6 +107,9 @@ import { recordPlay } from "../shared/ui/progress.js";
   var finalLeft = 0;
   var pauseCount = 0, pausedAt = 0;
   var finishTimer = null, resizeTimer = null;
+  var party = readRound();   // set when this page is a Tap Party round
+  var goAt = 0;              // when the round went live, on this phone's clock
+  var inked = false;         // anything drawn or filled — a blank page is no doodle
 
   // ---------- audio ----------
   // Same adapter as word-steps: this game's helper was tone(freq, dur, gain),
@@ -230,7 +236,7 @@ import { recordPlay } from "../shared/ui/progress.js";
 
   function stampShape() {
     if (!round) return;
-    var k = Math.min(cssW, cssH) * SHAPE_SPAN;
+    var k = Math.min(Math.min(cssW, cssH) * SHAPE_SPAN, SHAPE_MAX);
     drawShape(sctx, round.shape, k, (cssW - k) / 2, (cssH - k) / 2, shapeInk(), SHAPE_WIDTH);
     alphaDirty = true;
   }
@@ -386,6 +392,7 @@ import { recordPlay } from "../shared/ui/progress.js";
     if (!computeRegion(px, py)) return;
 
     captureUndo("paint");
+    inked = true;
     paintRegion(fillColor());
     tone(520, 0.07, 0.035);
   }
@@ -454,7 +461,8 @@ import { recordPlay } from "../shared/ui/progress.js";
      the rules must not burn the clock either. Counted, because both can hold
      it at once. */
   function holdTimer() {
-    if (phase !== "playing") return;
+    // A party round runs on the party's clock, which does not stop for anyone.
+    if (phase !== "playing" || party) return;
     pauseCount++;
     if (pauseCount > 1) return;
     pausedAt = Date.now();
@@ -491,7 +499,7 @@ import { recordPlay } from "../shared/ui/progress.js";
   }
 
   function beginStroke(e) {
-    if (phase === "finished") return;
+    if (phase === "finished" || (party && phase === "idle")) return;
     var p = localPoint(e);
 
     if (phase === "idle") {
@@ -511,6 +519,7 @@ import { recordPlay } from "../shared/ui/progress.js";
     activePointerId = e.pointerId;
     try { strokeCanvas.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
     captureUndo("stroke");
+    inked = true;
     lastRaw = p;
     drawDot(p);
   }
@@ -570,6 +579,7 @@ import { recordPlay } from "../shared/ui/progress.js";
     sctx.clearRect(0, 0, cssW, cssH);
     pctx.clearRect(0, 0, cssW, cssH);
     totalDist = 0;
+    inked = false;
     stampShape();
     clearUndo();
     tone(300, 0.07, 0.03);
@@ -604,6 +614,7 @@ import { recordPlay } from "../shared/ui/progress.js";
 
   function finishRound() {
     if (phase === "finished") return;
+    if (party) return finishParty();
     finalLeft = msLeft(); // while the phase still says "playing"
     phase = "finished";
     /* The result is the drawing, not a number, so the slot fills with no score.
@@ -637,6 +648,70 @@ import { recordPlay } from "../shared/ui/progress.js";
   }
 
   function showOverlay() { overlay.classList.add("show"); }
+
+  // ---------- party rounds ----------
+  //
+  // Inside /party/ the page is one drawing on the party's clock: no idle
+  // "tap to start", no pause when hidden, no end card and no play recorded.
+
+  /* The Tap Party round contract (ARCHITECTURE.md, "Tap Party"), as in Flip
+     It and Slide N Order, with two differences: `go` carries the prompt — the
+     party page picks it, so it can name someone in the room — and the party
+     page says `stop` at 0:00, because it owns the clock.
+       child  → parent  { type: "ready" }
+       parent → child   { type: "go", elapsed, shape, direction }
+       parent → child   { type: "stop" }
+       child  → parent  { type: "result", seed, ms, image }   a JPEG Blob, or null */
+  function readRound() {
+    var params = new URLSearchParams(location.search);
+    var raw = params.get("seed") || "";
+    if (params.get("party") !== "1" || window.self === window.top) return null;
+    if (!/^[0-9a-z]{1,7}$/.test(raw) || parseInt(raw, 36) > 0xffffffff) return null;
+    return { seed: parseInt(raw, 36) };
+  }
+
+  function joinRound() {
+    document.documentElement.dataset.party = "wait";
+    window.addEventListener("message", function (e) {
+      if (e.origin !== location.origin || e.source !== window.parent || !e.data) return;
+      if (e.data.type === "go" && phase === "idle" && Number.isFinite(e.data.elapsed)) {
+        goRound(Math.max(0, e.data.elapsed), String(e.data.shape), String(e.data.direction));
+      } else if (e.data.type === "stop") finishRound();
+    });
+    window.parent.postMessage({ type: "ready" }, location.origin);
+  }
+
+  function goRound(elapsed, shape, direction) {
+    round = { shape: shape, label: shape, direction: direction };
+    promptShape.textContent = shape;
+    promptDir.textContent = direction;
+    document.documentElement.dataset.party = "on";
+    goAt = Date.now() - elapsed;
+    phase = "playing";
+    stampShape();
+  }
+
+  function finishParty() {
+    phase = "finished";
+    drawing = false;
+    syncUndo();
+    toolbar.classList.add("locked");
+    sndEnd();
+    var ms = Math.round(Date.now() - goAt);
+    var send = function (image) {
+      window.parent.postMessage({ type: "result", seed: party.seed, ms: ms, image: image }, location.origin);
+    };
+    if (!inked) return send(null);
+    // The layers are transparent: the JPEG gets the artist's own paper.
+    var off = document.createElement("canvas");
+    off.width = off.height = EXPORT_PX;
+    var octx = off.getContext("2d");
+    octx.fillStyle = isDark() ? "#14132a" : "#fdfbf6";
+    octx.fillRect(0, 0, EXPORT_PX, EXPORT_PX);
+    octx.drawImage(paintCanvas, 0, 0, EXPORT_PX, EXPORT_PX);
+    octx.drawImage(strokeCanvas, 0, 0, EXPORT_PX, EXPORT_PX);
+    off.toBlob(send, "image/jpeg", EXPORT_Q);
+  }
 
   // ---------- share ----------
   function shareBackground(octx, SIZE) {
@@ -873,5 +948,8 @@ import { recordPlay } from "../shared/ui/progress.js";
 
   buildSwatches();
   setTool("pencil");
-  newRound();
+  if (party) {
+    resizeCanvas(false); // the shape arrives with `go`
+    joinRound();
+  } else newRound();
 })();

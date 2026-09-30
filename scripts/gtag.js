@@ -22,7 +22,7 @@
 // Wrapped in try/catch throughout: analytics must never affect whether a game
 // runs (ARCHITECTURE.md §19, §20, §26).
 //
-// A framed page — a game running as a Tap Clash round inside /clash/ — loads
+// A framed page — a game running as a Tap Party round inside /party/ — loads
 // no library either: the party page already counts that visit, and a pageview
 // per round would count one party as five visits.
 //

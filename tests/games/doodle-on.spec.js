@@ -138,8 +138,8 @@ test("the bucket paints, and repainting the same region just recolours it", asyn
   await page.locator("#paintTool").click();
   await expect(page.locator("#paintTool")).toHaveClass(/is-active/);
 
-  // A corner is open paper in every round: the shape is centred and spans a
-  // little over half the short side, so it never reaches here.
+  // A corner is open paper in every round: the shape is centred and spans
+  // 40% of the short side at most, so it never reaches here.
   const swatches = page.locator("#swatches .swatch");
   await swatches.nth(2).click(); // pink
   await tapCanvas(page, 0.06, 0.06);
