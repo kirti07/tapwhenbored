@@ -2006,7 +2006,10 @@ practice: no game needs it to start, run or finish.
 | Node             | 22                |
 
 `vercel.json` carries `buildCommand`, `outputDirectory`, `trailingSlash: true`,
-and cache headers. It contains **no** per-game redirects or rewrites: Vercel
+`regions` and cache headers. `regions: ["hnd1"]` (Tokyo) puts the one
+function, the Tap Clash API, near its Upstash store in Seoul; every clash
+action is several sequential store calls, so the function's distance from
+the store is paid on each one. It contains **no** per-game redirects or rewrites: Vercel
 serves `dist/<slug>/index.html` at `/<slug>/` straight from the filesystem, and
 `trailingSlash: true` supersedes the previous seven-row redirect table.
 
@@ -2178,7 +2181,8 @@ Slide N Order 60/90/120/180 s); the results are the finale, with Share, the
 host's rematch controls and "Host your own" on the same screen — there is no
 separate recap for these games (a recap card is Doodle On's, Phase 2); a
 rematch is the next round, in a new room everyone follows into, with the same game or another.
-A player who finishes early waits on the clash page with the room, and the host
+A player who finishes early waits on the clash page with the room, seeing who
+else has finished, ranked so far, and how many are still playing; the host
 can call time once half the room is done.
 
 ## Shape
@@ -2232,11 +2236,17 @@ times (`s:`) never leave the server.
   because it closes the round and bounds every result.
 * A result must echo the room's seed, arrive while the round is live, and
   claim `ms ∈ [2 s, min(cap, time since start + 3 s grace)]` — all scaled.
+* Joining closes when the host starts (`join` → 409 `already started`): the
+  round is whoever is in the room at that moment. A phone opening the link
+  later is told so rather than offered a seat.
 * The round closes when everyone is done, at the cap + 3 s grace, or when the
   host ends it (`end`: host-only, while playing, once half are done). Anyone
   still playing did not finish.
-* Rate limits by `x-real-ip` (IPv6 by /64): 60 posts a minute, 10 rooms per
-  ten minutes. Origin must equal the request's own origin. Bodies ≤ 4 KB.
+* Rate limits by `x-real-ip` (IPv6 by /64): 60 posts a minute, 10 new rooms
+  per ten minutes, counted in the same pipeline as the room read. A party
+  shares one Wi-Fi address, so `ping` and `result` are never counted and a
+  rematch is not a new room. Origin must equal the request's own origin.
+  Bodies ≤ 4 KB.
 * Scoring, ties, late joiners, removals and awards: `src/clash/rules.js`, with
   `tests/clash/rules.spec.js` as the worked examples.
 

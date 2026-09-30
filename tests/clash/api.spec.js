@@ -169,6 +169,20 @@ test.describe("what the API refuses", () => {
     expect(room).toBe(404); // counted, but under the per-minute limit
   });
 
+  test("a party on one Wi-Fi: pings and results are never limited, and a rematch is not a new room", async () => {
+    const api = setup({ limits: { post: 4, create: 1 } });
+    const p = await party(api, 1); // create + join: 2 of the 4 posts this minute
+    const room = await toPlay(api, p); // start: 3
+    for (let i = 0; i < 10; i++) expect((await p.as(1, { type: "ping" })).status).toBe(200);
+    api.clock.advance(3000);
+    for (const n of [0, 1]) {
+      expect((await p.as(n, { type: "result", seed: room.seed, ms: 2500 + n, moves: 9 })).status).toBe(200);
+    }
+    // The room limit was spent on the create; a rematch still goes through.
+    expect((await p.as(0, { type: "rematch" })).status).toBe(200); // 4
+    expect((await p.as(0, { type: "kick", target: 1 })).status).toBe(429); // 5
+  });
+
   test("a store that is down is a 503, never an empty room", async () => {
     const handle = createHandler({ store: { pipeline: async () => { throw new Error("down"); } }, limits: null });
     const res = await handle(new Request(`${URL_}?r=BCDF`));
@@ -218,14 +232,18 @@ test.describe("results", () => {
     expect(R.derive(await p.room(), api.clock.now()).phase).toBe("final");
   });
 
-  test("someone who joins after the start cannot post a result", async () => {
+  test("joining closes the moment the host starts — title card, round and results", async () => {
     const api = setup();
     const p = await party(api, 1);
-    const room = await toPlay(api, p);
-    const late = await api.post({ type: "join", code: p.code, name: "Late", emoji: 5 });
-    api.clock.advance(4000);
-    const res = await api.post({ code: p.code, seat: late.body.seat, token: late.body.token, type: "result", seed: room.seed, ms: 3000, moves: 9 });
-    expect(res.status).toBe(403);
+    await p.as(0, { type: "start" });
+    const late = () => api.post({ type: "join", code: p.code, name: "Late", emoji: 5 });
+    expect(await late()).toMatchObject({ status: 409, body: { error: "already started" } });
+    const room = await p.room();
+    api.clock.advance(R.timetable(room).playAt - api.clock.now() + 1);
+    expect((await late()).status).toBe(409);
+    api.clock.advance(120_000);
+    expect((await late()).status).toBe(409);
+    expect((await p.room()).players).toHaveLength(2);
   });
 });
 

@@ -3,6 +3,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "trailingSlash": true,
+  "regions": ["hnd1"],
   "headers": [
     {
       "source": "/(.*)",

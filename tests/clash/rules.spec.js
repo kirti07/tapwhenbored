@@ -90,7 +90,8 @@ test("Slide N Order ranks on moves first, time second", () => {
   expect(R.placements(r).map((x) => x.seat)).toEqual([1, 2, 0]);
 });
 
-test("someone who joins after the start only watches", () => {
+// Joining closes at the start (api.spec.js); this is a join that raced it.
+test("someone whose join lands after the board went live only watches", () => {
   const r = room(3);
   r.players.push({ seat: 3, name: "Late", emoji: 0, joinedAt: at(r, 1000), kickedAt: null });
   expect(R.placements(r).map((x) => x.seat)).not.toContain(3);
