@@ -225,8 +225,10 @@ import { recordPlay } from "../shared/ui/progress.js";
     alphaDirty = true;
   }
 
-  function localPoint(e) {
-    var rect = strokeCanvas.getBoundingClientRect();
+  // A stroke measures the canvas once, at pointerdown, not on every move.
+  var strokeRect = null;
+  function localPoint(e, sameStroke) {
+    var rect = sameStroke && strokeRect ? strokeRect : (strokeRect = strokeCanvas.getBoundingClientRect());
     var x = e.clientX - rect.left;
     var y = e.clientY - rect.top;
     if (x < 0) x = 0; else if (x > cssW) x = cssW;
@@ -301,6 +303,7 @@ import { recordPlay } from "../shared/ui/progress.js";
   var fillMask = null;      // Uint8Array(W*H)
   var stack = [];           // seed indices; a plain array so it cannot overflow
   var alphaDirty = true;
+  var regionTop = 0, regionBottom = 0; // rows the last computeRegion touched
 
   function allocFillBuffers() {
     W = strokeCanvas.width;
@@ -338,6 +341,7 @@ import { recordPlay } from "../shared/ui/progress.js";
     var seed = py * W + px;
     if (strokeAlpha[seed] >= ALPHA_TOL) return 0;
     var count = 0;
+    regionTop = regionBottom = py;
     stack.length = 0;
     stack.push(seed);
     while (stack.length) {
@@ -345,6 +349,7 @@ import { recordPlay } from "../shared/ui/progress.js";
       if (fillMask[i]) continue;
       var y = (i / W) | 0;
       var rowStart = y * W;
+      if (y < regionTop) regionTop = y; else if (y > regionBottom) regionBottom = y;
       var xl = i - rowStart, xr = xl;
       while (xl > 0 && isOpen(rowStart + xl - 1)) xl--;
       while (xr < W - 1 && isOpen(rowStart + xr + 1)) xr++;
@@ -358,11 +363,13 @@ import { recordPlay } from "../shared/ui/progress.js";
     return count;
   }
 
+  // Reads and writes only the rows the region spans, not the whole canvas.
   function paintRegion(css) {
-    var img = pctx.getImageData(0, 0, W, H);
+    var img = pctx.getImageData(0, regionTop, W, regionBottom - regionTop + 1);
     var d = img.data;
     var rgb = parseColor(css);
-    for (var i = 0, p = 0; i < fillMask.length; i++, p += 4) {
+    var end = (regionBottom + 1) * W;
+    for (var i = regionTop * W, p = 0; i < end; i++, p += 4) {
       if (fillMask[i]) {
         d[p] = rgb.r;
         d[p + 1] = rgb.g;
@@ -370,7 +377,7 @@ import { recordPlay } from "../shared/ui/progress.js";
         d[p + 3] = 255;
       }
     }
-    pctx.putImageData(img, 0, 0);
+    pctx.putImageData(img, 0, regionTop);
   }
 
   function bucketAt(cssX, cssY) {
@@ -526,7 +533,7 @@ import { recordPlay } from "../shared/ui/progress.js";
 
   function continueStroke(e) {
     if (!drawing || e.pointerId !== activePointerId) return;
-    var p = localPoint(e);
+    var p = localPoint(e, true);
     renderSegment(lastRaw, p);
     lastRaw = p;
   }
@@ -792,7 +799,6 @@ import { recordPlay } from "../shared/ui/progress.js";
     octx.drawImage(strokeCanvas, x, y, w, h);
     octx.restore();
 
-    // wordmark
     octx.textAlign = "center";
     octx.fillStyle = dark ? "#f0eefa" : "#2b2620";
     octx.font = "800 40px -apple-system, Helvetica, Arial, sans-serif";

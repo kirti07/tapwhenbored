@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv } from "vite";
+import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -145,7 +146,9 @@ function vercelInsights() {
       handler: () => [
         {
           tag: "script",
-          attrs: { defer: true, src: "/_vercel/insights/script.js" },
+          // async, not defer: a slow analytics host must not hold back
+          // DOMContentLoaded for the game.
+          attrs: { async: true, src: "/_vercel/insights/script.js" },
           injectTo: "head",
         },
       ],
@@ -434,7 +437,7 @@ function homepageFromRegistry() {
             <span class="arc-marquee"><span class="arc-pix">${escapeHtml(g.title)}</span></span>
             <span class="arc-cabtab-foot">
               <span class="arc-cabtab-k">${board ? "All-time best" : "No board"}</span>
-              <span class="arc-cabtab-v" data-top>${board ? "&mdash;" : "&mdash;"}</span>
+              <span class="arc-cabtab-v" data-top>&mdash;</span>
               <span class="arc-cabtab-w" data-holder>${board ? "" : "just for the doing"}</span>
             </span>
           </button>`;
@@ -527,59 +530,117 @@ function sitemap() {
 }
 
 /**
- * The PWA layer: the manifest link, the apple-touch icon, and the snippet that
- * clears out the service worker this site used to ship.
- *
- * The app is installable and nothing more. There is no worker and no cache, so
- * neither a browser tab nor the installed app has an offline mode
- * (ARCHITECTURE.md §18, §19) — and installability does not need one: Chrome
- * dropped the registered-worker requirement in 108 on mobile and 112 on
- * desktop.
+ * Preconnects to Supabase on the three pages that read from it at load, so the
+ * DNS and TLS handshake overlap the page's own files instead of following them.
  */
-function pwa() {
-  let swCleanup = "";
+function supabasePreconnect(env) {
+  return {
+    name: "twb:supabase-preconnect",
+    transformIndexHtml: {
+      order: "post",
+      handler: (_html, ctx) =>
+        env.SUPABASE_URL && (isHomepage(ctx) || isAccount(ctx) || isWall(ctx))
+          ? [
+              {
+                tag: "link",
+                attrs: { rel: "preconnect", href: new URL(env.SUPABASE_URL).origin, crossorigin: true },
+                injectTo: "head-prepend",
+              },
+            ]
+          : [],
+    },
+  };
+}
+
+/**
+ * The PWA layer (ARCHITECTURE.md §18, §19): manifest and iOS links, the
+ * generated service worker, and the snippet that registers it. TWB_SW=off is
+ * the kill switch: it ships the tombstone worker and the cleanup snippet
+ * instead. Dev never registers a worker.
+ */
+function pwa(env) {
+  const off = env.TWB_SW === "off";
+  const read = (file) => readFileSync(path.join(rootDir, file), "utf8");
+  const inline = (file) =>
+    read(file).replace(/^(?:\/\/.*\n)+/, "").replace(/\s+/g, " ").trim();
+  const cleanup = inline("scripts/sw-cleanup.js");
+  const register = inline("scripts/sw-register.js");
+  const meta = (name, content) => ({ tag: "meta", attrs: { name, content }, injectTo: "head" });
+
   return {
     name: "twb:pwa",
-
-    buildStart() {
-      // Same read-as-a-string treatment as the theme bootstrap: the header
-      // documents the contract rather than the runtime behaviour, so it does
-      // not belong in every page, and the body is collapsed to one line. That
-      // collapse is why the file's code carries no `//` comments.
-      swCleanup = readFileSync(path.join(rootDir, "scripts/sw-cleanup.js"), "utf8")
-        .replace(/^(?:\/\/.*\n)+/, "")
-        .replace(/\s+/g, " ")
-        .trim();
-      // Rebuild when it changes during dev.
-      this.addWatchFile?.(path.join(rootDir, "scripts/sw-cleanup.js"));
-    },
+    // After vite:build-html, so the pages are in the bundle by generateBundle.
+    enforce: "post",
 
     transformIndexHtml: {
       order: "post",
-      handler: () => [
+      handler: (_html, ctx) => [
+        { tag: "link", attrs: { rel: "manifest", href: "/manifest.webmanifest" }, injectTo: "head" },
         {
           tag: "link",
-          attrs: { rel: "manifest", href: "/manifest.webmanifest" },
+          attrs: { rel: "apple-touch-icon", sizes: "180x180", href: "/icons/apple-touch-icon.png" },
           injectTo: "head",
         },
-        {
-          tag: "link",
-          attrs: { rel: "apple-touch-icon", href: "/icons/icon-192.png" },
-          injectTo: "head",
-        },
-        {
-          // Unregisters any worker still installed from an earlier build and
-          // drops its caches. See scripts/sw-cleanup.js for why the page does
-          // this rather than leaving it to the browser's own update check.
-          //
-          // Inlined rather than shipped as a chunk. The homepage otherwise
-          // emits no JavaScript at all, so an external file would add a request
-          // to every page for ~350 bytes of source.
-          tag: "script",
-          children: swCleanup,
-          injectTo: "body",
-        },
+        meta("mobile-web-app-capable", "yes"),
+        meta("apple-mobile-web-app-capable", "yes"),
+        meta("apple-mobile-web-app-status-bar-style", "default"),
+        { tag: "script", children: off || ctx.server ? cleanup : register, injectTo: "body" },
       ],
+    },
+
+    generateBundle(_, bundle) {
+      if (off) {
+        this.emitFile({ type: "asset", fileName: "sw.js", source: read("scripts/sw-tombstone.js") });
+        return;
+      }
+
+      // A page's files: its HTML's /static/ references and everything they import.
+      const add = (file, out) => {
+        const item = bundle[file];
+        if (!item || out.has(file)) return;
+        out.add(file);
+        if (item.type !== "chunk") return;
+        for (const dep of [...item.imports, ...item.dynamicImports]) add(dep, out);
+        for (const css of item.viteMetadata?.importedCss ?? []) out.add(css);
+      };
+      const groups = Object.keys(bundle)
+        .filter((file) => file.endsWith("index.html"))
+        .sort()
+        .map((file) => {
+          const files = new Set([file]);
+          for (const [, ref] of String(bundle[file].source).matchAll(/"\/(static\/[^"]+)"/g)) {
+            add(ref, files);
+          }
+          return [...files];
+        });
+
+      const fixed = [
+        "manifest.webmanifest",
+        "favicon.svg",
+        "icons/apple-touch-icon.png",
+        ...readdirSync(path.join(publicDir, "fonts"))
+          .filter((f) => f.endsWith(".woff2"))
+          .map((f) => `fonts/${f}`),
+      ];
+      const bytes = (file) => {
+        const item = bundle[file];
+        if (!item) return readFileSync(path.join(publicDir, file));
+        return item.type === "chunk" ? item.code : item.source;
+      };
+      const hash = createHash("sha256").update(read("scripts/sw.js"));
+      for (const file of [...fixed, ...groups.flat()]) hash.update(file).update(bytes(file));
+
+      const url = (file) => "/" + file.replace(/index\.html$/, "");
+      const shell = groups.find((g) => g[0] === "index.html");
+      const rest = groups.filter((g) => g !== shell);
+      this.emitFile({
+        type: "asset",
+        fileName: "sw.js",
+        source: read("scripts/sw.js")
+          .replace("__BUILD__", JSON.stringify(hash.digest("hex").slice(0, 12)))
+          .replace("__SHELL__", JSON.stringify([...fixed, ...shell].map(url)))
+          .replace("__PAGES__", JSON.stringify(rest.map((g) => g.map(url)))),
+      });
     },
   };
 }
@@ -656,7 +717,8 @@ export default defineConfig(({ mode }) => {
     vercelInsights(),
     googleAnalytics(),
     sitemap(),
-    pwa(),
+    supabasePreconnect(env),
+    pwa(env),
     warnMissingLeaderboardEnv(env),
   ],
   // An allowlist of exactly two names, statically replaced at build time just

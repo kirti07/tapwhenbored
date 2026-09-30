@@ -1,10 +1,6 @@
-// The shared leaderboard, and — more importantly — what happens when it fails.
-//
-// GAME-TESTING.md §13 is unambiguous: a leaderboard or network failure must not
-// break the game. That matters more than usual here because both call sites use
-// a bare .then() with no .catch(), so a rejected promise would abort the rest of
-// the game-over handler and cost the player their overlay and replay button.
-// These tests exercise abort, 500, and a hang against the real pages.
+// The shared leaderboard, and what happens when it fails. A network failure must
+// not break the game (GAME-TESTING.md §13): call sites use a bare .then(), so a
+// rejection would cost the player their overlay. Covers abort, 500 and a hang.
 
 import { test, expect } from "@playwright/test";
 import { games } from "../../src/data/games.js";
@@ -108,22 +104,10 @@ test("a game plays with no credentials configured", async ({ page }) => {
 /**
  * Plays to a finished board and returns whether the end overlay appeared.
  *
- * Peg solitaire always terminates because every jump removes a marble, so any
- * legal-move-until-stuck strategy finishes. Which marble can move is worked
- * out from the board's own data-r/data-c coordinates, so each jump costs two
- * clicks; an earlier version discovered the move by clicking every marble in
- * turn, up to 32 clicks a jump, and timed out on the mobile project under a
- * full-suite load.
- *
- * The landing hole is then taken from the game's own .valid-target marking
- * rather than from the coordinates: selecting a marble marks its legal targets
- * synchronously, and letting the game name them keeps this helper honest about
- * the rules instead of reimplementing them.
- *
- * Each jump waits for the marble count to actually drop. A captured marble
- * stays in the DOM while it fades, so a fixed delay let the next iteration
- * read a board that still contained it, pick a jump over a marble that was
- * already gone, and stall on a marble the game refused to select.
+ * Any legal-move-until-stuck strategy terminates. The mover is found from
+ * data-r/data-c (two clicks a jump, fast enough for mobile under load); the
+ * landing hole comes from the game's own .valid-target marking. Each jump waits
+ * for the marble count to drop, since captured marbles linger while fading.
  */
 async function playToEnd(page) {
   await expect(page.locator(".marble").first()).toBeVisible();
@@ -182,9 +166,7 @@ async function playToEnd(page) {
 
 /**
  * What submit_game_run() answers with: the game-wide record, whether this run
- * was written, and where the player stands on today's board. The end card
- * wants all of it in one round trip, so the RPC returns an object rather than
- * the bare number the pre-board shape did.
+ * was written, and where the player stands on today's board.
  */
 const answer = (best, extra = {}) =>
   JSON.stringify({
@@ -228,12 +210,8 @@ test.describe("the end card shows the global best", () => {
     expect(sent.length).toBeGreaterThan(0);
     expect(sent[0].p_slug).toBe("marble-nostalgia");
     expect(Number.isInteger(sent[0].p_score)).toBe(true);
-    // EVERY game pins its local day now, daily or not. It used to be a
-    // per-game option and only word-steps set it, so the other five had their
-    // Today and This week boards keyed by the server's UTC date while the wall
-    // reads them with localDay() -- at UTC+5:30 that hid every run played
-    // before 05:30 local. `is_daily` in the database, not this field, is what
-    // decides whether a game's *record* is day-scoped.
+    // Every game sends its local day so its boards match the wall's localDay().
+    // `is_daily` in the database decides whether the record is day-scoped.
     expect(sent[0].p_day, "the local day travels with every run").toMatch(
       /^\d{4}-\d{2}-\d{2}$/,
     );
@@ -280,10 +258,7 @@ test.describe("the end card shows the global best", () => {
     expect(sent.length).toBeGreaterThan(0);
     expect(sent[0].p_name, "the name rides along").toBe("Kirti");
 
-    /* And it costs nothing. The whole point of putting the name on this body
-       rather than in a call of its own is that the POST was happening anyway,
-       so a name reaches the boards with no extra round trip at game over —
-       which is when a player is most likely to be closing the tab. */
+    /* No extra round trip at game over. */
     expect(all.length, `one request, not two: ${all.join(", ")}`).toBe(1);
     expect(uncaught()).toEqual([]);
   });
@@ -299,10 +274,7 @@ test.describe("the end card shows the global best", () => {
     expect(await playToEnd(page), "did not reach an end state").toBe(true);
 
     expect(sent.length).toBeGreaterThan(0);
-    /* Omitted, not sent empty. The server reads a missing name as "this run
-       brought none" and never as "clear it", so one stale read here can never
-       unsign somebody from every board at once. Clearing is the account
-       page's job, through save_player. */
+    /* Omitted, not sent empty: a run may set a name, never clear one. */
     expect("p_name" in sent[0], "no p_name key when unnamed").toBe(false);
   });
 
@@ -339,18 +311,9 @@ test.describe("the end card shows the global best", () => {
 // ---------------------------------------------------------------------------
 // The end card, on more games than one.
 //
-// marble-nostalgia used to be the only game whose end card was ever asserted,
-// and the other four had each quietly drifted: honeycomb skipped the
-// availability guard and announced "unavailable" on a normal end card, and
-// bubble-tap hid the line with a class where every other game used the
-// `hidden` attribute. A suite that only tested failure modes saw neither.
-//
-// So these play the two other games whose end state is reachable without
-// writing a solver — bubble-tap by tapping a bomb, word-steps by walking a
-// real ladder. Between them and marble-nostalgia they cover both wordings,
-// both score directions, and the one daily board. slide-n-order and honeycomb
-// still reach their end cards only through a 15-puzzle or hive solve, so they
-// stay covered by the failure matrix above and by sharing this one code path.
+// bubble-tap (tap a bomb) and word-steps (walk a real ladder) are the other
+// games whose end state is reachable without a solver. With marble-nostalgia
+// they cover both wordings, both score directions and the daily board.
 // ---------------------------------------------------------------------------
 
 test.describe("bubble-tap reports the global best", () => {
@@ -381,9 +344,7 @@ test.describe("bubble-tap reports the global best", () => {
     await popABomb(page);
 
     // Highest wins, and a bomb on the first tap scores nothing, so 4321
-    // stands. This is also the regression guard for the line being hidden by
-    // the `hidden` attribute now rather than a class: if bubble-tap's own CSS
-    // kept overriding that, toBeVisible would fail here.
+    // stands. toBeVisible also guards bubble-tap's CSS honouring `hidden`.
     const line = page.locator("#globalBest");
     await expect(line).toBeVisible();
     await expect(line).toHaveText("GLOBAL BEST 04321");
@@ -391,12 +352,8 @@ test.describe("bubble-tap reports the global best", () => {
 
     expect(sent.length).toBeGreaterThan(0);
     expect(sent[0].p_slug).toBe("bubble-tap");
-    // EVERY game pins its local day now, daily or not. It used to be a
-    // per-game option and only word-steps set it, so the other five had their
-    // Today and This week boards keyed by the server's UTC date while the wall
-    // reads them with localDay() -- at UTC+5:30 that hid every run played
-    // before 05:30 local. `is_daily` in the database, not this field, is what
-    // decides whether a game's *record* is day-scoped.
+    // Every game sends its local day so its boards match the wall's localDay().
+    // `is_daily` in the database decides whether the record is day-scoped.
     expect(sent[0].p_day, "the local day travels with every run").toMatch(
       /^\d{4}-\d{2}-\d{2}$/,
     );
@@ -433,9 +390,8 @@ test.describe("bubble-tap reports the global best", () => {
 // ---------------------------------------------------------------------------
 // word-steps, played to the end for real.
 //
-// The registry says this is the one daily board, so it is the only game that
-// must pin a day — and the only place a wrong `p_day` would silently file a
-// score against yesterday's puzzle.
+// The one daily board, where a wrong `p_day` would file a score against
+// another day's puzzle.
 // ---------------------------------------------------------------------------
 
 /**

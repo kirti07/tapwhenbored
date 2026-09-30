@@ -70,8 +70,8 @@ The architecture standardizes the things around the games:
 | Game implementation    | Vanilla JS                        |
 | Styling                | CSS                               |
 | Deployment             | Vercel                            |
-| PWA                    | Web App Manifest + icons          |
-| Offline gameplay       | No — installable, not offline     |
+| PWA                    | Manifest + icons + service worker |
+| Offline gameplay       | Yes — every visited game (§19)    |
 | Backend                | Tap Party rooms only: two Vercel Functions over Upstash Redis (§43) |
 | Leaderboards           | Supabase            |
 | Browser testing        | Playwright                        |
@@ -85,7 +85,7 @@ The architecture standardizes the things around the games:
 | Build output           | `dist/`                           |
 | Trailing slash         | Canonical, enforced in Vercel     |
 | Game discovery         | Filesystem, validated vs registry |
-| Offline model          | None — nothing is cached (§19)    |
+| Offline model          | Network-first pages, cache-first hashed files (§19) |
 
 ---
 
@@ -134,7 +134,7 @@ reader who does not know that will look for the missing content in vain.
 | `vercelInsights()` | Adds the Vercel Analytics tag, which only exists on Vercel's edge. |
 | `googleAnalytics()` | Inlines `scripts/gtag.js` at the end of every page's `<head>` (§19). |
 | `sitemap()` | Emits `sitemap.xml` from the registry; a dev middleware and a build emit (§28). |
-| `pwa()` | Injects the manifest and icon links, and inlines the worker-cleanup snippet (§18, §19). |
+| `pwa()` | Injects the manifest, icon and iOS links; emits `sw.js` with its precache manifest and inlines the registration snippet (§18, §19). `TWB_SW=off` emits the tombstone and cleanup snippet instead. |
 | `warnMissingLeaderboardEnv()` | Warns when Supabase credentials are absent, and **fails the build** if a secret-looking variable is present (§35). |
 
 Two rules about them. A marker-based plugin replaces an exact string including
@@ -282,26 +282,28 @@ A game should be understandable and runnable without understanding the implement
 tap-when-bored/
 │
 ├── package.json              ("type": "module")
-├── vite.config.js            (root: src/, outDir: dist/, MPA entries)
-├── vercel.json               (buildCommand, outputDirectory, trailingSlash)
+├── vite.config.js            (root: src/, outDir: dist/, MPA entries, plugins §4)
+├── vercel.json               (build, trailingSlash, region, cache headers)
 ├── playwright.config.js
 ├── CLAUDE.md
 ├── ARCHITECTURE.md
+├── README-supabase.sql       leaderboard schema and RPCs (§27)
+│
+├── api/                      Vercel Functions — Tap Party only (§43)
+│   ├── party/
+│   └── _lib/                 party.js (the handler), redis.js
 │
 ├── src/                      ← Vite root. Layout here IS the URL structure (§5).
 │   ├── index.html            →  /
-│   ├── style.css             (homepage only)
+│   ├── home.js
+│   ├── style.css             homepage, /account/ and /wall/
 │   │
 │   ├── data/
 │   │   └── games.js          registry — portable ESM, browser + Node
 │   │
-│   ├── shared/               no index.html ⇒ not a page
-│   │   ├── css/
-│   │   │   ├── tokens.css
-│   │   │   ├── base.css
-│   │   │   ├── shell.css
-│   │   │   ├── howto.css
-│   │   │   └── leaderboard.css
+│   ├── shared/               no index.html ⇒ not a page (§9)
+│   │   ├── css/              tokens, base, shell, howto, leaderboard, arcade,
+│   │   │                     endcard, challenge, party-round
 │   │   └── ui/
 │   │       ├── leaderboard.js
 │   │       ├── prefs.js      namespaced localStorage, try/catch inside
@@ -311,51 +313,43 @@ tap-when-bored/
 │   │       ├── player.js     the player's name, on this device only
 │   │       ├── progress.js   what this browser played today
 │   │       ├── day.js        localDay() — the player's date, not UTC
-│   │       └── format.js     one spelling for a score and a timestamp
-│   │                         §9 lists what else is *allowed* to live here.
-│   │                         Every one of these replaced eight hand-maintained
-│   │                         copies; none of them holds game rules.
+│   │       ├── format.js     one spelling for a score and a timestamp
+│   │       └── slot.js       one region, several states, no layout jump
 │   │
-│   ├── account/              →  /account/ the player card
-│   │   ├── index.html                     noindex: it is personal, not content
-│   │   └── account.js
-│   │
-│   ├── wall/                 →  /wall/    the boards
-│   │   ├── index.html                     indexed: this is public content
-│   │   └── wall.js
+│   ├── account/              →  /account/ the player card (noindex)
+│   ├── wall/                 →  /wall/    the boards (indexed)
+│   ├── party/                →  /party/   Tap Party (§43)
 │   │
 │   ├── honeycomb/            →  /honeycomb/
 │   │   ├── index.html        mandatory — this file makes it a page
 │   │   ├── game.js           loaded as type="module"
-│   │   ├── style.css
-│   │   └── assets/           game-specific, content-hashed
-│   │
-│   ├── doodle-on/            →  /doodle-on/
+│   │   └── style.css
 │   └── ...                   one flat directory per game
 │
 ├── scripts/
-│   ├── new-game.js
-│   └── validate-games.js
+│   ├── new-game.js, validate-games.js, check-bundles.js
+│   ├── sw.js, sw-register.js, sw-cleanup.js, sw-tombstone.js   (§19)
+│   ├── theme-bootstrap.js, gtag.js                            inlined by plugins
+│   ├── sprite.svg, theme-button.html, end-card-*.html         markup partials
+│   ├── party-dev-store.js    in-memory store for dev and preview
+│   └── brand/                icon sources
 │
 ├── tests/
-│   ├── smoke/
-│   ├── pwa/
-│   └── games/
+│   ├── smoke/  pwa/  games/  party/
+│   └── helpers/
 │
 ├── public/                   copied verbatim to the dist root; never processed
-│   ├── favicon.svg
-│   ├── robots.txt
-│   ├── manifest.webmanifest
+│   ├── favicon.svg, robots.txt, manifest.webmanifest
+│   ├── fonts/                self-hosted webfonts + licences (§25)
 │   ├── icons/
 │   └── assets/               crawler-facing images at stable, indexed URLs
 │
 └── dist/                     build output (gitignored)
 ```
 
-`sitemap.xml` is deliberately absent from `public/` — it is emitted by a Vite
-plugin from the registry (§28), so it cannot drift. `sw.js` *is* in `public/`,
-because it is no longer generated from anything: it is a fixed tombstone that
-removes the caching worker this site used to ship (§19).
+`sitemap.xml` and `sw.js` are deliberately absent from `public/` — both are
+emitted by Vite plugins, the sitemap from the registry (§28) and the worker from
+the bundle (§19), so neither can drift.
 
 Games are flat directories under `src/`, not nested under `src/games/`, because
 the source directory name is the production URL (§4, §5).
@@ -938,121 +932,149 @@ them; it does not paint them.
 
 # 18. PWA Architecture
 
-Tap When Bored is an **installable** Progressive Web App. It is not an offline
-one.
+Tap When Bored is an **installable, offline-capable** Progressive Web App.
 
-The PWA is a **platform layer** on top of the MPA architecture.
+> **Status:** shipped 2026-09-30, replacing the "installable, not offline"
+> model. Measured on emulated slow 3G, a repeat visit to any game now paints in
+> about 0.45 s instead of 1.3–1.6 s, and a stalled network costs at most the
+> 2 s page timeout.
 
-It must not convert the site into an SPA.
+The PWA is a **platform layer** on top of the MPA architecture. It must not
+convert the site into an SPA: every page is still a real document at its own
+URL, and the worker only decides where that document comes from.
 
 The PWA consists of:
 
 ```text
-Web App Manifest
-        +
-Application Icons
+Web App Manifest + icons        installability, app window, splash
+Service worker (/sw.js)         instant repeat loads, offline play (§19)
+Registration snippet            inlined into every page by pwa()
 ```
-
-That is all of it. There is no service worker and no cache — §19.
 
 The PWA should provide:
 
 * Installability
-* App-like launch
-* Graceful handling of network failures
+* App-like launch that paints without waiting on the network
+* Every visited game playable offline
+* Graceful handling of network failures — never a blank screen
 
-Installability does not need a worker: Chrome dropped the registered-worker
-requirement in 108 on mobile and 112 on desktop, so an install still gets its
-own window, icon and splash screen. It does not get an offline copy.
+### Why the worker came back
 
-The manifest and apple-touch-icon links are injected into every page by `pwa()`
-in `vite.config.js`, which is also what inlines the cleanup snippet §19
-describes. Nothing else is generated for the PWA.
+The site shipped a caching worker once and removed it (commit `fe0402a`)
+because it served pages cache-first, which meant stale builds, a two-cache
+lookup-order bug and a reload protocol. With no worker, though, the installed
+iPhone app shows a dead white screen on weak signal, and every launch and game
+switch pays 9–13 requests of round trips for 21–74 kB of content. The site's
+bottleneck is latency, not bytes, and only a local copy removes it.
+
+The new worker keeps what the removal got right: **pages are network-first**, so
+a deploy is live on the next good connection and there is no update protocol.
+
+### iOS
+
+iOS supports the worker in standalone mode. It does not capture links, so a
+`?join=` link opens Safari, whose storage is separate from the home-screen
+app's. The page head also carries `apple-mobile-web-app-capable`,
+`apple-mobile-web-app-status-bar-style` and a 180 × 180 `apple-touch-icon` for
+iOS versions that ignore the manifest.
 
 ---
 
 # 19. Caching and Offline Mode
 
-**There is none.** Nothing is cached by the application — not in a browser tab,
-not in the installed app — and no page is available without the network.
+One service worker, **generated by the build**, with one rule per kind of URL.
 
-This was removed deliberately. The site shipped a service worker that precached
-the app shell and cached each game as it was opened. It worked, and it cost a
-worker lifecycle, a two-cache invalidation scheme, an update-announcement
-protocol between worker and page, and a standing risk of serving a stale build —
-for games that load in a few kB over any working connection. Offline is a
-feature to add back on purpose, not one to keep running by inertia.
+| Request | Strategy |
+| --- | --- |
+| Page navigation | Network first with navigation preload. After **2 s**, the cached copy; with no copy, an inline offline page with Retry. A successful network response replaces the cached copy. |
+| `/static/*` | Cache first, then network (and cache it). Content-hashed, so never stale. |
+| `/fonts/*`, `/icons/*`, `/manifest.webmanifest`, `/favicon.svg` | Cache first; precached with each build. |
+| `/api/*`, `/_vercel/*`, any other origin (Supabase, GA4), non-GET | **Not intercepted.** No `respondWith`; the browser handles it as if there were no worker. |
 
 What follows from that:
 
-* **A page load is a page load.** Every document and every asset comes from the
-  network, subject only to HTTP cache headers (§36). Nothing in the browser
-  answers a navigation on the site's behalf.
-* **A deploy is live on the next navigation.** There is no cache to invalidate
-  and no worker to update, which is why §21 is now a paragraph rather than a
-  protocol.
-* **Offline is the browser's own failure page.** There is no "not available
-  offline" document, because nothing pretends to hold a copy.
+* **A deploy is live on the next good navigation.** Pages come from the network
+  whenever it answers within 2 s, and a page's `/static/` files are named by
+  content, so a new document can never pair with old code.
+* **A slow or absent network costs at most 2 s**, then the last build the player
+  saw, whole and consistent.
 * **Gameplay still must not depend on the network** once a page is open (§20).
-  That is a property of the game code, not of a cache.
+  The worker adds offline *loading*; it does not change game code.
+* **Saved data is not the worker's.** Bests, streaks, identity and theme live in
+  `localStorage` (§27), which the worker never reads or clears.
 
-### Removing the worker from devices that already have one
+### Cache keys
 
-Shipping no worker is not enough by itself. A device that visited while there
-was one still has it registered, and an active worker keeps answering out of its
-caches — so it would go on serving an old build for as long as the player keeps
-the app installed. Two things remove it.
+A navigation is stored and looked up by **path only**, query and hash
+stripped. `?r=`, `?join=`, `?seed=`, `?party=1` and `?theme=` all reuse the one
+cached copy of the page; each game reads its parameters from `location.search`
+at runtime, never from the document. Subresources keep their full URL.
 
-**`public/sw.js` — the tombstone.** Ten lines at the URL the old worker lived
-at: `skipWaiting`, then drop every `twb-*` cache, claim the pages the old worker
-was serving, and `unregister()`. It has no fetch handler, so the moment it
-activates nothing on the origin is answered from a cache — including the page
-that is already open, which is why this beats simply deleting the file.
+### Caches and the build id
 
-Claim comes *before* unregister: claim is what takes the open pages away from
-the old worker, and once the registration is gone there is nothing left to claim
-with.
+* One cache per build: `twb-<build id>`. The build id is a short hash of every
+  precached file's bytes, so a deploy that ships identical output changes
+  nothing on devices.
+* On `activate`, every `twb-*` cache except the **current and the previous**
+  build is deleted. The previous one is kept so a page left open across a
+  deploy can still load its own lazy chunks (the word-steps dictionary, `uqr`),
+  which Vercel no longer serves once the new deployment is live.
+* Cache names from the old worker (`twb-shell-*`, `twb-runtime`) fall under the
+  same rule and are deleted on the first activation.
+
+### What is cached, and when
+
+`pwa()` emits `dist/sw.js` in `generateBundle`, from `scripts/sw.js` plus a
+precache manifest computed from the bundle — per page, its HTML and every
+`/static/` file it references, including dynamic imports. No list is kept by
+hand, so a new game is covered without touching the worker (§11).
 
 ```text
-navigation   the old worker still answers this one from cache
-             the update check fetches /sw.js, finds a byte-different script
-install      skipWaiting
-activate     twb-* caches deleted, open pages claimed, registration removed
-             → every request from here on goes to the network
+install    precache the shell: /, shared chunks, fonts, icons, manifest
+           skipWaiting
+activate   delete old caches, enable navigation preload, clients.claim
+idle       warm every other page's group, one at a time
+           skipped when navigator.connection.saveData or effectiveType is 2g
+visit      any page or file fetched is cached as it goes
 ```
 
-Serving a 404 instead also removes the registration in Chromium, but it leaves
-the caches behind and other engines need not do it at all. It is deliberately
-kept as a real script, and it must stay deployed for as long as any device might
-still carry the old worker.
+The whole shelf is about 130 kB gzipped. The warm-up is what makes the next
+game tap instant; it never runs on the first visit's critical path, which is
+the property §41's "eager caching of all games" exists to protect.
 
-Measured against a real installed app window carrying the previous build's
-worker and caches: both caches and the registration were gone within about two
-seconds of the launch, and the next navigation in that same session already came
-from the network. Only the first paint of the first launch is the old build.
+### Registration
 
-**`scripts/sw-cleanup.js` — the page-side half.** Inlined into every page; on
-every load it unregisters every registration for the origin and deletes every
-`twb-*` cache. Idempotent, silent, and gated on nothing. It covers what the
-tombstone cannot reach: a registration that has already gone while its caches
-stayed behind, anything done by hand in DevTools, and the state of the world
-after the tombstone is eventually deleted.
+`scripts/sw-register.js`, inlined by `pwa()` into every built page. On `load`
+it registers `/sw.js`, then, when the browser is idle, posts `"warm"` so the
+worker caches the rest of the shelf — unless Save-Data is on or the connection
+reports 2G. It runs in top-level pages only; a party round's iframe is covered
+by its parent. There is no reload and no update prompt.
 
-Both are temporary in principle. Once no device in the field can still be
-carrying a worker, `public/sw.js` and the snippet with its injection can go.
+The dev server gets the cleanup snippet instead, so it never has a worker and
+HMR is never answered from a cache. Playwright blocks workers in every spec but
+`tests/pwa/`.
 
-### The fold rule, and why it is gone
+`/sw.js` is served with `Cache-Control: no-cache` (§36), so the browser's
+update check always sees the current worker.
 
-There used to be an `EAGER_CARDS` bound in `vite.config.js`: a fixed four shelf
-cards fetched eagerly whether the catalogue held seven games or fifty, with
-everything below `loading="lazy"` and a smoke test asserting both directions.
-It first existed to bound the precache and stayed on as a first-paint bound.
+### Kill switch
 
-It has been deleted along with the images it scheduled. The shelf now draws
-each game as a glyph from a single inlined SVG sprite, so the homepage requests
-no images at all and there is nothing left to schedule — the launch cost cannot
-grow with the shelf because the shelf costs nothing to fetch. Adding game #50
-adds a `<symbol>` and one card of markup.
+`TWB_SW=off npm run build` ships the tombstone instead: `/sw.js` becomes
+`scripts/sw-tombstone.js`, a worker that deletes every `twb-*` cache, claims
+open pages and unregisters itself, and `pwa()` inlines `scripts/sw-cleanup.js`
+in place of the registration. One redeploy removes the worker from every device
+on its next navigation. Set `TWB_SW=off` in Vercel's environment and redeploy;
+remove it and redeploy to bring the worker back.
+
+### Rules for releases
+
+1. **API changes are additive for one release.** A cached client may call the
+   party API (§43) or a Supabase RPC (§27) after the server has moved on. Add
+   fields; never rename or remove one in the same release.
+2. **A `localStorage` format change reads the old format.** A player can move
+   between builds while offline.
+3. **Nothing reuses a hashed filename, and nothing edits `dist/`.** Cache-first
+   for `/static/*` is only safe because the name is the content.
 
 ### Network-dependent APIs
 
@@ -1067,6 +1089,11 @@ either in its source. `vercelInsights()` adds Vercel Analytics, which is
 cookieless and served from Vercel's edge — so it 404s in dev and preview, which
 is why `tests/smoke/site.spec.js` allowlists it. `googleAnalytics()` inlines
 `scripts/gtag.js`, the GA4 tag for `G-NPERHK4GNM`.
+
+Neither may compete with a game for a slow connection. The Vercel tag is
+`async`, so it never holds back `DOMContentLoaded`, and the GA4 library is
+requested only after `load`, when the browser is idle. Calls made before then
+queue in `dataLayer`.
 
 GA4 loads its library **only when the hostname contains `tapwhenbored.com`**.
 That excludes dev, `vite preview`, Playwright and `*.vercel.app` preview
@@ -1087,15 +1114,16 @@ Neither tag is measured by `check:bundles`, which follows only same-origin
 A **framed** page loads no GA4 library either (`window.self !== window.top`):
 that is a game running as a Tap Party round inside `/party/`, and a pageview per
 round would count one party as five visits. `gtag("event", ...)` still queues
-harmlessly. The Vercel tag is a static script and still counts framed rounds.
+harmlessly. The Vercel tag is a plain script and still counts framed rounds.
 
 ---
 
 # 20. Network-Independent Gameplay
 
 Core gameplay should not depend on network connectivity **once the page is
-open**. Loading the page needs the network (§19); everything after that must
-not.
+open**. A first visit needs the network; a visited page loads from the worker's
+cache when the network cannot answer (§19). Everything after loading must not
+need it.
 
 A game should continue functioning when:
 
@@ -1129,20 +1157,20 @@ Game unavailable
 
 # 21. PWA Update Strategy
 
-There is nothing to update.
+There is no update protocol, on purpose.
 
-With no service worker, a deploy is live on the next navigation: the document
-comes from the network, and the `/static/` files it names are content-hashed, so
-a page can never pair a new document with stale code.
+A deploy reaches a player in two independent ways:
 
-This section used to describe a worker lifecycle — precache the new shell, drop
-the older ones, claim the open pages, announce the new build, and reload the
-shelf but only if the player had not touched it yet, and never a game in play.
-All of it went with the worker (§19). Reintroducing caching means reintroducing
-that protocol, which is most of what the trade actually costs.
+* **The document** — pages are network-first (§19), so the next navigation on a
+  working connection is the new build, whatever worker the device runs.
+* **The worker** — the browser checks `/sw.js` on navigation. A byte-different
+  worker installs, precaches the new shell, `skipWaiting`s, and on `activate`
+  drops caches older than the previous build.
 
-The one moving part left is the cleanup snippet in §19, which removes a worker
-installed by an older build.
+Neither needs the page's help, so there is no `postMessage`, no "new version"
+banner, and no reload — never of a game in play, and not of the shelf either.
+A page left open across a deploy keeps running its own build until it is next
+navigated, and its lazy chunks still resolve from the previous build's cache.
 
 ---
 
@@ -1606,10 +1634,18 @@ that is a wiring mistake and should be loud.
 The other three functions:
 
 ```text
-save_player(p_player_id, p_write_token, name, email, prefs…) → boolean
-delete_player(p_player_id, p_write_token)                    → boolean
-my_standing(p_slug, p_period_kind, p_day, p_player_id)       → json
+save_player_v2(p_player_id, p_write_token, name, email, prefs…) → text
+delete_player_v2(p_player_id, p_write_token)                    → text
+my_standing(p_slug, p_period_kind, p_day, p_player_id)          → json
 ```
+
+The two writes return a reason — `ok`, `not_found`, `busy`, `denied`,
+`blocked`, `bad_name`, `bad_email` — and the account page words each one from a
+single table, so "nothing to delete" or "you're offline" never reads as "try
+again in a minute". `save_player()` and `delete_player()` remain as boolean
+wrappers for cached older builds, and the client falls back to them when a
+`_v2` function is missing. An empty email field sends no `p_email`: clearing an
+address is its own action, because the boards never send it back to prefill.
 
 `my_standing()` is the only **read** that cannot be a plain PostgREST query,
 because rank and board size are not columns. The boards themselves are a table
@@ -1777,8 +1813,10 @@ Three layers:
   `wall.spec.js` and `account.spec.js` for the three pages that are not games.
 * **Game-specific** — core mechanic, win and loss conditions, restart. Only for
   games whose complexity earns it.
-* **PWA** — manifest and icons, and the absence of any worker, cache or
-  offline mode (§19).
+* **PWA** — manifest and icons; the worker's routes, offline play of a visited
+  game, the offline page, cache cleanup across two builds, and that `/api/*` is
+  never cached (§19). Every other spec runs with service workers blocked, so a
+  cache can never make a smoke test pass.
 
 Suites run against both the dev server and the preview server, which serve
 identical URLs (§5), so no spec needs environment-specific paths.
@@ -1922,7 +1960,7 @@ to preserve, and each is checkable:
   a script and not an image.
 * **Reduced motion silences the decorative.** Celebrations, blinking cursors and
   loading pulses go; the interface still works and still says the same things.
-* Nothing here reintroduces a cache, a worker or a framework (§19, §41).
+* Nothing here adds a cache or a worker beyond §19, or a framework (§41).
 
 ---
 
@@ -1987,7 +2025,7 @@ The production build should contain:
 * Static assets
 * PWA manifest
 * Icons
-* The tombstone service worker (§19)
+* The generated service worker, or the tombstone in a kill-switch build (§19)
 * Sitemap
 * Metadata
 
@@ -2018,6 +2056,8 @@ Cache headers:
 * `/static/*` — Vite's content-hashed output — immutable, one year.
 * `/assets/*` — stable-filename public assets — revalidating, one day.
 * `/fonts/*` — the webfonts, also stable-filename — revalidating, one day.
+* `/sw.js` — `no-cache`, so the browser's update check always sees the
+  current worker (§21).
   Fonts sit under neither of the two prefixes above and need their own rule; a
   face with no cache header is re-fetched on the critical path of every visit.
 
@@ -2061,11 +2101,7 @@ exist:
 ```
 
 All four cover accessibility, motion, touch and copy as first-class concerns
-rather than as a pass at the end. They gained those sections after a platform
-review found defects — an end card that was not a dialog in any game, six games
-with sound and no mute, a 13-pixel-tall back link — that the documents as
-written could not have caught, because they only described how a screen should
-look.
+rather than as a pass at the end.
 
 Responsibilities:
 
@@ -2104,7 +2140,7 @@ Before introducing a major architectural change, evaluate:
 4. Does it increase bundle size?
 5. Does it make AI development easier or harder?
 6. Does it weaken game isolation?
-7. Does it reintroduce caching or an offline mode (§19)?
+7. Does it cache anything outside the rules in §19?
 8. Does it increase testing complexity?
 9. Can the problem be solved locally instead?
 
@@ -2153,7 +2189,8 @@ Do not introduce these without a strong architectural reason:
 * A shared colour token that overrides a game's own palette
 * Mandatory backend
 * Network-dependent gameplay
-* Eager caching of all games
+* Caching all games on the first visit's critical path (§19 warms them when idle)
+* A page-reload or update protocol driven by the service worker (§21)
 * Runtime-generated SEO
 * Excessive abstraction
 * Shared game-specific logic
@@ -2169,11 +2206,55 @@ Do not introduce these without a strong architectural reason:
 
 ---
 
+# 42. Final Architectural Principle
+
+Tap When Bored should remain:
+
+> **A collection of tiny, independent games wrapped in a lightweight shared platform.**
+
+The platform provides:
+
+```text
+Build
+Deployment
+PWA
+Theme
+Shell
+Metadata
+Registry
+Validation
+Testing
+Performance
+```
+
+The games provide:
+
+```text
+Mechanics
+State
+Rules
+Rendering
+Input
+Scoring
+Replayability
+```
+
+The boundary between the two should remain clear.
+
+When adding a new feature, prefer improving the platform only when multiple games genuinely need it.
+
+When building a new game, prefer keeping the implementation inside the game.
+
+The goal is not architectural uniformity.
+
+The goal is to make **every individual game fast, simple, testable, and easy to build.**
+
+---
+
 # 43. Tap Party
 
 Tap Party is the one feature on the site that needs a server: 2–10 phones in a
-room racing the same seeded board on a shared clock. PRD "Start a Party";
-design `research/tap_party_design/`.
+room racing the same seeded board on a shared clock (PRD "Start a Party").
 
 **A party is one round of one game.** The host picks the game and a time limit
 from that game's presets (`GAMES` in `src/party/rules.js` — Flip It 30/60/90 s,
@@ -2335,48 +2416,3 @@ site can frame a page that listens for these messages.
 * No recap for Flip It and Slide N Order: the results screen is the end, and
   Share sends a link. The PRD's recap card is kept for Doodle On, where the
   drawings are what people forward.
-
----
-
-# 42. Final Architectural Principle
-
-Tap When Bored should remain:
-
-> **A collection of tiny, independent games wrapped in a lightweight shared platform.**
-
-The platform provides:
-
-```text
-Build
-Deployment
-PWA
-Theme
-Shell
-Metadata
-Registry
-Validation
-Testing
-Performance
-```
-
-The games provide:
-
-```text
-Mechanics
-State
-Rules
-Rendering
-Input
-Scoring
-Replayability
-```
-
-The boundary between the two should remain clear.
-
-When adding a new feature, prefer improving the platform only when multiple games genuinely need it.
-
-When building a new game, prefer keeping the implementation inside the game.
-
-The goal is not architectural uniformity.
-
-The goal is to make **every individual game fast, simple, testable, and easy to build.**

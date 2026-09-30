@@ -1,52 +1,16 @@
-/* The display webfont, and the token that names it.
+/* The display webfonts and the tokens that name them.
  *
- * Nunito is self-hosted rather than loaded from fonts.googleapis.com. The
- * reason is first paint: a cross-origin stylesheet in the <head> blocks
- * rendering until it arrives, so a page cannot paint until a third-party
- * server answers. A same-origin file is one fewer connection to open and one
- * fewer party to depend on. (This paragraph used to justify the choice by the
- * service worker's precache; there is no worker and no cache any more —
- * ARCHITECTURE.md §19 — but the first-paint reason is the one that mattered
- * and it still holds.)
+ * Self-hosted so no cross-origin stylesheet blocks first paint. Nunito and
+ * Silkscreen are SIL OFL 1.1; the licences travel in public/fonts/
+ * (Nunito-OFL.txt, Silkscreen-OFL.txt).
  *
- * Latin subset only, both weights, straight from Google's own CSS: 16.2 kB +
- * 16.5 kB. Nunito is SIL OFL 1.1, which permits this and asks that the licence
- * travel with the files — see public/fonts/Nunito-OFL.txt.
+ * Pages preload only the weights they render; tests/smoke/site.spec.js
+ * enforces that. `font-weight: 600` resolves to the 700 file.
  *
- * A page preloads only the weights it actually renders. Weight 800 is
- * honeycomb's alone — its .tile-label is the one rule in the site that pairs
- * var(--font-display) with font-weight: 800. Every other page preloaded it for
- * a while and never drew a glyph in it, which is ~16 kB of the critical path at
- * the highest fetch priority the browser has.
+ * Silkscreen is for arcade chrome only: never body copy, never below 8.5px.
  *
- * Each page therefore preloads only the weights it renders, and
- * tests/smoke/site.spec.js pins the two together in both directions: a page
- * that uses the display font must preload 700, and one that never renders
- * weight 800 must not preload it.
- *
- * Note that `font-weight: 600` against these faces resolves to the 700 file:
- * with no 600 available, CSS font matching for a target above 500 checks
- * heavier weights first. That is why the shared .overlay-global and the various
- * .share-btn rules need no third face. It is also the trap in auditing this by
- * hand — a rule can say 800 and mean the *system* font, as word-steps' tiles
- * and bubble-tap's record line do, and those consume nothing from here.
- *
- * The pixel display face, Silkscreen, is the arcade chrome's face: marquees,
- * page headings, section eyebrows, medals, chips and the one big result number.
- * Never body copy and never below 8.5px, which is why two static weights are
- * enough — and why its fallback is the body face rather than a generic, so a
- * failed load degrades to the site's own display font and not to Times.
- * Latin subset, 3.5 kB + 3.2 kB. Also SIL OFL 1.1; see
- * public/fonts/Silkscreen-OFL.txt.
- *
- * A game's palette is part of its identity and lives in its own style.css.
- * This file must never set --bg, --ink, --line, --accent, or any other colour a
- * game defines for itself: the token NAMES agree across games but the VALUES
- * deliberately differ, so a shared colour here would either be overridden
- * everywhere (pointless) or flatten a game's look (harmful).
- *
- * Not imported by bubble-tap, which loads no webfont and is deliberately
- * system-font. The homepage imports this file and nothing else shared. */
+ * Never set game colours (--bg, --ink, --accent, …) here: names are shared,
+ * values are each game's own. Not imported by bubble-tap. */
 
 @font-face {
   font-family: "Nunito";
@@ -86,6 +50,6 @@
 
 :root {
   --font-display: "Nunito", ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif;
-  /* Falls back to the display face, deliberately: see the note above. */
+  /* Falls back to the display face, not a generic. */
   --font-pix: "Silkscreen", "Nunito", ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif;
 }

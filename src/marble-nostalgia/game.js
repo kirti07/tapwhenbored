@@ -280,7 +280,6 @@ import { recordPlay } from "../shared/ui/progress.js";
     var dy = f.top - t.top;
     el.style.transition = "none";
     el.style.transform = "translate(" + dx + "px," + dy + "px)";
-    // force reflow
     void el.offsetWidth;
     el.style.transition = "";
     el.style.transform = "";

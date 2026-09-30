@@ -336,25 +336,25 @@ When changing PWA functionality, test:
 * Manifest availability
 * Every declared icon existing
 * Application loading
-* That no page registers a service worker
-* That nothing lands in Cache Storage
-* That a visited game is *not* playable offline
-* That a cache left over from an earlier build is cleared
-* That registering `/sw.js` unregisters itself and takes the caches with it
+* That the worker registers, controls the page and precaches the shell
+* That the idle warm-up caches every page
+* That a visited game plays offline, including with a query string
+* That an unsaved page offline shows the offline page, not a browser error
+* That pages are network-first: a stale cached copy is replaced online
+* That `/api/*` never lands in a cache
+* That activation keeps this build's cache and the previous one, and nothing
+  older
 
-There is no caching and no offline mode, in a browser tab or in the installed
-app (ARCHITECTURE.md §19), so most of these specs assert an absence.
-`asInstalledApp()` in `tests/pwa/pwa.spec.js` fakes a standalone launch for the
-one spec that checks an install does not turn caching back on — `display-mode`
-itself cannot be emulated, because Chromium's `Emulation.setEmulatedMedia`
-ignores the feature.
+The worker and its rules are in ARCHITECTURE.md §19. `playwright.config.js`
+blocks service workers for every spec; `tests/pwa/pwa.spec.js` opts back in
+with `test.use({ serviceWorkers: "allow" })`. Keep it that way: a spec that
+passes because a page came from a cache is not testing the page.
+
+Offline is simulated with `context.setOffline(true)`. For a slow or stalled
+network, throttle through a CDP session (`Network.emulateNetworkConditions`),
+which also applies to the worker's own requests.
 
 A PWA change requires PWA tests in addition to the affected game tests.
-
-> These specs assert the *absence* of a worker and of caching. If offline
-> support is ever added back on purpose (ARCHITECTURE.md §19), this whole
-> section inverts and every spec here has to be rewritten rather than
-> extended. Do not patch around it.
 
 ---
 

@@ -1,12 +1,6 @@
-// Structural checks that run before every build (npm run build == validate &&
-// vite build), so a broken repository cannot reach production.
-//
-// The important one is bidirectional: every registry entry must have a page on
-// disk, AND every page on disk must have a registry entry. Filesystem discovery
-// means vite.config.js never needs editing when a game is added; this check
-// means the homepage, sitemap, and smoke tests cannot silently fall behind.
-//
-// See ARCHITECTURE.md §29.
+// Structural checks that run before every build, so a broken repository cannot
+// reach production. The key check is bidirectional: every registry entry has a
+// page on disk and every page on disk has a registry entry. ARCHITECTURE.md §29.
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -28,9 +22,7 @@ const RESERVED = new Set([
   "_vercel",
   // public/fonts/ is served at /fonts/.
   "fonts",
-  // Non-game pages. A game may not claim one of these slugs. "book" stays
-  // reserved after that page was retired: the URL was indexed, and a game
-  // claiming it would start serving something else at a remembered address.
+  // Non-game pages. "book" stays reserved: its retired URL was indexed.
   "account",
   "book",
   "wall",
@@ -71,10 +63,8 @@ for (const g of games) {
     if (typeof g[f] !== "boolean") err(`${where}: "${f}" must be a boolean`);
   }
 
-  // leaderboard is either false, or a descriptor recording how the game is
-  // scored. The values the database actually enforces live in game_config; the
-  // cross-check further down is what stops this copy from drifting away from
-  // them.
+  // leaderboard is false or a scoring descriptor; it is cross-checked against
+  // game_config further down.
   const lb = g.leaderboard;
   if (lb !== false) {
     if (typeof lb !== "object" || lb === null) {
@@ -109,13 +99,8 @@ for (const g of games) {
   if (g.ogImage && /\.svg$/i.test(g.ogImage))
     err(`${where}: ogImage "${g.ogImage}" is an SVG; use a raster format`);
 
-  // How this game's score reads: what it counts, and whether the number is a
-  // millisecond duration or a plain count. A property of the game, not of its
-  // leaderboard — untangle keeps a local best and has no public board, and its
-  // "31 moves" is no less a score for that.
-  //
-  // Required wherever a score exists at all. doodle-on is the one game that
-  // genuinely has none: it is a drawing, not a number.
+  // How this game's score reads. A property of the game, not its leaderboard;
+  // required wherever a score exists (doodle-on has none).
   if (g.scoreFormat !== undefined && !["int", "time"].includes(g.scoreFormat))
     err(`${where}: scoreFormat must be "int" or "time"`);
   if (g.scoreFormat !== undefined && !g.scoreUnit)
@@ -123,11 +108,7 @@ for (const g of games) {
   if (g.leaderboard !== false && !g.scoreFormat)
     err(`${where}: a game with a leaderboard must declare scoreFormat/scoreUnit`);
 
-  // The card accents. These used to be sixteen hand-written `.card--<slug>`
-  // rules in src/style.css with nothing checking they existed: a new game got a
-  // cardClass from the scaffold, nobody added the CSS pair, and the card
-  // silently shipped in the fallback purple. Now they are registry data, and a
-  // missing or malformed one fails the build.
+  // The card accents; a missing one would silently ship the fallback colour.
   for (const field of ["accent", "accentDark"]) {
     const v = g[field];
     if (v && !/^#[0-9a-f]{6}$/i.test(v))
@@ -164,9 +145,8 @@ for (const g of games) {
 
   const html = readFileSync(page, "utf8");
 
-  // A non-module script is left in the output HTML while its file is never
-  // emitted, so the built page 404s its own game script — and the build still
-  // exits 0. This check is the only thing that catches it.
+  // A non-module script is never emitted, so the page 404s its own script and
+  // the build still exits 0. Only this check catches it.
   const classic = [...html.matchAll(/<script(?![^>]*\btype=)[^>]*\bsrc=/g)];
   if (classic.length)
     err(
@@ -174,9 +154,7 @@ for (const g of games) {
         `(would not be bundled or emitted)`,
     );
 
-  // The theme bootstrap is inlined from one source at build time. Losing the
-  // marker does not error — it silently drops FOUC protection, so dark-mode
-  // players get a white flash and nothing else reports it. Hence this check.
+  // A missing theme bootstrap marker silently drops FOUC protection.
   const markers = html.split("<!-- theme-bootstrap -->").length - 1;
   if (markers !== 1)
     err(
@@ -184,9 +162,7 @@ for (const g of games) {
         `marker, found ${markers}`,
     );
 
-  // Every game explains itself the same way: a "How to play" opener, a sheet of
-  // bullet steps, and a backdrop to dismiss it. Two games were missing this
-  // entirely, which is the drift this check prevents.
+  // Every game has a "How to play" opener, a sheet of steps and a backdrop.
   for (const id of ["howtoBtn", "howtoSheet", "howtoBackdrop"]) {
     if (!html.includes(`id="${id}"`))
       err(`src/${g.slug}/index.html: missing #${id} — every game needs "How to play"`);
@@ -196,12 +172,8 @@ for (const g of games) {
   if (!html.includes("<summary>What is this?</summary>"))
     err(`src/${g.slug}/index.html: the seo-info summary should read "What is this?"`);
 
-  // Every end card offers the same two ways out besides replaying: an X to the
-  // games list, and a link to the wall. Both are substituted in at build time
-  // (sharedMarkup() in vite.config.js), and a marker that goes missing fails
-  // silently — the card simply ships with no exit, which is the state this
-  // whole control was added to fix. They live inside .overlay-actions and the
-  // card respectively, so the wrapper is checked too.
+  // Every end card needs its exit X and wall link markers, substituted at build
+  // time by sharedMarkup() in vite.config.js; a missing one fails silently.
   for (const marker of ["endcard-exit", "endcard-wall"]) {
     const found = html.split(`<!-- ${marker} -->`).length - 1;
     if (found !== 1)
@@ -233,15 +205,8 @@ for (const g of games) {
 
   if (!html.includes("<title>")) err(`src/${g.slug}/index.html: missing <title>`);
 
-  /* The registry's `description` is compared to the shipped meta tag, not
-     merely counted as present.
-     It used to be checked only by REQUIRED_FIELDS -- i.e. its sole consumer was
-     the assertion that it existed. Nothing interpolated it: each page
-     hand-writes its own meta description, and this loop only checked that
-     *some* description tag was there. So eight multi-line strings could drift
-     from the eight tags they duplicate with nothing noticing, which is the
-     exact failure ARCHITECTURE.md §10 records for the deleted `unit` field.
-     Either the field earns its place or it goes; this is it earning it. */
+  /* Pages hand-write their meta description, so it must match the registry's
+     `description` exactly (ARCHITECTURE.md §10). */
   const meta = html.match(/<meta name="description" content="([^"]*)"/)?.[1];
   if (!meta) {
     err(`src/${g.slug}/index.html: missing name="description"`);
@@ -284,10 +249,8 @@ if (!existsSync(homepage)) {
 } else {
   const html = readFileSync(homepage, "utf8");
 
-  // The shelf and the WebSite/hasPart JSON-LD are filled from the registry at
-  // build time, so the source holds markers rather than links. A missing marker
-  // would silently ship a homepage with no games on it and no structured data,
-  // which is why it is checked here rather than trusted.
+  // A missing marker would silently ship a homepage with no games and no
+  // structured data.
   for (const [marker, what] of [
     ["<!-- games-shelf -->", "game shelf"],
       ["<!-- wall-tiles -->", "wall tiles"],
@@ -313,9 +276,7 @@ if (!existsSync(homepage)) {
         'absolute ("/assets/...") or the build fails',
     );
 
-  // The same URL and asset checks the games get. Their absence is how the
-  // homepage came to advertise bubble-tap's artwork as the whole site's social
-  // image: every check above this point walked `games` only.
+  // The same URL and asset checks the games get.
   const canonical = html.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
   const expected = `${SITE_URL}${home.path}`;
   if (!canonical) err("src/index.html: no canonical link");
@@ -337,8 +298,7 @@ if (!existsSync(homepage)) {
       err(`src/index.html: references missing asset ${ref}`);
   }
 
-  // The homepage's social image is the site's, not a game's. Sharing the root
-  // URL previewing as one game is the bug this pins down.
+  // The homepage's social image is the site's, not a game's.
   if (!home.ogImage || !home.ogImage.startsWith("/assets/"))
     err('games.js: home.ogImage must be an absolute "/assets/..." path');
   else if (home.ogImage.endsWith(".svg"))
@@ -362,10 +322,7 @@ if (!existsSync(homepage)) {
 
 // ---------- the shared sprite ----------
 
-/* One file, one check. Both the homepage and the book page used to inline their
-   own copy of the sprite and each was validated separately; they are now
-   substituted from scripts/sprite.svg at build time, so the only thing that can
-   go wrong is a registry entry naming a symbol that file does not define. */
+/* Every registry sticker must be a symbol in scripts/sprite.svg. */
 {
   const spritePath = path.join(rootDir, "scripts/sprite.svg");
   if (!existsSync(spritePath)) {
@@ -385,12 +342,8 @@ if (!existsSync(homepage)) {
 
 // ---------- non-game pages ----------
 
-/* Every markup check above lives inside `for (const g of games)`, so a page
- * that is not a game would otherwise ship with nothing looking at it at all.
- * These are the checks that matter for one: that it gets a theme (or dark-mode
- * players see a white flash), that it is addressable, and — the one that
- * actually bites — that the sprite it draws its stickers from is present. A
- * missing <symbol> renders eight empty boxes and no error. */
+/* Non-game pages: theme bootstrap, addressability, assets and sprite. A missing
+ * sprite renders empty boxes with no error. */
 for (const p of pages) {
   const file = path.join(srcDir, p.slug, "index.html");
   const where = `src/${p.slug}/index.html`;
@@ -438,16 +391,8 @@ for (const p of pages) {
 
 // ---------- the manifest's colours vs. the page they frame ----------
 //
-// Android paints an installed PWA's launch screen in the manifest's
-// background_color, holds it until the page's first paint, then cross-fades to
-// the page. So background_color is not decoration: it is the colour of the
-// screen the homepage fades in from, and if it disagrees with the homepage the
-// launch reads as a coloured flash rather than as the app opening.
-//
-// That is exactly what shipped once — background_color was changed to a purple
-// while the page stayed near-white — and nothing could catch it, because all
-// three values are just string literals in three different files. Pin them
-// together.
+// Android shows the manifest's background_color until first paint, so it must
+// match the homepage or the launch flashes a different colour.
 {
   const manifestPath = path.join(publicDir, "manifest.webmanifest");
   if (!existsSync(manifestPath)) {
@@ -473,9 +418,7 @@ for (const p of pages) {
             "it fades into",
         );
 
-      // The homepage's light theme-color. The bootstrap swaps it for the dark
-      // one at runtime, but the manifest has no dark variant to match, so the
-      // light value is the one that has to agree.
+      // The light theme-color: the manifest has no dark variant.
       const pageColor = existsSync(homepage)
         ? readFileSync(homepage, "utf8").match(
             /<meta name="theme-color" content="([^"]+)"/,
@@ -510,15 +453,9 @@ function decodeEntities(text) {
 
 // ---------- registry vs. the database's game_config ----------
 //
-// Direction and daily-ness are enforced by submit_game_run() from
-// game_config, not by the client (ARCHITECTURE.md §27). The registry keeps its
-// own copy so a reader can see how a game is scored without opening the SQL —
-// which is only worth having if the two cannot disagree. So parse the seed
-// INSERT and compare.
-//
-// This reads the checked-in SQL, not the live database. It catches the mistake
-// that is actually likely — editing one file and forgetting the other — and
-// cannot tell you whether the migration has been applied.
+// The database enforces direction and daily-ness (ARCHITECTURE.md §27); the
+// registry's copy must match the checked-in seed INSERT. This reads the SQL
+// file, not the live database.
 {
   const sqlPath = path.join(rootDir, "README-supabase.sql");
   const sql = readFileSync(sqlPath, "utf8");
@@ -537,10 +474,8 @@ function decodeEntities(text) {
       /\(\s*'([^']+)'\s*,\s*(true|false)\s*,\s*(true|false)\s*,\s*'([^']*)'\s*\)/gi;
     let m;
     while ((m = row.exec(block[1])) !== null) {
-      /* `label` is the fourth positional value and is deliberately not kept:
-         nothing reads it, in the client or in the SQL functions. The regex
-         still requires it, which is the point -- it is what makes this parse
-         fail loudly if a column is ever added to the seed INSERT. */
+      /* `label` is unused but still required by the regex, so a new column in
+         the seed INSERT makes this parse fail loudly. */
       config.set(m[1], {
         lowerIsBetter: m[2].toLowerCase() === "true",
         daily: m[3].toLowerCase() === "true",

@@ -1,27 +1,12 @@
-/* The end card's two exits, and the layout of its action block.
- *
- * The card itself is a platform surface (ARCHITECTURE.md §17), and until now
- * only its *behaviour* was shared — bindOverlay() in shared/ui/shell.js. Its
- * two ways out are shared for the same reason the how-to sheet is: a player
- * who finishes a game and wants neither to replay nor to share had nothing to
- * tap, in all eight games, and eight hand-written copies of the fix would have
- * drifted the way the global-best line did before it.
- *
- * Layout and geometry only. The colours here are the same tokens howto.css
- * consumes — --line, --ink, --accent, --accent-dark — so the controls take
- * each game's palette; no value in this file is a colour. bubble-tap keeps its
- * own square, uppercase register by overriding in its own stylesheet.
- *
- * Requires --ink, --line, --accent and --accent-dark. --font-display is
- * optional: bubble-tap does not import tokens.css and inherits its own face.
+/* The end card's exit and action-block layout (ARCHITECTURE.md §17).
+ * Layout only; colours come from each game's tokens.
+ * Requires --ink, --line, --accent and --accent-dark; --font-display is optional.
  */
 
 /* ---- the exit ---- */
 
-/* The X lands exactly on the top bar's rightmost icon button: same 44x44, same
-   offsets, because every .stage uses the identical padding pair. word-steps
-   caps and centres its stage and bubble-tap has no stage at all; both override
-   `right` (and bubble-tap `top`) in their own files. */
+/* Sits exactly on the top bar's rightmost icon button. word-steps and
+   bubble-tap override the offsets in their own files. */
 .overlay-exit {
   position: absolute;
   top: max(2.4svh, env(safe-area-inset-top, 0px));
@@ -41,58 +26,38 @@
 .overlay-exit svg { width: 20px; height: 20px; }
 .overlay-exit:active { transform: scale(0.94); }
 
-/* Dead until the card is up, and deliberately so.
- *
- * Seven of the eight cards are hidden with opacity rather than display, so an
- * ungated `pointer-events: auto` would leave a live, invisible link to the
- * home page sitting exactly on top of the theme button — a page-leaving
- * misfire on one of the three controls a player taps most. This is the same
- * gate every game already puts on .overlay-content. bubble-tap's card is
- * display:none when closed and never carries .show, so it opts in separately. */
+/* Dead until the card is up: most cards hide with opacity, so an ungated exit
+   would be an invisible home link over the theme button. bubble-tap opts in
+   separately. */
 .overlay-exit { pointer-events: none; }
 .overlay.show .overlay-exit { pointer-events: auto; }
 
 /* ---- the action block ---- */
 
-/* Was a flex row of two content-sized pills, so "Play again" and "Share" were
-   different widths in all eight games and the pair read as one loud button and
-   one afterthought. Two equal columns, with the wall spanning both underneath.
-   minmax(0, 1fr) rather than a bare 1fr, which floors at min-content: doodle-on
-   and word-steps put an icon inside each button.
-   Each game keeps its own margin-top — that is the card's vertical rhythm, and
-   the rhythm belongs to the game. */
+/* Two equal columns, the wall button spanning both. minmax(0, 1fr) because a
+   bare 1fr floors at min-content. Each game keeps its own margin-top. */
 .overlay-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   column-gap: clamp(10px, 3vw, 16px);
   row-gap: clamp(8px, 1.2svh, 12px);
-  /* Clamped rather than 100%: no game gives .overlay-content a width, so a
-     percentage would be circular. 80vw clears flip-it's `padding: 0 6vw`
-     (80 + 12 = 92vw) and stays inside word-steps' `max-width: 90vw`; 320px
-     stops the pair stretching across a desktop window. */
+  /* Not 100%: .overlay-content has no width. 80vw fits flip-it's padding and
+     word-steps' max-width. */
   width: min(80vw, 320px);
 }
 
-/* Grid stretches both cells, so the pair matches in height as well as width.
-   Only doodle-on and word-steps need the centring — they set display:flex to
-   sit an icon beside the label and relied on the button being content-sized. */
+/* Centring for buttons that are display:flex with an icon (doodle-on, word-steps). */
 .overlay-actions > * {
   justify-content: center;
   text-align: center;
 }
 
-/* Every game pads these buttons `1.2svh 4vw`, which was right while they were
-   content-sized in a flex row and is backwards inside a fixed cell: at 1280px
-   wide, 4vw is 51px a side and "Play again" wrapped to two lines inside a
-   150px column. The cell owns the width now, so the padding only has to keep
-   the label off the edge. `:is()` to out-specify the games' own single-class
-   rules without naming any of them. */
+/* Games pad these `4vw` a side, which wraps labels in a fixed cell on desktop.
+   `:is()` out-specifies the games' single-class rules. */
 .overlay-actions > :is(button, a) {
   padding-inline: clamp(8px, 2vw, 16px);
 }
 
-/* Quieter than the replay control, level with Share: the same outline, a full
-   row of its own. */
 .wall-btn {
   grid-column: 1 / -1;
   display: flex;
@@ -119,23 +84,10 @@
 
 /* ---- the top bar, while the card is up ---- */
 
-/* The exit takes the slot the rightmost icon button sits in, so restart, sound
-   and theme stand down for as long as the card is open.
- *
- * This is a fix as much as a rearrangement. .topbar is deliberately left out of
- * the inert set so the "Games" link stays live (stageBehindTopbar() in
- * shell.js), and .overlay sets `pointer-events: none` — so those three buttons
- * have been clickable *through* the end card all along, in five games from
- * under a 95%-opaque wash that renders them all but invisible while they are
- * still live. That is the painted-but-dead link inverted.
- *
- * `visibility: hidden` takes them out of hit-testing, the tab order and the
- * accessibility tree in one word, which is the whole of what `inert` was
- * wanted for here. :has() because the bar is an ancestor's descendant and
- * nothing else in CSS reaches it; the alternative was an eighth option on
- * bindOverlay plus eight edited call sites, which is the spreading options
- * object ARCHITECTURE.md §9 says to fight. Where :has() is missing the bar
- * simply stays put — the X still works, it just has a neighbour. */
+/* The exit takes the rightmost icon slot, so the top bar's icon buttons stand
+   down while the card is open. The top bar is not inert (see
+   stageBehindTopbar() in shell.js), so they would otherwise be clickable
+   through the card. */
 html:has(.overlay.show) .top-actions {
   visibility: hidden;
 }

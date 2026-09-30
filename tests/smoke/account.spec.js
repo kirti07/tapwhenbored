@@ -198,6 +198,17 @@ test.describe("the name", () => {
     await expect(page.locator("#nameOut")).toHaveText("Kirti.");
   });
 
+  test("a blocked player is told the name can't go up, not to try again", async ({ page }) => {
+    await page.route(STANDING, (route) => rpc(route, null));
+    await page.route(SAVE, (route) => rpc(route, "blocked"));
+    await page.goto(ACCOUNT);
+
+    await page.locator("#editBtn").click();
+    await page.locator("#nameInp").fill("Kirti");
+    await page.locator("#saveBtn").click();
+    await expect(page.locator("#nameStatus")).toHaveText("This name can’t go on the boards.");
+  });
+
   test("an unreachable board blames the network, not the name", async ({ page }) => {
     await page.route(STANDING, (route) => rpc(route, null));
     await page.route(SAVE, (route) => route.abort());
@@ -277,6 +288,110 @@ test.describe("the address and the preferences", () => {
     await page.locator("#deleteBtn").click();
     await expect(page.locator("#prefStatus")).toHaveText("Deleted.");
     await expect(page.locator("#nameOut")).toHaveText("Unsigned");
+  });
+
+  // The reported case: nothing on the boards from this browser is not an error.
+  test("delete with nothing saved says so, and does not ask to try again", async ({ page }) => {
+    await page.route(STANDING, (route) => rpc(route, null));
+    await page.route(DELETE, (route) => rpc(route, "not_found"));
+    await page.goto(ACCOUNT);
+
+    page.once("dialog", (d) => d.accept());
+    await page.locator("#deleteBtn").click();
+    const status = page.locator("#prefStatus");
+    await expect(status).toHaveText(/Nothing was on the boards from this browser/);
+    await expect(status).not.toHaveClass(/arc-status--bad/);
+  });
+
+  test("each refusal reason gets its own words", async ({ page }) => {
+    let reason = "busy";
+    await page.route(STANDING, (route) => rpc(route, null));
+    await page.route(DELETE, (route) => rpc(route, reason));
+    await page.goto(ACCOUNT);
+    const status = page.locator("#prefStatus");
+
+    for (const [why, words] of [["busy", /Too many tries/], ["denied", /saved key doesn.t match/]]) {
+      reason = why;
+      page.once("dialog", (d) => d.accept());
+      await page.locator("#deleteBtn").click();
+      await expect(status).toHaveText(words);
+      await expect(status).toHaveClass(/arc-status--bad/);
+    }
+  });
+
+  test("offline says offline, not try again in a minute", async ({ page, context }) => {
+    await page.route(STANDING, (route) => rpc(route, null));
+    await page.goto(ACCOUNT);
+    await context.setOffline(true);
+    try {
+      page.once("dialog", (d) => d.accept());
+      await page.locator("#deleteBtn").click();
+      await expect(page.locator("#prefStatus")).toHaveText(/offline/);
+    } finally {
+      await context.setOffline(false);
+    }
+  });
+
+  // Save with the box empty used to send "", which erased a saved address.
+  test("an empty email field never erases a saved address", async ({ page }) => {
+    const sent = [];
+    await page.route(STANDING, (route) => rpc(route, null));
+    await page.route(SAVE, (route) => {
+      sent.push(JSON.parse(route.request().postData() || "{}"));
+      return rpc(route, "ok");
+    });
+    await page.goto(ACCOUNT);
+
+    await page.locator("#emailInp").fill("player@example.com");
+    await page.locator("#savePrefs").click();
+    await expect(page.locator("#prefStatus")).toHaveText("Saved.");
+    await expect(page.locator("#emailInp")).toHaveAttribute("placeholder", /Email saved/);
+
+    await page.reload();
+    await page.locator("#prefStreak").check();
+    await page.locator("#savePrefs").click();
+    await expect(page.locator("#prefStatus")).toHaveText("Saved.");
+    expect("p_email" in sent[1]).toBe(false);
+
+    await page.locator("#removeEmail").click();
+    await expect(page.locator("#prefStatus")).toHaveText("Email removed.");
+    expect(sent[2].p_email).toBe("");
+    await expect(page.locator("#removeEmail")).toBeHidden();
+  });
+
+  test("an address the boards would refuse is caught before sending", async ({ page }) => {
+    let calls = 0;
+    await page.route(STANDING, (route) => rpc(route, null));
+    await page.route(SAVE, (route) => (calls++, rpc(route, "ok")));
+    await page.goto(ACCOUNT);
+
+    await page.locator("#emailInp").fill("me@home");
+    await page.locator("#savePrefs").click();
+    await expect(page.locator("#prefStatus")).toHaveText("That address does not look right.");
+    expect(calls).toBe(0);
+  });
+
+  test("asking for mail with no address says one is needed", async ({ page }) => {
+    await page.route(STANDING, (route) => rpc(route, null));
+    await page.route(SAVE, (route) => rpc(route, "ok"));
+    await page.goto(ACCOUNT);
+
+    await expect(page.locator("#prefDisplaced")).toBeChecked();
+    await page.locator("#savePrefs").click();
+    await expect(page.locator("#prefStatus")).toHaveText(/Add an email above/);
+  });
+
+  test("falls back to the boolean function on a database without v2", async ({ page }) => {
+    await page.route(STANDING, (route) => rpc(route, null));
+    await page.route(SAVE, (route) =>
+      route.request().url().includes("_v2")
+        ? route.fulfill({ status: 404, contentType: "application/json", body: "{}" })
+        : rpc(route, true),
+    );
+    await page.goto(ACCOUNT);
+
+    await page.locator("#savePrefs").click();
+    await expect(page.locator("#prefStatus")).toHaveText(/^Saved/);
   });
 });
 

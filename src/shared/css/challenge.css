@@ -1,24 +1,12 @@
-/* The challenge card: what a challenge link shows above the board.
+/* The challenge card shown above the board for a challenge link. Uses the
+ * display face, not the pixel face, which game pages do not load.
  *
- * "Riya cleared this in · Beat 0:42" — a marquee strip over a dark screen,
- * with the level as a chip. Flip It and Slide N Order both show it, and a
- * party round will reuse the same pages, so the geometry lives here once.
- *
- * The design draws the marquee in the pixel face. It uses the display face
- * instead: game pages do not load the pixel face, and preloading it on every
- * visit for a card only challenge links show would cost every player ~7 kB.
- *
- * Layout and geometry only, like endcard.css. No value in this file is a
- * colour except the marquee bulbs, which are white light on any accent. Each
- * game sets the card's colours in its own stylesheet through four properties:
+ * Layout only; each game sets the colours:
  *
  *   --challenge-bar       marquee background
  *   --challenge-bar-ink   marquee text
  *   --challenge-screen    body background
  *   --challenge-ink       body text
- *
- * Hidden with the `hidden` attribute (base.css makes it win), so a page with
- * no challenge has no card in the layout, the tab order or the tree.
  */
 
 .challenge {

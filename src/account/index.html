@@ -133,6 +133,7 @@
       <label class="arc-field" for="emailInp">
         <span class="arc-label">Email</span>
         <input class="arc-input" id="emailInp" type="email" placeholder="you@example.com"
+               pattern="[^@\s]+@[^@\s]+\.[^@\s]+"
                autocomplete="email" inputmode="email" enterkeyhint="done" spellcheck="false">
       </label>
       <p class="arc-hint">No password, no profile, no newsletter. One email, only when you lose a top-ten slot.</p>
@@ -157,6 +158,7 @@
 
       <div class="arc-row">
         <button class="arc-btn arc-btn--primary arc-btn--sm" type="button" id="savePrefs">Save</button>
+        <button class="arc-btn arc-btn--ghost arc-btn--sm" type="button" id="removeEmail" hidden>Remove my email</button>
         <button class="arc-btn arc-btn--danger arc-btn--sm" type="button" id="deleteBtn">Delete my data</button>
       </div>
       <p class="arc-status" id="prefStatus" role="status" aria-live="polite"></p>

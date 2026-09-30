@@ -1,12 +1,8 @@
 // npm run game:new <slug>
 //
-// Creates src/<slug>/ from the shared page template and adds the registry entry,
-// which is the whole of "adding a game" (ARCHITECTURE.md §11). Deliberately a
-// small script and not a scaffolding framework (§33).
-//
-// It writes placeholder copy on purpose: `npm run validate` will pass, so you
-// can play the empty game immediately, but the text is obviously unfinished so
-// it cannot be mistaken for done.
+// Creates src/<slug>/ from the shared page template and adds the registry entry
+// (ARCHITECTURE.md §11, §33). Placeholder copy passes validation but is
+// obviously unfinished.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -30,9 +26,7 @@ const RESERVED = new Set([
   // same list in scripts/validate-games.js.
   "account",
   "wall",
-  // `book` stays reserved after that page was retired and became `account`:
-  // the URL was indexed, and a game claiming it would start serving something
-  // else at a remembered address.
+  // Retired page; its URL was indexed.
   "book",
 ]);
 
@@ -47,10 +41,8 @@ if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug))
   die(`"${slug}" must be lowercase kebab-case, e.g. "tile-flip"`);
 if (RESERVED.has(slug)) die(`"${slug}" is reserved and would collide with a build path`);
 
-/* The description is written in two places -- the page's meta tag and the
-   registry -- and `npm run validate` compares them, so the scaffold writes one
-   string to both. Editing it means editing it twice; the validator is what
-   stops you doing only one. */
+/* Written to both the meta tag and the registry; `npm run validate` requires
+   them to match. */
 const DESCRIPTION =
   "TODO: one sentence on what the player does, ending in no signup.";
 
@@ -60,16 +52,14 @@ if (existsSync(gameDir)) die(`src/${slug}/ already exists`);
 const registry = readFileSync(registryPath, "utf8");
 if (registry.includes(`slug: "${slug}"`)) die(`"${slug}" is already in the registry`);
 
-// Title Case from the slug: "tile-flip" -> "Tile Flip".
 const title = slug
   .split("-")
   .map((w) => w[0].toUpperCase() + w.slice(1))
   .join(" ");
 const today = new Date().toISOString().slice(0, 10);
 
-// The shared page shell, matching the six template-conforming games. The
-// theme-bootstrap marker sits immediately after the theme-color meta because
-// the snippet queries that tag (§18).
+// The theme-bootstrap marker must follow the theme-color meta, which the
+// snippet queries (§4).
 const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -414,11 +404,7 @@ const entry = `  {
   },
 `;
 
-// Anchored to the `games` array specifically, not to the last `];` in the file.
-// It used to be `lastIndexOf`, which was correct while `games` was the only
-// array in the registry — the moment `pages` was added below it, every new game
-// was appended to *that* instead, and validation passed because a scaffolded
-// page satisfies the page checks. Silent, and wrong.
+// Anchored to the `games` array, not the last `];`: `pages` follows it.
 const arrayStart = registry.indexOf("export const games = [");
 if (arrayStart === -1) die("could not find `export const games` in src/data/games.js");
 const marker = "\n];\n";

@@ -1,33 +1,10 @@
-/* The cabinet chrome: the marquee, the screen panel, the score table, and the
- * controls that sit with them. ARCHITECTURE.md §16 and §17.
+/* The cabinet chrome: marquee, screen panel, score table and controls
+ * (ARCHITECTURE.md §16, §17).
  *
- * Two naming rules, and both are load-bearing rather than tidiness.
- *
- * 1. Every token here is `--arc-`prefixed. The obvious names — --bg, --ink,
- *    --line, --card — are already spoken for: each game declares its own
- *    palette under those names and depends on the values differing. A shared
- *    colour called --bg would repaint eight playfields.
- *
- * 2. Every class here is `.arc-`prefixed, for the same reason one level up.
- *    This file is @imported by game stylesheets, and the mockups' generic
- *    names collide with real games: `.board` is honeycomb's hive, `.btn` is
- *    bubble-tap's buttons, `.slot` is slide-n-order's tile slots *and* the
- *    sticker book's chips. Porting those names verbatim would have restyled
- *    three games by accident.
- *
- * The one name that crosses the line is `--accent`, because it already
- * crosses it: a game declares its own, and the build inlines the registry's
- * onto every element it emits (§10). This file reads that name and never sets
- * it, so a cabinet takes the colour of whatever it is inside.
- *
- * The screen panel is dark in both themes on purpose. A cabinet screen is dark
- * whatever the room is lit like, which is the one place light mode carries a
- * large dark block, knowingly.
- *
- * Every dark value is written once, in --arc-dark-*, and mapped twice — once
- * for the OS preference and once for the in-page toggle. The mapping has to be
- * duplicated because one lives inside @media and the other does not; the
- * values do not, which is where the mistakes were.
+ * Every token is `--arc-` and every class `.arc-` prefixed: games already own
+ * --bg/--ink/--line/--card and classes like .board/.btn/.slot. `--accent` is
+ * read, never set. The screen is dark in both themes on purpose. Dark values
+ * are declared once in --arc-dark-* and mapped twice (media + toggle).
  */
 
 :root {
@@ -133,13 +110,8 @@
   --arc-screen-line: var(--arc-dark-screen-line);
 }
 
-/* A cabinet takes the colour of whatever it is inside.
- *
- * On a game page `--accent` is the game's own, and its dark override has
- * already happened, so `--accent-d` is undefined and the fallback is right.
- * On a page the build drew, both are inlined per element (§10) and the dark
- * rules below pick the second. One indirection, no per-game CSS, and game #9
- * needs no edit here. */
+/* A cabinet takes the colour of whatever it is inside: a game's own --accent,
+ * or on build-drawn pages the inlined --accent/--accent-d pair (§10). */
 .arc {
   --arc-accent: var(--accent, #8b7fe0);
 }
@@ -171,9 +143,7 @@
 
 /* ------------------------------------------------------------- cabinet -- */
 
-/* The bulbs are one radial-gradient tile, not an image and not a script: a
- * 1.7px dot with a 2.1px transparent stop for the falloff, centred in a 5px
- * strip. `--arc-bulb-tile` is the only thing the full-bleed variant changes. */
+/* The bulbs are one radial-gradient tile. */
 .arc-marquee {
   --arc-bulb-tile: 13px;
   position: relative;
@@ -231,9 +201,7 @@
   top: 2px;
 }
 
-/* Full-bleed, for the top of a page rather than the top of a card. Same
- * component: the mockups drew this twice and their bulb tiles drifted a pixel
- * apart, which is exactly the drift one component prevents. */
+/* Full-bleed variant, for the top of a page. */
 /* -------------------------------------------------------------- screen -- */
 
 .arc-screen {
@@ -271,29 +239,15 @@
   background: rgba(255, 255, 255, 0.03);
 }
 
-/* Lifted towards white so a game's colour stays legible on a near-black
- * panel. Several accents fail contrast against the screen unlifted. */
+/* Lifted towards white: some accents fail contrast on the screen unlifted. */
 .arc-screen-bar .arc-pix {
   font-size: 11px;
   color: color-mix(in srgb, var(--arc-accent) 72%, #ffffff);
 }
 
-/* The way into the cabinet, in the bar that names it.
- *
- * Sized to disappear into the row rather than to announce itself: 17px tall,
- * against the 17.8px line box #cabUnit already sets, so the bar is exactly as
- * tall as it was without it. A control with .arc-btn's padding would add six
- * pixels here and to every panel below it.
- *
- * 70% accent on the border, not less: against --arc-screen in the light theme
- * (#1a1c36, the lighter of the two) 45% is 2.2:1 and 70% is 3.2:1, and the
- * boundary of a control has a 3:1 floor. The ink is the same lift the bar's
- * title takes, so it is a colour this panel already proves legible.
- *
- * The ::after is how .back-link does it in style.css: a 44px target centred
- * on a 17px control, so the tap floor is met without standing a 44px slab in
- * a 41px bar. Where it reaches past the pill it reaches into the bar's own
- * 10px gap, whose only neighbour is a span nobody taps. */
+/* The way into the cabinet, in the bar that names it. 17px tall so the bar
+ * does not grow; the ::after gives a 44px tap target. The 70% accent border
+ * meets the 3:1 control-boundary floor on --arc-screen. */
 .arc-play {
   position: relative;
   flex: none;
@@ -336,15 +290,8 @@
   }
 }
 
-/* 470, measured rather than guessed: the title and the unit together need
-   every pixel of the bar below 471px, so the word goes and the arrow stands
-   alone. The ::after keeps the target at 44px either way.
- *
- * The unit line stays whole rather than truncating — it is what the column of
- * numbers means, and "lower is better" is the half an ellipsis would eat. The
- * cost is that the bar takes a second line below 419px instead of below 376px,
- * which is the wrap this bar already did on a small phone; the arrow moved the
- * threshold, it did not introduce it. */
+/* Below 471px the title and unit need the whole bar, so the word goes and the
+   arrow stands alone. The unit line never truncates. */
 @media (max-width: 470px) {
   .arc-play-t {
     display: none;
@@ -355,19 +302,9 @@
   }
 }
 
-/* Below 420px not even that fits, and the bar's own answer — shrink the title
- * and the unit until both break into fragments — is not one. So the unit takes
- * a row of its own and the row above it reads name, then arrow, which is the
- * pairing this bar exists to make. The arrow gets its word back: a row holding
- * only those two has room for it at every width down to 320.
- *
- * Scoped by :has() rather than left open, because the homepage's attract panel
- * is built from this same .arc-screen-bar and must not move (the note above
- * .roll-open in src/style.css is the standing warning about exactly that).
- *
- * The unit is re-ordered rather than re-positioned: #cabUnit carries an inline
- * margin-left:auto that no rule here could outrank, and on a row of its own
- * there is no free space left for an auto margin to take. */
+/* Below 420px the unit takes its own row. Scoped by :has() so the homepage's
+ * attract panel, built from the same .arc-screen-bar, does not move. `order`
+ * because #cabUnit's inline margin-left:auto cannot be outranked. */
 @media (max-width: 419px) {
   .arc-screen-bar:has(.arc-play) {
     flex-wrap: wrap;
@@ -410,9 +347,7 @@
   border-top: 1px solid var(--arc-screen-line);
 }
 
-/* 44, not the 32 the prototypes used. The tap-target floor is enforced for
-   every page in the registry, and this link sits in a footer row where the
-   extra height costs nothing. */
+/* 44px: the tap-target floor is enforced for every page in the registry. */
 .arc-link {
   color: #c9c6ff;
   font-size: 13px;
@@ -474,9 +409,8 @@
   padding-right: 4px;
 }
 
-/* `max-width: 1px` with `width: 99%` is the whole trick: the name column
- * absorbs every spare pixel and still honours text-overflow, so no length of
- * name can push the rank or the score around. */
+/* `max-width: 1px` with `width: 99%` lets the name column absorb spare width
+ * and still ellipsise. */
 .arc-board td.arc-nm {
   font-family: var(--arc-mono);
   font-size: 13px;
@@ -706,13 +640,9 @@
 
 /* --------------------------------------------------------------- slots -- */
 
-/* Several states, one grid cell, so the region is always as tall as its
- * tallest state and nothing below it moves when the state changes.
- *
- * `visibility: hidden` rather than `display: none`, because a hidden state
- * still has to contribute its height. `inert` is what takes it out of the tab
- * order and the accessibility tree, and JS applies that — pointer-events
- * alone would leave it reachable by keyboard. */
+/* States share one grid cell so the region keeps its tallest height.
+ * `visibility: hidden` keeps their height; JS applies `inert` for keyboard and
+ * screen readers. */
 .arc-slot {
   display: grid;
 }
@@ -730,9 +660,7 @@
 
 /* ------------------------------------------------------------ skeletons -- */
 
-/* A skeleton's row count and row height match the real content exactly. That
- * is the whole point of it: if the placeholder is a different size, the slot
- * above still holds its height but the content inside it jumps. */
+/* A skeleton's row count and height must match the real content exactly. */
 .arc-sk {
   display: grid;
   padding: 8px 0 0;
@@ -803,10 +731,8 @@
 
 /* ---------------------------------------------------------- cabinet row -- */
 
-/* Each tab is a small cabinet in its own right: a marquee in the game's colour
- * over its current top score. Selection is opacity plus a lift plus an accent
- * border — never colour alone, since eight accents cannot all be told apart
- * and one of them is whatever the selected tab happens to be. */
+/* Each tab is a small cabinet over its current top score. Selection is never
+ * colour alone: opacity, a lift and an accent border. */
 .arc-cabrow {
   display: flex;
   gap: 10px;
@@ -1047,8 +973,7 @@
 
 /* ------------------------------------------------------------- identity -- */
 
-/* Who this browser is, in the top bar. A link rather than a label, because the
-   only thing to do with it is go and change it. */
+/* Who this browser is, in the top bar; links to where it can be changed. */
 .arc-idchip {
   display: inline-flex;
   align-items: center;
@@ -1074,15 +999,8 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--arc-cool) 22%, transparent);
 }
 
-/* Reserved width, so the name arriving does not shove the theme button. */
-/* The chip sits in the header beside the theme button, so the name has to give
-   way rather than push it off. `24ch` is the name cap, and the `vw` term is what
-   keeps a long one from eating a narrow header — whichever is smaller wins, and
-   anything past it ellipsises.
-
-   This was a flat `12ch`, which was the old cap written into the layout. Left
-   alone it would have quietly truncated every name over twelve characters at
-   exactly the point the cap used to be. */
+/* Reserved min-width so the name arriving does not shove the theme button;
+   capped at the 24ch name limit, or less on narrow headers. */
 .arc-idchip .arc-who {
   font-family: var(--arc-mono);
   font-size: 12.5px;

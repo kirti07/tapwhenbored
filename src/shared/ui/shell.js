@@ -1,22 +1,6 @@
-/* The three page-shell behaviours every game had its own copy of: the how-to
- * sheet, the share flow, and the end card.
- *
- * Deliberately three functions and no more. There is a strong pull to grow a
- * file like this into a game engine with a lifecycle and a spreading options
- * object; the games are supposed to stay independent, so this only standardises
- * the edges that were already identical eight times over.
- *
- * The end card is the reason this exists at all. It was never a dialog in any
- * game: the board behind it kept its place in the tab order and the
- * accessibility tree, the restart and how-to controls stayed clickable through
- * it, focus never moved, and Escape did nothing. bindOverlay() fixes all four
- * without touching a single line of game logic — it watches the class the game
- * already toggles rather than asking every game to call a new API. That keeps
- * the diff in each game to one import and one call.
- *
- * On focus destination: it goes to the replay control, never to a text field.
- * The end card is for reading, not for asking. A player who finishes and hits
- * Enter should be playing again, not filling something in.
+/* Shared page-shell behaviours: the end card dialog, the how-to sheet and the
+ * share flow. Deliberately not a game engine; games stay independent.
+ * End-card focus goes to the replay control, never a text field: Enter replays.
  */
 
 var FOCUSABLE = [
@@ -33,22 +17,17 @@ function focusable(root) {
   var out = [];
   for (var i = 0; i < all.length; i++) {
     var el = all[i];
-    /* offsetParent is null for anything display:none. The end card is shown
-       with opacity, so its buttons are laid out and this keeps them. */
+    /* offsetParent is null for display:none; the end card uses opacity. */
     if (el.offsetParent !== null || el === document.activeElement) out.push(el);
   }
   return out;
 }
 
-/* Focus without yanking the page around. An end card is already in view, and
-   preventScroll stops a stray scroll offset on a document base.css keeps
-   scrollable. */
 function focusSafely(el) {
   if (!el) return;
   try { el.focus({ preventScroll: true }); } catch (e) { try { el.focus(); } catch (e2) { /* ignore */ } }
 }
 
-/* Keep Tab inside `root` while it is open. */
 function trap(root, e) {
   if (e.key !== "Tab") return;
   var items = focusable(root);
@@ -65,31 +44,9 @@ function trap(root, e) {
 }
 
 /**
- * Everything in the stage except the top bar.
- *
- * The default used to be `.stage` itself, and the top bar lives inside it in
- * seven of the eight games — so opening an end card took the only way out of
- * the page with it. The link stayed painted at full opacity (the card's
- * backdrop is a gradient that reaches transparency well above it) and did
- * nothing. word-steps made that permanent rather than momentary: it re-opens
- * its card on load for a puzzle already solved, so for the rest of the day
- * every visit — including a shared link — landed on a page whose "Games" link
- * was dead. On a phone, with no Escape key and no close control on the card,
- * the only way out was to reload.
- *
- * `inert` cannot be undone on a descendant, so the bar cannot be exempted by
- * marking the stage and then unmarking the bar; the children have to be marked
- * one at a time. bubble-tap already passed exactly this shape by hand.
- *
- * End cards carry their own X to the games list now, so the bar is no longer
- * the only way out of one. It still has to stay live: the how-to sheet uses
- * the same inert root and has no close control of its own, and a second exit
- * is not a reason to take the first one away. What the card's X *does* take is
- * the top bar's icon buttons, which sit in the slot it occupies — they stand
- * down for as long as a card is open, in CSS, in shared/css/endcard.css.
- *
- * Captured once, at bind time, like the `inertRoot` it replaces — no game
- * mutates `.stage`'s children after load.
+ * Everything in the stage except the top bar, which must stay live (the how-to
+ * sheet has no close control of its own). `inert` cannot be undone on a
+ * descendant, so the children are marked one at a time. Captured at bind time.
  */
 function stageBehindTopbar() {
   var stage = document.querySelector(".stage");
@@ -103,17 +60,10 @@ function stageBehindTopbar() {
   return out;
 }
 
-/* `inert` removes a subtree from hit-testing, the tab order and the
-   accessibility tree in one attribute — which is exactly the set of things the
-   old opacity-plus-pointer-events overlays got wrong. Baseline since 2023;
-   where it is missing the aria-hidden fallback still hides the board from a
-   screen reader, and the overlay's own backdrop still covers it visually. */
+/* aria-hidden is the fallback where `inert` is unsupported. Accepts one
+   element or a list. */
 function setInert(target, value) {
   if (!target) return;
-  /* Accepts one element or several, and it is always several now: the top bar
-     has to stay live, so the stage is frozen child by child rather than whole
-     (see stageBehindTopbar). bubble-tap has no `.stage` at all and names its
-     own list for the same reason. */
   var list = target.length !== undefined && !target.tagName ? target : [target];
   for (var i = 0; i < list.length; i++) {
     var el = list[i];
@@ -129,9 +79,8 @@ function setInert(target, value) {
 }
 
 /**
- * Give an existing end-card element real dialog semantics.
- *
- * Watches the class the game already toggles, so game code is unchanged.
+ * Give an existing end-card element dialog semantics by watching the class the
+ * game already toggles.
  *
  *   bindOverlay(document.getElementById("overlay"), {
  *     primary: againBtn,          // where focus lands, and what Enter activates
@@ -168,10 +117,7 @@ export function bindOverlay(el, opts) {
   function onKeydown(e) {
     if (!open) return;
     if (e.key === "Escape") {
-      /* Dismiss the card, not the game. The board underneath is a finished
-         puzzle worth looking at. The top bar is never frozen in the first
-         place, so this is a convenience rather than the only way out — which
-         matters on a phone, where there is no Escape key to press. */
+      /* Dismiss the card, not the game: the finished board is worth seeing. */
       if (opts.onEscape) opts.onEscape();
       else close();
       return;
@@ -191,8 +137,7 @@ export function bindOverlay(el, opts) {
     returnTo = document.activeElement;
     setInert(inertRoot, true);
     document.addEventListener("keydown", onKeydown, true);
-    /* One frame, so the element is painted and focusable before we move to it;
-       focusing mid-transition is what makes some browsers scroll the page. */
+    /* Wait a frame: focusing mid-transition scrolls the page in some browsers. */
     requestAnimationFrame(function () {
       if (open) focusSafely(primary());
     });
@@ -203,8 +148,7 @@ export function bindOverlay(el, opts) {
     open = false;
     setInert(inertRoot, false);
     document.removeEventListener("keydown", onKeydown, true);
-    /* Only pull focus back if it is still inside the card we are closing —
-       otherwise we would steal it from whatever the player just clicked. */
+    /* Only restore focus if it is still inside the card, so we do not steal it. */
     if (returnTo && el.contains(document.activeElement)) focusSafely(returnTo);
     returnTo = null;
   }
@@ -225,9 +169,7 @@ export function bindOverlay(el, opts) {
 }
 
 /**
- * The "How to play" bottom sheet: open, close, Escape, focus trap, return
- * focus. Previously eight copies that could only be closed by clicking the
- * backdrop.
+ * The "How to play" bottom sheet: open, close, Escape, focus trap, return focus.
  *
  *   initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });
  */
@@ -239,9 +181,7 @@ export function initHowto(opts) {
 
   var open = false;
   var returnTo = null;
-  /* Same treatment as the end card. The backdrop already blocks pointers and
-     the trap already holds Tab, but neither stops a screen reader swiping
-     through the board behind an open sheet. */
+  /* Inert so a screen reader cannot swipe through the board behind the sheet. */
   var inertRoot = opts.inertRoot || stageBehindTopbar();
 
   sheet.setAttribute("role", "dialog");
@@ -267,8 +207,7 @@ export function initHowto(opts) {
     sheet.classList.add("show");
     if (backdrop) backdrop.classList.add("show");
     btn.setAttribute("aria-expanded", "true");
-    /* Timed games stop their clock while the rules are up — reading how to
-       play must not cost the player their round. */
+    /* Timed games pause here so reading the rules does not cost the round. */
     if (opts.onOpen) opts.onOpen();
     setInert(inertRoot, true);
     document.addEventListener("keydown", onKeydown, true);
@@ -297,33 +236,13 @@ export function initHowto(opts) {
 }
 
 /**
- * The share flow: Web Share where it exists, clipboard otherwise, and a
- * confirmation line that announces itself and then goes away again.
- *
- *   initShare({ btn: shareBtn, note: shareNote, text: function () { ... } });
- *
- * `text` is called at click time, not at bind time, so it sees the finished
- * score rather than whatever the board held when the page loaded.
- */
-/**
- * The share confirmation line.
- *
- * Two bugs lived in the eight hand-rolled copies of this. It was a silent
- * visual change — no game gave the line an aria-live region, so a screen
- * reader user pressed Share and was told nothing at all. And it never reset:
- * it appeared on the first share and stayed up until the next time the end
- * card was shown, so a second share produced no feedback whatsoever.
- *
- * Exported separately from initShare() because two games (word-steps builds a
- * multi-line result, doodle-on shares a PNG) have genuinely different share
- * logic worth keeping, and only need the note.
+ * The share confirmation line: a polite live region that hides itself again.
+ * Exported for games with their own share logic (word-steps, doodle-on).
  */
 export function createNote(note) {
   var timer = 0;
 
   if (note) {
-    /* polite, not assertive: this is a confirmation, not a warning, and it
-       must not interrupt whatever the reader is already saying. */
     note.setAttribute("role", "status");
     note.setAttribute("aria-live", "polite");
   }
@@ -345,6 +264,13 @@ export function createNote(note) {
   return { show: show, hide: hide };
 }
 
+/**
+ * The share flow: Web Share where it exists, clipboard otherwise.
+ *
+ *   initShare({ btn: shareBtn, note: shareNote, text: function () { ... } });
+ *
+ * `text` is called at click time so it sees the finished score.
+ */
 export function initShare(opts) {
   var btn = opts.btn;
   var note = opts.note;
@@ -366,16 +292,12 @@ export function initShare(opts) {
     var url = shareUrl();
 
     if (navigator.share) {
-      /* `url` is omitted rather than sent empty when a game has none. word-steps
-         writes its link into the body of the result, and passing "" here would
-         either duplicate it or hand the share sheet a blank field. */
+      /* Omit an empty `url`: word-steps puts its link in the text. */
       var shareData = { title: opts.title || document.title, text: text };
       if (url) shareData.url = url;
       navigator
         .share(shareData)
-        /* A completed native share needs no confirmation line — the sheet the
-           player just used is the confirmation. Only a cancel lands in catch,
-           and that deserves silence too. */
+        /* The native sheet is its own confirmation; a cancel stays silent. */
         .catch(function () {});
       return;
     }
@@ -385,8 +307,7 @@ export function initShare(opts) {
       navigator.clipboard
         .writeText(payload)
         .then(function () { confirm(opts.copiedText || "Link copied"); })
-        /* Never claim a copy that did not happen. A share button that lies is
-           worse than one that does nothing. */
+        /* Never claim a copy that did not happen. */
         .catch(function () { confirm("Press and hold to copy"); });
       return;
     }

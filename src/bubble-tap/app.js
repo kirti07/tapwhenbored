@@ -84,10 +84,8 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
   const rand = (a, b) => a + Math.random() * (b - a);
   const randInt = (a, b) => Math.floor(rand(a, b + 1));
   const pad = (n, w) => String(n).padStart(w, "0");
-  // Was a bare localStorage.getItem. That call sits in the module's
-  // initialisation path, and localStorage *throws* on property access in
-  // Safari private mode rather than returning null — so the whole game died
-  // before it drew a frame. prefs.js owns the try/catch now.
+  // Goes through prefs.js: localStorage throws in Safari private mode, and
+  // this runs during module initialisation.
   const loadFlag = (key, def) => {
     const v = getPref(key, null);
     return v === null ? def : v === "true";
@@ -206,11 +204,8 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
   function topUpBubbles() {
     if (state.gameOver) return;
     const target = targetBubbleCount();
-    let guard = 0;
-    while (bubbles.filter((b) => !b.isBomb).length < target && guard < 200) {
-      spawnNormal();
-      guard++;
-    }
+    let count = bubbles.filter((b) => !b.isBomb).length;
+    for (let guard = 0; count < target && guard < 200; guard++, count++) spawnNormal();
   }
 
   function spawnNormal() {
@@ -476,8 +471,6 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     lastT = now;
     if (state.paused || state.gameOver) return;
 
-    measurePlayfield();
-
     topUpAcc += dt;
     if (topUpAcc > 1800) {
       topUpAcc = 0;
@@ -501,6 +494,7 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
   }
 
   function startLoop() {
+    if (rafId) return;
     lastT = null;
     rafId = requestAnimationFrame(step);
   }
@@ -525,6 +519,9 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     pauseIcon.style.display = p ? "none" : "";
     playIcon.style.display = p ? "" : "none";
     playfield.style.pointerEvents = p ? "none" : "";
+    // No frames while paused; startLoop() resets the clock on resume.
+    if (p) stopLoop();
+    else if (!state.gameOver) startLoop();
   }
   pauseBtn.addEventListener("click", () => {
     if (state.gameOver) return;
@@ -621,9 +618,7 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     el.setAttribute("aria-checked", on ? "true" : "false");
   }
   function openSettings() {
-    // The game-over card is modal. Letting settings open on top of it left two
-    // stacked dialogs with one Escape between them and no way back to the
-    // score.
+    // The game-over card is modal; settings must not stack on top of it.
     if (state.gameOver) return;
     settingsPanel.classList.remove("hidden");
     syncToggle(soundToggle, state.soundOn);
@@ -632,12 +627,8 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
   // The overlays and the sheet sit *inside* .app rather than beside it, so the
   // things to freeze are named individually instead of one wrapper.
   //
-  // The top bar is deliberately NOT in this list. It holds the "Games" link,
-  // which is the only way off the page, and freezing it left a card with no
-  // exit on a phone — no Escape key, and none of the cards has a close button.
-  // This used to name `.topbar` first, and `initHowto` was handed `.app`, which
-  // contains it. Both are fixed by the same list. The shared default in
-  // shell.js does the same thing for the seven games that have a `.stage`.
+  // The top bar is deliberately NOT in this list: its "Games" link is the only
+  // way off the page on a phone, where the cards have no close button.
   const behindOverlay = [
     document.querySelector(".hud"),
     document.getElementById("playfield"),
@@ -672,10 +663,7 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     hide: () => setPaused(false),
   });
 
-  // Reflect the loaded preferences immediately. openSettings() used to be the
-  // only caller, so until a player opened the panel the switches advertised
-  // the markup's defaults — including "calm mode off" to someone whose OS had
-  // just told us otherwise.
+  // Reflect the loaded preferences immediately, not only when the panel opens.
   syncToggle(soundToggle, state.soundOn);
   syncToggle(motionToggle, state.calmMode);
 
@@ -704,17 +692,12 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
   });
 
   // ---------- resize ----------
-  // Coalesced to one pass a frame: a resize arrives in bursts, and
-  // measurePlayfield() forces a layout that topUpBubbles() then reads.
-  let resizeFrame = 0;
-  window.addEventListener("resize", () => {
-    if (resizeFrame) return;
-    resizeFrame = requestAnimationFrame(() => {
-      resizeFrame = 0;
-      measurePlayfield();
-      topUpBubbles();
-    });
-  });
+  // The playfield is measured only when its size changes, never per frame:
+  // the loop adds and removes pop effects, so a per-frame read forces layout.
+  new ResizeObserver(() => {
+    measurePlayfield();
+    topUpBubbles();
+  }).observe(playfield);
 
   // ---------- boot ----------
   measurePlayfield();

@@ -16,14 +16,13 @@
 -- in sections 7-10 are the only write paths.
 --
 -- Identity is deliberately weak and deliberately optional: a player_id the
--- browser generates for itself, an optional 12-character name, an optional
+-- browser generates for itself, an optional 24-character name, an optional
 -- email. There is no account, no password and no sign-in. Names are NOT
 -- unique — a player_id is. "Boards are for fun — scores aren't verified."
 --
 -- No email is readable by the browser. See section 3.
 --
 -- See ARCHITECTURE.md §27.
-
 
 -- ============================================================
 -- 1. Which games have a leaderboard, and how they are scored
@@ -36,11 +35,7 @@ create table if not exists game_config (
   -- true when everyone plays the same puzzle each day, so the record is
   -- scoped to that day rather than to all time
   is_daily        boolean not null default false,
-  -- Descriptive only: what the number means, for whoever is reading a row in
-  -- the SQL editor. No code reads it, in the client or in the functions below.
-  -- The registry's matching `unit` field was deleted for exactly that reason
-  -- (ARCHITECTURE.md §10); this one stays because dropping a not-null column
-  -- from a live table is a migration with nothing to gain.
+  -- Descriptive only, for whoever reads a row in the SQL editor; no code reads it.
   label           text not null
 );
 
@@ -106,7 +101,6 @@ create policy "allow read" on game_config
 
 revoke insert, update, delete on game_config from anon, authenticated;
 
-
 -- ============================================================
 -- 2. Players
 -- ============================================================
@@ -115,11 +109,8 @@ revoke insert, update, delete on game_config from anon, authenticated;
 -- localStorage. That is the whole identity model: no account, no password, no
 -- magic link, no sign-in.
 --
--- `name` is NOT unique. Enforcing that would make "name taken" the first
--- thing a player sees at the exact moment they finally cared about the board,
--- and the research is blunt about it being the most demoralising error in
--- this flow. Uniqueness that matters is enforced somewhere useful instead:
--- one player_id per player, and one run_id per finished run (section 5).
+-- `name` is deliberately NOT unique; uniqueness is one player_id per player
+-- and one run_id per finished run (section 5).
 --
 -- `name` is nullable because the score is written BEFORE the name exists —
 -- the end card shows your row already ranked, with a cursor blinking in the
@@ -157,14 +148,9 @@ create table if not exists players (
   constraint players_tz_shape check (tz is null or char_length(tz) <= 64)
 );
 
--- The name cap was 12 and is now 24. The constraint above only applies to a
--- database that did not already have this table, so it is re-stated here for
--- one that did. Dropping and re-adding is the only way to change a CHECK.
---
--- Widening can never fail on existing rows -- every stored name already fits
--- the narrower rule -- so this needs no data fix-up. It must stay in step with
--- player_name_ok() below: if the function allowed a name this refused, the
--- raise would abort submit_game_run() and lose the score it was submitting.
+-- Re-states the name CHECK for databases that already had this table (a CHECK
+-- can only be changed by drop and re-add). Must stay in step with
+-- player_name_ok(): a mismatch aborts submit_game_run() and loses the score.
 do $$
 begin
   if exists (
@@ -199,20 +185,15 @@ create policy "allow read" on players
 revoke all on players from anon, authenticated;
 grant select (player_id, name, created_at) on players to anon, authenticated;
 
-
 -- ============================================================
 -- 3. The boards
 -- ============================================================
 
 -- One row per player per board — NOT one row per run.
 --
--- This is the load-bearing decision in the whole file. It means replaying a
--- game cannot fill a board with one name, it makes "ties are broken by
--- whoever posted first" a property of the surviving row, and it bounds this
--- table at players x games x 3 instead of growing with every submission. An
--- append-only run log is the one shape here that would let anyone inflate the
--- database for the price of a POST, and nothing in the design needs it: "out
--- of 214" is a count over the board.
+-- Load-bearing: replays cannot fill a board with one name, first-to-post wins
+-- ties, and the table is bounded at players x games x 3 rather than growing
+-- per submission.
 --
 -- period_kind is the same three boards for every game, including word-steps.
 create table if not exists game_leaders (
@@ -248,7 +229,6 @@ create index if not exists game_leaders_board_idx
 create index if not exists game_leaders_player_idx
   on game_leaders (player_id);
 
-
 -- ============================================================
 -- 4. The game-wide record
 -- ============================================================
@@ -277,9 +257,7 @@ create table if not exists game_scores (
   primary key (game_slug, period)
 );
 
--- Additive and nullable, so the deployed
--- `select=game_slug,best_score,period,updated_at` keeps working untouched and
--- the wall can name the holder whenever the client is ready.
+-- Additive and nullable, so existing selects keep working.
 alter table game_scores
   add column if not exists player_id uuid references players (player_id) on delete set null;
 
@@ -292,7 +270,6 @@ create policy "allow read" on game_scores
 revoke insert, update, delete on game_scores from anon, authenticated;
 
 create index if not exists game_scores_slug_idx on game_scores (game_slug);
-
 
 -- ============================================================
 -- 5. Throttling and submission idempotency
@@ -312,11 +289,7 @@ revoke all on submit_limits from anon, authenticated;
 
 -- One row per finished run, so the same run cannot be counted twice.
 --
--- This is not paranoia: submitScore() posts with `keepalive` at game over,
--- and the design's own error copy promises a retry ("your score is safe on
--- this device and will go up next time"), so a duplicate arrival is the
--- normal case, not the exceptional one. Without this, one run could spend
--- another player's rate budget and inflate every "out of N" count.
+-- Runs are posted with `keepalive` and may be retried, so duplicates are normal.
 --
 -- run_id is generated by the browser once per finished run. Pruned after a
 -- week, so this stays bounded by the rate limits, not by traffic.
@@ -329,7 +302,6 @@ alter table submitted_runs enable row level security;
 revoke all on submitted_runs from anon, authenticated;
 
 create index if not exists submitted_runs_created_idx on submitted_runs (created_at);
-
 
 -- ============================================================
 -- 6. Internal helpers
@@ -402,7 +374,7 @@ as $$
   select 'all'::text,  'all'::text;
 $$;
 
--- What a name may be, in one place, because two functions now write one column.
+-- What a name may be, in one place, because two functions write one column.
 --
 -- Deliberately two scalar functions rather than one with OUT parameters: the
 -- OUTs *are* the return type, so changing one later needs an explicit drop
@@ -422,16 +394,11 @@ as $$
 $$;
 
 -- Null is acceptable: it is "no name", which every board renders as Unsigned.
--- Takes an already-normalised name -- after norm_player_name() a non-null value
--- has length >= 1 and is already trimmed, so `between 1 and 24` is exactly the
--- old `char_length > 24 -> reject` test.
+-- Takes an already-normalised name.
 --
--- The same rule is also the players_name_shape table CHECK, and that stays the
--- backstop: if these two ever disagreed the constraint would still refuse the
--- row. The duplication is the safety net, not drift -- which is why the CHECK
--- is NOT rewritten to call this function. A CHECK calling a function is a
--- pg_dump/restore ordering hazard and would let a later edit here silently
--- invalidate stored rows.
+-- Duplicates the players_name_shape CHECK on purpose: the CHECK is the
+-- backstop and must NOT call this function (a pg_dump/restore ordering hazard
+-- that would let an edit here invalidate stored rows).
 create or replace function player_name_ok(p_name text)
 returns boolean
 language sql
@@ -449,7 +416,6 @@ revoke execute on function period_keys(date) from public;
 -- owner, so no browser ever needs execute on these.
 revoke execute on function norm_player_name(text) from public;
 revoke execute on function player_name_ok(text) from public;
-
 
 -- ============================================================
 -- 7. Reading a player's standing
@@ -547,7 +513,6 @@ begin
 end;
 $$;
 
-
 -- ============================================================
 -- 8. The only write path for a score
 -- ============================================================
@@ -576,20 +541,10 @@ $$;
 -- advisory -- a blocked player, a name the board will not take, or a missing
 -- write token all mean "no name was written", never "the score was lost".
 --
--- Adding p_name makes a NEW function: `create or replace` matches on argument
--- types, so the six-argument version would survive alongside it. PostgREST
--- resolves an RPC from the keys in the JSON body, so it would then have two
--- candidates for the deployed body and Postgres would raise "function is not
--- unique" -- every submission failing. So the old signature is dropped, and
--- the wrapper that called it goes first: submit_game_score() held its body as
--- a dollar-quoted `language sql` string, so Postgres recorded no dependency
--- and would have let the drop below succeed while leaving the wrapper broken
--- at call time. It is retired here for good.
---
--- Both are `if exists`, so this is a no-op on a fresh project and on a second
--- run. A dropped function takes its grants with it -- section 10 re-issues
--- them under the new signature, which is why this file is applied whole and
--- never as a fragment.
+-- The six-argument overload must be dropped: `create or replace` matches on
+-- argument types, and two overloads make every RPC "function is not unique".
+-- submit_game_score() wrapped it and is dropped first. A drop takes the grants
+-- with it; section 10 re-issues them, so apply this file whole, never a fragment.
 drop function if exists submit_game_score(text, int, date);
 drop function if exists submit_game_run(text, int, date, uuid, uuid, uuid);
 
@@ -654,12 +609,8 @@ begin
     v_ok := false;
   end if;
 
-  -- 3. Only now deduplicate. Doing this first reads better — a resend would
-  --    cost one index probe — but it would mean an unthrottled INSERT: every
-  --    request carrying a fresh run_id would add a row before anything
-  --    checked whether it was allowed to, which is an append-only table
-  --    growing at request rate. submit_limits has bounded cardinality (one
-  --    row per IP per window); submitted_runs does not.
+  -- 3. Only now deduplicate. Doing it first would be an unthrottled INSERT into
+  --    an unbounded table.
   if v_ok and p_run_id is not null then
     insert into submitted_runs (run_id) values (p_run_id)
       on conflict (run_id) do nothing;
@@ -735,8 +686,7 @@ begin
               else excluded.best_score > game_scores.best_score
             end;
 
-    -- The boards. No player_id means a pre-arcade client, which still moves
-    -- the record and simply does not appear on a board.
+    -- The boards. With no player_id the run moves the record but joins no board.
     if p_player_id is not null then
       insert into game_leaders (game_slug, period_kind, period_key, player_id, best_score)
       select p_slug, k.period_kind, k.period_key, p_player_id, p_score
@@ -751,9 +701,8 @@ begin
     end if;
   end if;
 
-  -- Deliberately the DAY row for a daily game: word-steps' end card says "Best
-  -- today, worldwide", which is not the all-time record. Unchanged in meaning;
-  -- to_char only so the read cannot drift from the write above.
+  -- Deliberately the DAY row for a daily game: its end card says "Best today,
+  -- worldwide". to_char so the read matches the write above.
   select best_score into v_best from game_scores
    where game_slug = p_slug
      and period = case when cfg.is_daily then to_char(v_day, 'YYYY-MM-DD') else 'all' end;
@@ -776,12 +725,13 @@ $$;
 -- ============================================================
 
 -- Everything the player can choose about themselves, in one call. Every field
--- is optional; a null argument leaves that field alone, and '' clears a name.
+-- is optional; a null argument leaves that field alone, and '' clears a name
+-- or the email.
 --
--- Returns false rather than raising on a bad name, a bad email, a wrong token
--- or a throttled caller: this is called from an end card, and a rejected
--- rename must not take the overlay down with it.
-create or replace function save_player(
+-- Returns a reason rather than raising, so the page can say what happened:
+-- 'ok', 'denied' (no id or wrong token), 'busy' (throttled), 'blocked',
+-- 'bad_name' or 'bad_email'.
+create or replace function save_player_v2(
   p_player_id        uuid,
   p_write_token      uuid,
   p_name             text default null,
@@ -790,7 +740,7 @@ create or replace function save_player(
   p_notify_streak    boolean default null,
   p_tz               text default null
 )
-returns boolean
+returns text
 language plpgsql
 security definer
 set search_path = public
@@ -801,10 +751,10 @@ declare
   v_email  text;
 begin
   if p_player_id is null or p_write_token is null then
-    return false;
+    return 'denied';
   end if;
   if not rate_ok('save:' || client_ip_hash(), 20, interval '1 minute') then
-    return false;
+    return 'busy';
   end if;
 
   select * into v_row from players where player_id = p_player_id;
@@ -816,21 +766,18 @@ begin
     select * into v_row from players where player_id = p_player_id;
   end if;
 
-  -- Fail closed. A missing row leaves write_token null, and `null <> x` is
-  -- null, which IF treats as false — i.e. it would fall straight through.
+  -- Fail closed: a missing row leaves write_token null, and `null <> x` is null.
   if v_row.player_id is null or v_row.write_token is distinct from p_write_token then
-    return false;
+    return 'denied';
   end if;
 
-  -- '' normalises to null and clears the name, which is how a player gets back
-  -- to Unsigned. A name that fails the shape is refused instead.
   if p_name is not null then
     if v_row.blocked then
-      return false;
+      return 'blocked';
     end if;
     v_name := norm_player_name(p_name);
     if not player_name_ok(v_name) then
-      return false;
+      return 'bad_name';
     end if;
     update players set name = v_name where player_id = p_player_id;
   end if;
@@ -840,7 +787,7 @@ begin
     if v_email is not null
        and (char_length(v_email) > 254
             or v_email !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$') then
-      return false;
+      return 'bad_email';
     end if;
     update players set email = v_email where player_id = p_player_id;
   end if;
@@ -851,18 +798,40 @@ begin
          tz               = coalesce(nullif(btrim(p_tz), ''), tz)
    where player_id = p_player_id;
 
-  return true;
+  return 'ok';
 end;
+$$;
+
+-- The boolean original, kept for builds cached before v2 (ARCHITECTURE.md §19).
+create or replace function save_player(
+  p_player_id        uuid,
+  p_write_token      uuid,
+  p_name             text default null,
+  p_email            text default null,
+  p_notify_displaced boolean default null,
+  p_notify_streak    boolean default null,
+  p_tz               text default null
+)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select save_player_v2(p_player_id, p_write_token, p_name, p_email,
+                        p_notify_displaced, p_notify_streak, p_tz) = 'ok';
 $$;
 
 -- "Delete my data". Removes the player and, by cascade, every board row they
 -- hold. A game-wide record they happen to own survives as a number with no
 -- holder, which is the honest outcome: the score was real, the name is gone.
-create or replace function delete_player(
+--
+-- Returns 'ok', 'not_found' (this browser never saved anything), 'denied' or
+-- 'busy'.
+create or replace function delete_player_v2(
   p_player_id   uuid,
   p_write_token uuid
 )
-returns boolean
+returns text
 language plpgsql
 security definer
 set search_path = public
@@ -871,39 +840,55 @@ declare
   v_token uuid;
 begin
   if p_player_id is null or p_write_token is null then
-    return false;
+    return 'denied';
   end if;
   if not rate_ok('del:' || client_ip_hash(), 10, interval '1 minute') then
-    return false;
+    return 'busy';
   end if;
 
   select write_token into v_token from players where player_id = p_player_id;
-  if v_token is null or v_token <> p_write_token then
-    return false;
+  if not found then
+    return 'not_found';
+  end if;
+  if v_token is distinct from p_write_token then
+    return 'denied';
   end if;
 
   delete from players where player_id = p_player_id;
-  return true;
+  return 'ok';
 end;
 $$;
 
+create or replace function delete_player(
+  p_player_id   uuid,
+  p_write_token uuid
+)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select delete_player_v2(p_player_id, p_write_token) = 'ok';
+$$;
 
 -- ============================================================
 -- 10. Grants
 -- ============================================================
 
--- These name full signatures, so they follow submit_game_run's new one. The
--- grant is not optional: the drop in section 8 took the old function's grants
--- with it.
+-- Full signatures. Required: the drop in section 8 removed the old grants.
 revoke execute on function submit_game_run(text, int, date, uuid, uuid, uuid, text) from public;
 revoke execute on function my_standing(text, text, date, uuid) from public;
 revoke execute on function save_player(uuid, uuid, text, text, boolean, boolean, text) from public;
 revoke execute on function delete_player(uuid, uuid) from public;
+revoke execute on function save_player_v2(uuid, uuid, text, text, boolean, boolean, text) from public;
+revoke execute on function delete_player_v2(uuid, uuid) from public;
 
 grant execute on function submit_game_run(text, int, date, uuid, uuid, uuid, text) to anon, authenticated;
 grant execute on function my_standing(text, text, date, uuid) to anon, authenticated;
 grant execute on function save_player(uuid, uuid, text, text, boolean, boolean, text) to anon, authenticated;
 grant execute on function delete_player(uuid, uuid) to anon, authenticated;
+grant execute on function save_player_v2(uuid, uuid, text, text, boolean, boolean, text) to anon, authenticated;
+grant execute on function delete_player_v2(uuid, uuid) to anon, authenticated;
 
 -- A read that takes three seconds is either a mistake or an attack; either
 -- way the browser gave up on it after four (leaderboard.js TIMEOUT_MS).
@@ -913,7 +898,6 @@ begin
     execute 'alter role anon set statement_timeout = ''3s''';
   end if;
 end $$;
-
 
 -- ============================================================
 -- 11. Keeping it bounded
@@ -1011,17 +995,12 @@ begin
   end if;
 end $$;
 
-
 -- ============================================================
--- 12. One-off: the 'all' row every game now needs
+-- 12. One-off: backfill every game's 'all' row
 -- ============================================================
 
--- Section 8 writes an 'all' row for every game from now on. word-steps has
--- never had one -- a daily game used to file its record under the date and
--- nothing else -- and the carry-over records that used to sit here predate
--- player_id entirely. This rebuilds each game's 'all' row from every source of
--- a real score in the database and writes the winner back, with the holder it
--- actually belongs to.
+-- Rebuilds each game's 'all' row from every source of a real score and writes
+-- the winner back with its holder.
 --
 -- Idempotent, and it can never lower a record: the current 'all' row is itself
 -- one of the candidates, so a second run recomputes the same winner and writes
@@ -1072,22 +1051,13 @@ on conflict (game_slug, period) do update
       player_id  = excluded.player_id,
       updated_at = excluded.updated_at;
 
-
--- Retire the pre-arcade shape. The carry-over inserts that used to sit here
--- have done their work -- the records they read are in game_scores, which is
--- the only place anything reads them from now. Nothing in src/ has called
--- these since the arcade client shipped, and public/sw.js is a tombstone with
--- no fetch handler, so there is no cached bundle that could still try.
---
--- Dropping them here rather than deleting the definitions is the point: a
--- definition deleted from this file lives on forever in a database that
--- already ran it. This is not reversible -- confirm the bubble-tap and
--- honeycomb records are present in game_scores before the first run.
+-- Drop the retired pre-arcade objects explicitly, since a definition removed
+-- from this file lives on in any database that already ran it. Not reversible:
+-- confirm the bubble-tap and honeycomb records are in game_scores first.
 drop function if exists submit_score(int);
 drop function if exists submit_honeycomb_time(int);
 drop table if exists global_score;
 drop table if exists honeycomb_global_best;
-
 
 -- ============================================================
 -- 13. After applying: two checks

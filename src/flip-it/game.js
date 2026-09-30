@@ -573,7 +573,6 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
     pushRecent(puzzle.sig);
   }
 
-  /** Put a built board on the table. */
   function load(puzzle, seedValue) {
     clearRun();
     seed = seedValue;

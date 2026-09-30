@@ -1,26 +1,6 @@
-/* One procedural audio helper for every game, and one mute preference.
- *
- * Seven games each carried a near-identical copy of `tone()` and a lazily
- * created AudioContext. Four signatures had drifted apart between them
- * (`type` present or hardcoded, `delay` present or not), which is the usual
- * shape of copy-paste rot: the same function, subtly different, in seven files.
- *
- * Two behaviours the copies mostly got wrong:
- *
- * `resume()`. An AudioContext created outside a user gesture starts suspended,
- * and one that was running gets suspended again when the tab goes to the
- * background. Only three of the eight games ever called resume(), so in the
- * other five a tab switch could silently kill audio for the rest of the
- * session. Here the context is resumed on the first input of any kind and
- * again whenever the page becomes visible, so it recovers by itself.
- *
- * Mute. Only two games had one, and they agreed on the storage key by comment
- * rather than by code. The preference is site-wide and lives in prefs.js, so
- * muting in one game mutes the shelf.
- *
- * `tone(freq, dur, type, gain, delay)` is the superset of the four signatures
- * that existed; the two games whose local helper hardcoded "sine" keep a
- * one-line wrapper rather than having their call sites rewritten.
+/* Procedural audio for every game, plus the site-wide mute preference.
+ * The AudioContext is resumed on any input and on becoming visible, since
+ * browsers suspend it outside gestures and in background tabs.
  */
 
 import { get, set } from "./prefs.js";
@@ -32,9 +12,7 @@ var on = get(SOUND_KEY, "true") !== "false";
 var listeners = [];
 var wired = false;
 
-/* Created on demand, never at module load: constructing an AudioContext before
-   any interaction is what makes Chrome log an autoplay warning on a page that
-   may never make a sound at all. */
+/* Created on demand, never at module load, to avoid Chrome's autoplay warning. */
 function ctx() {
   if (!actx) {
     var AC = window.AudioContext || window.webkitAudioContext;
@@ -47,9 +25,7 @@ function ctx() {
   return actx;
 }
 
-/* Nudge a suspended context back to life. Safe to call when there is no
-   context yet — it deliberately does not create one, so a page the player
-   never interacts with audibly still constructs nothing. */
+/* Deliberately never creates a context. */
 function resume() {
   if (!actx) return;
   if (actx.state === "suspended") {
@@ -57,10 +33,7 @@ function resume() {
   }
 }
 
-/* The recovery this file exists for. `pointerdown`/`keydown` cover the gesture
-   requirement on first play; `visibilitychange` covers the tab switch that
-   used to leave five games permanently silent. Passive and capturing so a
-   game's own stopPropagation on its board cannot starve them. */
+/* Capturing so a game's stopPropagation cannot starve the resume. */
 function wire() {
   if (wired || typeof window === "undefined") return;
   wired = true;
@@ -73,12 +46,10 @@ function wire() {
   });
 }
 
-/** Is sound currently on? */
 export function isOn() {
   return on;
 }
 
-/** Set the site-wide sound preference and notify any UI bound to it. */
 function setOn(value) {
   on = !!value;
   set(SOUND_KEY, on ? "true" : "false");
@@ -89,20 +60,13 @@ function setOn(value) {
   return on;
 }
 
-/** Flip the preference. Returns the new value. */
 function toggle() {
   return setOn(!on);
 }
 
 /**
- * Wire a mute button: the icon state, the announced state, and the click.
- *
- * This was the same five lines in six games and a drifted seventh, all of them
- * getting the aria right by copy rather than by contract.
- *
- * `onEnable` plays a confirmation when sound comes back, which is the one part
- * that genuinely differs per game — each has its own note, and honeycomb passes
- * nothing because it deliberately stays quiet.
+ * Wire a mute button: icon state, aria state and click. `onEnable` plays the
+ * game's confirmation note when sound comes back.
  */
 export function initSoundToggle(btn, onEnable) {
   if (!btn) return;
@@ -123,12 +87,7 @@ function onChange(fn) {
   try { fn(on); } catch (e) { /* ignore */ }
 }
 
-/**
- * One oscillator, one gain envelope, no files.
- *
- * `type` and `delay` are optional — the two games whose local helper always
- * used a sine wave pass undefined and get "sine".
- */
+/** One oscillator, one gain envelope, no files. `type` defaults to "sine". */
 export function tone(freq, dur, type, gain, delay) {
   if (!on) return;
   wire();
@@ -140,9 +99,7 @@ export function tone(freq, dur, type, gain, delay) {
     var g = c.createGain();
     osc.type = type || "sine";
     osc.frequency.value = freq;
-    /* setValueAtTime before the ramp, not `g.gain.value =`: with a non-zero
-       delay the bare assignment applies now rather than at `at`, so the note
-       fades from its start instead of from when it sounds. */
+    /* setValueAtTime, not `g.gain.value =`, so a delayed note fades from `at`. */
     g.gain.setValueAtTime(gain, at);
     g.gain.exponentialRampToValueAtTime(0.001, at + dur);
     osc.connect(g).connect(c.destination);
