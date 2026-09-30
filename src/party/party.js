@@ -1,16 +1,16 @@
-/* Tap Clash: the party page.
+/* Tap Party: the party page.
  *
- * A clash is one round of one game: the host picks the game and the time
+ * A party is one round of one game: the host picks the game and the time
  * limit, everyone races the same seeded board, and the results are the
  * finale — with Share, a rematch and "host your own" right under them. A
  * rematch is the next round, in a new room everyone follows into.
  *
  * Which screen is on is never stored anywhere: every tick asks
- * src/clash/rules.js where the clash is — `derive(room, now)` on the latest
+ * src/party/rules.js where the party is — `derive(room, now)` on the latest
  * snapshot and the server's clock — and draws that. So a phone that locks,
  * reloads or joins late lands on exactly the screen everyone else is on.
  *
- * The round is the real game page in an iframe (`?clash=1&seed=…`). This page
+ * The round is the real game page in an iframe (`?party=1&seed=…`). This page
  * owns the clock: it tells the frame when the round went live and posts the
  * frame's result to the room. The contract is written out in each game.
  *
@@ -30,9 +30,9 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 import { formatDuration } from "../shared/ui/format.js";
 
 const $ = (id) => document.getElementById(id);
-const FACE_KEY = "clash.face";
-const GUEST_KEY = "clash.guest"; // read by the homepage's guest line
-const DOODLE_KEY = "clash.doodle"; // { code, tag, vote }: this phone's doodle and vote
+const FACE_KEY = "party.face";
+const GUEST_KEY = "party.guest"; // read by the homepage's guest line
+const DOODLE_KEY = "party.doodle"; // { code, tag, vote }: this phone's doodle and vote
 const TICK_MS = 200;
 const PING_MS = 10_000;
 
@@ -187,11 +187,11 @@ function enter(newCode, seat) {
   code = newCode;
   me = seat || loadSeat(code);
   if (seat) saveSeat(code, seat.seat, seat.token);
-  history.replaceState(null, "", `/clash/?r=${code}`);
+  history.replaceState(null, "", `/party/?r=${code}`);
   feed?.stop();
   feed = watch(code, {
     onRoom(r) { room = r; render(); },
-    onGone() { room = null; gone("This clash has ended", "Rooms close three hours after they open, or the code was mistyped."); },
+    onGone() { room = null; gone("This party has ended", "Rooms close three hours after they open, or the code was mistyped."); },
     // A player on their own board needs nobody else's news every second.
     relaxed: () => screen === "play" && frame && !frame.done,
   });
@@ -220,8 +220,8 @@ function explain(error) {
     "not enough done": "Half the room has to finish before you can call time.",
     "your own": "That one's yours — pick someone else's.",
     "too late": "Too late — the vote is over.",
-    "already started": "This clash has already started — joining closed when it began.",
-    [`needs ${R.MIN_PLAYERS} players`]: `A clash needs at least ${R.MIN_PLAYERS} players.`,
+    "already started": "This party has already started — joining closed when it began.",
+    [`needs ${R.MIN_PLAYERS} players`]: `A party needs at least ${R.MIN_PLAYERS} players.`,
   }[error] || "That didn't work. Try again.";
 }
 
@@ -229,8 +229,8 @@ function mySeat() {
   return me && room ? player(me.seat) : null;
 }
 
-/* Analytics that describe the clash, not the phone, fire once and only from
-   the host's phone — or ten phones would count one clash ten times. */
+/* Analytics that describe the party, not the phone, fire once and only from
+   the host's phone — or ten phones would count one party ten times. */
 const sent = new Set();
 function trackOnce(name, extra) {
   const k = `${code}:${name}`;
@@ -244,7 +244,7 @@ async function act(type, extra, errEl) {
 }
 
 /* Presence: the host's controls pass on once the host has been quiet for the
-   away window, so every phone says it is here for the whole clash — not just
+   away window, so every phone says it is here for the whole party — not just
    on the screens with host controls, or a host who played the round would
    come back to the results already replaced. Paced by the room's own scale,
    like the away window it feeds. */
@@ -266,7 +266,7 @@ function render() {
   const mine = mySeat();
   if (me && !mine) me = null; // a seat from some other room with this code
   if (!me) return renderJoin();
-  if (mine.kickedAt != null) return gone("You were removed from this clash", "The host took you out of the room. You can start one of your own.");
+  if (mine.kickedAt != null) return gone("You were removed from this party", "The host took you out of the room. You can start one of your own.");
 
   const d = R.derive(room, now());
   if (d.phase === "final" && room.next) return followRematch();
@@ -292,7 +292,7 @@ setInterval(render, TICK_MS);
 let joinFace = null;
 function renderJoin() {
   if (room.start != null) {
-    return gone("This clash has already started", "Joining closes when the host starts. Ask for the next one, or start your own.");
+    return gone("This party has already started", "Joining closes when the host starts. Ask for the next one, or start your own.");
   }
   const host = player(room.host) || room.players[0];
   const here = room.players.filter((p) => p.kickedAt == null);
@@ -339,7 +339,7 @@ function renderLobby(fresh) {
 
   $("lobbyName").textContent = room.name;
   $("lobbyGame").textContent = `${game().title} · ${room.cap}s`;
-  const url = `${location.origin}/clash/?r=${room.code}`;
+  const url = `${location.origin}/party/?r=${room.code}`;
   $("lobbyUrl").textContent = url.replace(/^https?:\/\/(www\.)?/, "");
   const tiles = $("codeTiles");
   tiles.textContent = "";
@@ -389,9 +389,9 @@ $("startBtn").addEventListener("click", async () => {
 initShare({
   btn: $("inviteBtn"),
   note: $("inviteNote"),
-  title: "Tap Clash",
-  text: () => `Join my Tap Clash "${room.name}" — ${game().title}, room ${room.code}.`,
-  url: () => `${location.origin}/clash/?r=${room.code}`,
+  title: "Tap Party",
+  text: () => `Join my Tap Party "${room.name}" — ${game().title}, room ${room.code}.`,
+  url: () => `${location.origin}/party/?r=${room.code}`,
 });
 
 /* The host's phone is what guests scan, so it should not sleep. Wake Lock is
@@ -437,7 +437,7 @@ function prepareFrame() {
   const g = game();
   const f = el("iframe", "round-frame");
   f.title = g.title;
-  f.src = `/${room.game}/?clash=1&seed=${room.seed.toString(36)}${g.level ? `&level=${g.level}` : ""}`;
+  f.src = `/${room.game}/?party=1&seed=${room.seed.toString(36)}${g.level ? `&level=${g.level}` : ""}`;
   $("frameSlot").appendChild(f);
   frame = { el: f, code: room.code, ready: false, went: false, done: false };
 }
@@ -783,7 +783,7 @@ function drawAwards(list, awards) {
   }
 }
 
-/* The homepage's guest line: "You played at Aman's clash. You came 4th." Kept
+/* The homepage's guest line: "You played at Aman's party. You came 4th." Kept
    for guests only — a host does not need inviting to host. */
 function remember(table) {
   const mine = table.find((x) => x.seat === me.seat);
@@ -805,17 +805,17 @@ async function shareRecap() {
   const blob = await recapCard();
   if (!blob) return;
   track("recap_shared");
-  const file = new File([blob], "tap-clash.jpg", { type: "image/jpeg" });
+  const file = new File([blob], "tap-party.jpg", { type: "image/jpeg" });
   const [first] = R.placements(room);
   const who = first?.result ? `${nameOf(first.seat)} won` : "We played";
-  const text = `${who} "${room.name}" — Doodle On on Tap Clash. Start your own: ${location.origin}/clash/?from=share`;
+  const text = `${who} "${room.name}" — Doodle On on Tap Party. Start your own: ${location.origin}/party/?from=share`;
   if (navigator.canShare?.({ files: [file] })) {
     navigator.share({ files: [file], text }).catch(() => {});
     return;
   }
   const a = el("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "tap-clash.jpg";
+  a.download = "tap-party.jpg";
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   recapNote.show("Saved");
@@ -838,7 +838,7 @@ async function recapCard() {
   g.fillStyle = "#1b1c33";
   g.fillRect(0, 0, W, H);
   g.textAlign = "center";
-  line("TAP CLASH · DOODLE ON", W / 2, 90, 800, 30, "#ff5c8a");
+  line("TAP PARTY · DOODLE ON", W / 2, 90, 800, 30, "#ff5c8a");
   line(room.name, W / 2, 150, 800, 46, "#ffffff");
   const p = R.doodleRound(room);
   line(`Turn this ${p.shape} into ${p.direction}`, W / 2, 200, 600, 28, "#b9b6d6");
@@ -870,7 +870,7 @@ async function recapCard() {
     y += 54;
   }
   g.textAlign = "center";
-  line("tapwhenbored.com/clash", W / 2, H - 70, 800, 30, "#ffffff");
+  line("tapwhenbored.com/party", W / 2, H - 70, 800, 30, "#ffffff");
   return new Promise((ok) => c.toBlob(ok, "image/jpeg", 0.88));
 }
 
@@ -879,13 +879,13 @@ async function recapCard() {
 initShare({
   btn: $("shareBtn"),
   note: $("shareNote"),
-  title: "Tap Clash",
+  title: "Tap Party",
   text: () => {
     const [first] = R.placements(room);
     const who = first?.result ? `${nameOf(first.seat)} won` : "We played";
-    return `${who} "${room.name}" — ${game().title} on Tap Clash. Start your own:`;
+    return `${who} "${room.name}" — ${game().title} on Tap Party. Start your own:`;
   },
-  url: () => `${location.origin}/clash/?from=share`,
+  url: () => `${location.origin}/party/?from=share`,
 });
 $("shareBtn").addEventListener("click", () => track("result_shared"));
 
@@ -955,7 +955,7 @@ async function followRematch() {
   } else {
     // Started without us, full, or gone: joining again will not change that.
     followAfter = Infinity;
-    gone("The next round started without you", "Joining closes when the host starts. You can start a clash of your own.");
+    gone("The next round started without you", "Joining closes when the host starts. You can start a party of your own.");
   }
 }
 

@@ -1,8 +1,8 @@
-// Tap Clash's rules (src/clash/rules.js): pure functions of a room, so these
+// Tap Party's rules (src/party/rules.js): pure functions of a room, so these
 // build rooms by hand and assert what a phone would show.
 
 import { test, expect } from "@playwright/test";
-import * as R from "../../src/clash/rules.js";
+import * as R from "../../src/party/rules.js";
 
 /** A started room at scale 1: `n` players who joined before the start. */
 function room(n = 4, game = "flip-it", cap = 60) {
@@ -29,7 +29,7 @@ const put = (r, seat, ms, moves = 9) => {
   r.results[seat] = { ms, moves, at: at(r, ms + 50) };
 };
 
-test("a clash walks lobby → title → play → final, once", () => {
+test("a party walks lobby → title → play → final, once", () => {
   const r = room();
   expect(R.derive({ ...r, start: null }, 0).phase).toBe("lobby");
   const t = R.timetable(r);

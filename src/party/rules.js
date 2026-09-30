@@ -1,9 +1,9 @@
-/* Tap Clash rules: one pure module, imported by the room API and by every phone.
+/* Tap Party rules: one pure module, imported by the room API and by every phone.
  *
- * A clash is one round of one game. There is no server clock ticking it
+ * A party is one round of one game. There is no server clock ticking it
  * along: a room stores timestamps — when it started, when each result arrived,
  * when someone was removed, when the host ended the round — and
- * `derive(room, now)` works out where the clash is from those alone. The API
+ * `derive(room, now)` works out where the party is from those alone. The API
  * runs it to decide whether a result is on time; each phone runs it to decide
  * which screen to show. Same code, same inputs, so they cannot disagree.
  *
@@ -22,7 +22,7 @@
  * No DOM, no storage, no network here.
  */
 
-/* The games a clash can be, and the time limits a host may pick. Presets,
+/* The games a party can be, and the time limits a host may pick. Presets,
  * not a free number: a limit is fair only if most of the room can finish, and
  * the server checks every result against it. Flip It is pinned to Medium —
  * Easy's 3–4-move boards clear in under two seconds and tie the room. */
@@ -82,7 +82,7 @@ export const PARTY_NAMES = [
 /** How long after 0:00 a result in flight still counts, at scale 1. */
 export const graceOf = (game) => GAMES[game].grace || GRACE_MS;
 
-/** Is this a game and a time limit a clash can be played with? */
+/** Is this a game and a time limit a party can be played with? */
 export function validSetup(game, cap) {
   return Object.hasOwn(GAMES, game) && GAMES[game].caps.includes(cap);
 }
@@ -142,7 +142,7 @@ function voters(room, playAt) {
   return eligible(room, playAt).filter((p) => p.kickedAt == null);
 }
 
-/** Where the clash is at `now`: lobby → title → play → (vote →) final. */
+/** Where the party is at `now`: lobby → title → play → (vote →) final. */
 export function derive(room, now) {
   if (room.start == null) return { phase: "lobby" };
   var t = timetable(room);

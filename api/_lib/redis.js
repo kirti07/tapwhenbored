@@ -1,4 +1,4 @@
-// The Tap Clash room store: Upstash Redis over its REST API.
+// The Tap Party room store: Upstash Redis over its REST API.
 //
 // No SDK. Every call is one pipeline POST, so a handler that needs three
 // commands pays one round trip, and the whole client is this file. The two

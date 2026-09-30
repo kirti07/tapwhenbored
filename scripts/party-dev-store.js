@@ -2,7 +2,7 @@
 // the Playwright suite — so none of them needs a network or a database.
 //
 // It implements `pipeline(commands)` for exactly the commands
-// api/_lib/clash.js sends, with Redis's semantics for each, and nothing else:
+// api/_lib/party.js sends, with Redis's semantics for each, and nothing else:
 // an unknown command throws, so a new one in the handler cannot silently
 // behave differently here than in production.
 
@@ -85,7 +85,7 @@ export function createMemoryStore(now = Date.now) {
     async pipeline(list) {
       return list.map(([name, ...args]) => {
         const run = commands[name];
-        if (!run) throw new Error(`clash-dev-store: ${name} is not implemented`);
+        if (!run) throw new Error(`party-dev-store: ${name} is not implemented`);
         return run(...args);
       });
     },

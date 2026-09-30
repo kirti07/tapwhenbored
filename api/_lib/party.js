@@ -1,26 +1,26 @@
-// The Tap Clash room API, as one request handler.
+// The Tap Party room API, as one request handler.
 //
-//   GET  /api/clash/?r=CODE              the room's snapshot (CDN-cached for 1 s)
-//   GET  /api/clash/?r=CODE&d=TAG&s=SEED one Doodle On drawing, as a JPEG
-//   POST /api/clash/          { type, ... } → a fresh, uncached snapshot
+//   GET  /api/party/?r=CODE              the room's snapshot (CDN-cached for 1 s)
+//   GET  /api/party/?r=CODE&d=TAG&s=SEED one Doodle On drawing, as a JPEG
+//   POST /api/party/          { type, ... } → a fresh, uncached snapshot
 //        create | join | ping | start | result | end | kick | rematch
 //        | title | vote
-//   POST /api/clash/          a raw JPEG, with { type: "doodle", ... } in
-//                             the x-clash header — no base64 on party Wi-Fi
+//   POST /api/party/          a raw JPEG, with { type: "doodle", ... } in
+//                             the x-party header — no base64 on party Wi-Fi
 //
 // `createHandler({ store, now, scale, limits })` returns `(Request) => Response`.
 // The store is anything with `pipeline(commands)` — Upstash in production
 // (api/_lib/redis.js), an in-memory one in dev and tests
-// (scripts/clash-dev-store.js) — so this file is the whole server and runs
+// (scripts/party-dev-store.js) — so this file is the whole server and runs
 // the same everywhere.
 //
-// A room is one Redis hash, `clash:{code}`, that expires 3 h after it was
+// A room is one Redis hash, `party:{code}`, that expires 3 h after it was
 // created. Its fields, and the one command that ever writes each:
 //
 //   seed        HSETNX   the room's seed, which is the board's seed
 //   k           HSET     a secret: a doodle's tag is hash(k, seat), so no
 //                        phone can tell who drew what until the final
-//   name scale  HSET     clash name; duration scale (1 in production)
+//   name scale  HSET     party name; duration scale (1 in production)
 //   g cap       HSET     the game and its time limit, fixed at creation
 //   seats       HINCRBY  seat counter; the creator is seat 0
 //   h           HSET     the host's seat (moves if the host goes quiet)
@@ -35,15 +35,15 @@
 //   c:{seat}    HSET     Doodle On: the artist's title for their doodle
 //   v:{seat}    HSET     Doodle On: { tag, at }, this seat's vote (changeable)
 //
-// A doodle is its own key, clash:{code}:{seed}:d:{seat} (SET NX EX), so a
+// A doodle is its own key, party:{code}:{seed}:d:{seat} (SET NX EX), so a
 // snapshot stays small; the seed is in it because codes are reused after a
 // room expires, and a doodle outlives its room by the time it took to draw.
 //
 // Nothing is ever deleted and every write is one atomic command, so two
 // phones racing can only ever both succeed or have the second one no-op.
-// Where the clash *is* is never stored: src/clash/rules.js derives it.
+// Where the party *is* is never stored: src/party/rules.js derives it.
 
-import * as R from "../../src/clash/rules.js";
+import * as R from "../../src/party/rules.js";
 
 const ALPHABET = "BCDFGHJKLMNPQRSTVWXZ"; // no vowels: no words, no O/0 or I/1
 const CODE = /^[BCDFGHJKLMNPQRSTVWXZ]{4}$/;
@@ -62,8 +62,8 @@ const HOST_ONLY = ["start", "end", "kick", "rematch"];
 const UNLIMITED = ["ping", "result", "doodle", "title", "vote"];
 const TAG = /^[0-9a-f]{12}$/;
 
-const roomKey = (code) => `clash:${code}`;
-const doodleKey = (code, seed, seat) => `clash:${code}:${seed}:d:${seat}`;
+const roomKey = (code) => `party:${code}`;
+const doodleKey = (code, seed, seat) => `party:${code}:${seed}:d:${seat}`;
 
 class Reject extends Error {
   constructor(status, message) {
@@ -117,7 +117,7 @@ function clientKey(request) {
  * A room hash as `{ room, tokens, pings, secret, picks, titles }`. `room` is
  * built field by field — an allowlist — so a token hash, a ping time, the
  * secret or who voted for what cannot reach a snapshot by accident. It is
- * exactly the shape src/clash/rules.js works on.
+ * exactly the shape src/party/rules.js works on.
  */
 export function parseRoom(code, flat) {
   if (!flat || !flat.length) return null;
@@ -426,7 +426,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
     /* The next round is a new room: same name, the same or a new game, and
        everyone in this one follows the host into it. */
     async rematch(body, { code, room, seat }) {
-      if (R.derive(room, now()).phase !== "final") reject(409, "clash not over");
+      if (R.derive(room, now()).phase !== "final") reject(409, "party not over");
       if (room.next) return { room };
       const choice = setup(body, room);
       const host = room.players.find((p) => p.seat === seat);
@@ -440,7 +440,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
 
   /**
    * The body of a POST. A doodle is the raw JPEG, with its action in the
-   * x-clash header; everything else is a small JSON object.
+   * x-party header; everything else is a small JSON object.
    */
   async function readBody(request) {
     const image = request.headers.get("content-type") === "image/jpeg";
@@ -449,7 +449,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
     if (image) {
       const bytes = new Uint8Array(await request.arrayBuffer());
       if (bytes.length > MAX_IMAGE) reject(413, "too large");
-      try { body = JSON.parse(request.headers.get("x-clash") || ""); } catch { reject(400, "bad json"); }
+      try { body = JSON.parse(request.headers.get("x-party") || ""); } catch { reject(400, "bad json"); }
       if (body?.type !== "doodle") reject(400, "bad type");
       body.image = bytes;
     } else {

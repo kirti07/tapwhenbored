@@ -92,7 +92,7 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   var recent = readRecent();
   var bests = readBests();
   var challenge = readChallenge(); // null, or the run a shared link asks you to beat
-  var round = null;      // set when this page is a Tap Clash round
+  var round = null;      // set when this page is a Tap Party round
 
   // ---------- storage (all of it optional, none of it load-bearing) ----------
 
@@ -726,12 +726,12 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
 
   // ---------- party rounds ----------
   //
-  // Inside /clash/ the page plays one seeded board on the party's clock: the
+  // Inside /party/ the page plays one seeded board on the party's clock: the
   // board is dealt at once and locked, and the clock starts when the party
   // page says the round went live — not on the first tap, so every player
   // races the same seconds. The contract is below.
 
-  /* The Tap Clash round contract (ARCHITECTURE.md, "Tap Clash"). Written out
+  /* The Tap Party round contract (ARCHITECTURE.md, "Tap Party"). Written out
      in each game rather than shared: a shared module would cost both game
      pages a chunk and a request for ~20 lines. Both directions check origin
      and source, and post to this origin only.
@@ -741,7 +741,7 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   function readRound() {
     var params = new URLSearchParams(location.search);
     var raw = params.get("seed") || "";
-    if (params.get("clash") !== "1" || window.self === window.top) return null;
+    if (params.get("party") !== "1" || window.self === window.top) return null;
     if (!/^[0-9a-z]{1,7}$/.test(raw) || parseInt(raw, 36) > 0xffffffff) return null;
     return { seed: parseInt(raw, 36), level: params.get("level") };
   }
@@ -761,13 +761,13 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
 
   function playRound(r) {
     level = r.level;
-    document.documentElement.dataset.clash = "wait";
+    document.documentElement.dataset.party = "wait";
     load(generate(level, r.seed), r.seed);
     ended = true; // locked until the round goes live
     syncLevelButtons();
     round = joinRound(function (elapsed) {
       if (startedAt !== null) return;
-      document.documentElement.dataset.clash = "on";
+      document.documentElement.dataset.party = "on";
       ended = false;
       startClock(elapsed);
     });

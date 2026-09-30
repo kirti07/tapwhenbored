@@ -1,17 +1,17 @@
-/* Tap Clash: the party page.
+/* Tap Party: the party page.
  *
  * Built on the site's own page stylesheet — the arcade chrome (marquee, dark
  * screen, buttons, inputs, chips) the homepage, the wall and the player card
  * already use — so a party looks like the arcade it came from. Coral is Tap
- * Clash's accent: the logo's red, and in dark mode the logo's pink.
+ * Party's accent: the logo's red, and in dark mode the logo's pink.
  *
- * Every screen is a `[data-screen]` section; clash.js shows one at a time.
+ * Every screen is a `[data-screen]` section; party.js shows one at a time.
  * Decoration is CSS only, and nothing here animates forever.
  */
 
 @import "../style.css";
 
-.clash {
+.party {
   --accent: #e8503d;
   --accent-d: #ff5c8a;
   --arc-accent-ink: #ffffff;
@@ -21,7 +21,7 @@
   --game: var(--arc-accent);
 }
 
-.clash-brand { color: var(--arc-accent); margin: 2px 0 0; }
+.party-brand { color: var(--arc-accent); margin: 2px 0 0; }
 
 .scr {
   display: grid;
@@ -30,18 +30,18 @@
   margin: 18px auto 0;
 }
 
-.clash-loading { text-align: center; color: var(--ink-soft); margin-top: 30vh; }
-.clash-h { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 28px; line-height: 1.15; }
-.clash-p { margin: 0; color: var(--ink-soft); font-size: 14px; }
-.clash-fine { margin: 0; text-align: center; color: var(--ink-dim); font-size: 12.5px; }
-.clash-err { margin: 0; min-height: 1.3em; color: var(--arc-danger); font-weight: 700; font-size: 13.5px; }
-.clash-err:empty { display: none; }
-.clash-cta, .clash-wide { width: 100%; }
-.clash-wait { margin: 0; text-align: center; color: var(--ink-soft); font-weight: 700; }
-.clash-note { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--card-2); font-size: 13px; color: var(--ink-soft); }
-.clash-note--hot { background: color-mix(in srgb, var(--arc-accent) 14%, var(--card)); color: var(--ink); font-weight: 700; }
-.clash-inline { display: flex; gap: 8px; align-items: center; }
-.clash-inline .iconbtn { flex: none; width: 48px; height: 48px; }
+.party-loading { text-align: center; color: var(--ink-soft); margin-top: 30vh; }
+.party-h { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 28px; line-height: 1.15; }
+.party-p { margin: 0; color: var(--ink-soft); font-size: 14px; }
+.party-fine { margin: 0; text-align: center; color: var(--ink-dim); font-size: 12.5px; }
+.party-err { margin: 0; min-height: 1.3em; color: var(--arc-danger); font-weight: 700; font-size: 13.5px; }
+.party-err:empty { display: none; }
+.party-cta, .party-wide { width: 100%; }
+.party-wait { margin: 0; text-align: center; color: var(--ink-soft); font-weight: 700; }
+.party-note { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--card-2); font-size: 13px; color: var(--ink-soft); }
+.party-note--hot { background: color-mix(in srgb, var(--arc-accent) 14%, var(--card)); color: var(--ink); font-weight: 700; }
+.party-inline { display: flex; gap: 8px; align-items: center; }
+.party-inline .iconbtn { flex: none; width: 48px; height: 48px; }
 
 .share-note { margin: 0; text-align: center; font-size: 13px; color: var(--ink-soft); min-height: 1.3em; opacity: 0; }
 .share-note.show { opacity: 1; }
@@ -463,9 +463,9 @@ body[data-game="doodle-on"] { --game: var(--doodle); }
 
 /* ------------------------------------------------------------------ about -- */
 
-.clash-about { max-width: 480px; margin: 28px auto 0; color: var(--ink-soft); font-size: 13.5px; line-height: 1.55; }
-.clash-about summary { min-height: 44px; display: flex; align-items: center; justify-content: center; font-weight: 700; cursor: pointer; }
-.clash-about p { margin: 4px 0 0; }
-body[data-view="title"] .clash-about,
-body[data-view="play"] .clash-about,
-body[data-view="vote"] .clash-about { display: none; }
+.party-about { max-width: 480px; margin: 28px auto 0; color: var(--ink-soft); font-size: 13.5px; line-height: 1.55; }
+.party-about summary { min-height: 44px; display: flex; align-items: center; justify-content: center; font-weight: 700; cursor: pointer; }
+.party-about p { margin: 4px 0 0; }
+body[data-view="title"] .party-about,
+body[data-view="play"] .party-about,
+body[data-view="vote"] .party-about { display: none; }

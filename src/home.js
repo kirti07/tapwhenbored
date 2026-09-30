@@ -156,18 +156,18 @@ async function renderRoll() {
 }
 
 /**
- * The guest line, after a Tap Clash party: "You played at Aman's clash. You
+ * The guest line, after a Tap Party: "You played at Aman's party. You
  * came 4th. Host one — it takes a minute." Written by the party page on a
  * guest's phone only, and shown for fourteen days — the window the
  * guest-to-host measure uses. Local, like the rest of the page's personal state.
  */
 var GUEST_DAYS = 14;
 function renderGuestLine() {
-  var guest = getJSON("clash.guest", null);
+  var guest = getJSON("party.guest", null);
   var line = document.getElementById("guestLine");
   if (!line || !guest || typeof guest.host !== "string") return;
   if (!(Date.now() - guest.at < GUEST_DAYS * 24 * 60 * 60 * 1000)) return;
-  document.getElementById("guestLineH").textContent = "You played at " + guest.host + "\u2019s clash.";
+  document.getElementById("guestLineH").textContent = "You played at " + guest.host + "\u2019s party.";
   document.getElementById("guestLineP").textContent =
     (guest.place > 0 ? "You came " + ordinal(guest.place) + ". " : "") + "Host one \u2014 it takes a minute.";
   line.hidden = false;

@@ -5,7 +5,7 @@
 @import "../shared/css/shell.css";
 @import "../shared/css/howto.css";
 @import "../shared/css/endcard.css";
-@import "../shared/css/clash-round.css";
+@import "../shared/css/party-round.css";
 
 :root {
   --bg: #eaf6ee;
@@ -637,20 +637,20 @@ html, body {
 
 .done-btn { min-height: 44px; }
 
-/* ---- a Tap Clash round (html[data-clash]) ----
+/* ---- a Tap Party round (html[data-party]) ----
    The party page draws the clock and the bar above the frame, so the paper
    is square — every phone's doodle is the same shape on the vote grid — and
    locked, with no prompt, until the round goes live. */
 
-[data-clash] .timer-bar,
-[data-clash] .idle-prompt { display: none; }
+[data-party] .timer-bar,
+[data-party] .idle-prompt { display: none; }
 
-[data-clash="wait"] .prompt { visibility: hidden; }
-[data-clash="wait"] .canvas-area,
-[data-clash="wait"] .toolbar { pointer-events: none; }
+[data-party="wait"] .prompt { visibility: hidden; }
+[data-party="wait"] .canvas-area,
+[data-party="wait"] .toolbar { pointer-events: none; }
 
-[data-clash] .canvas-area { container-type: size; }
-[data-clash] .canvas-wrap {
+[data-party] .canvas-area { container-type: size; }
+[data-party] .canvas-wrap {
   width: min(100cqw, 100cqh);
   height: min(100cqw, 100cqh);
 }

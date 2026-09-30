@@ -1,15 +1,15 @@
-// The Tap Clash room API, exercised directly: the real handler
-// (api/_lib/clash.js) over the in-memory store, with a clock the test owns.
+// The Tap Party room API, exercised directly: the real handler
+// (api/_lib/party.js) over the in-memory store, with a clock the test owns.
 // No browser — these are the server's rules, including every rejection, and
 // the rate limits the dev server switches off.
 
 import { test, expect } from "@playwright/test";
-import { createHandler } from "../../api/_lib/clash.js";
-import { createMemoryStore } from "../../scripts/clash-dev-store.js";
-import * as R from "../../src/clash/rules.js";
+import { createHandler } from "../../api/_lib/party.js";
+import { createMemoryStore } from "../../scripts/party-dev-store.js";
+import * as R from "../../src/party/rules.js";
 
-const ORIGIN = "https://clash.test";
-const URL_ = `${ORIGIN}/api/clash/`;
+const ORIGIN = "https://party.test";
+const URL_ = `${ORIGIN}/api/party/`;
 
 function setup({ limits = null } = {}) {
   let t = 1_000_000;
@@ -350,7 +350,7 @@ async function draw(api, p, n, { ms = 10_000, bytes = jpeg(), seed, type = "imag
       headers: {
         "Content-Type": type,
         Origin: ORIGIN,
-        "x-clash": JSON.stringify({ type: "doodle", code: p.code, seat: p.seats[n].seat, token: p.seats[n].token, seed: seed ?? room.seed, ms }),
+        "x-party": JSON.stringify({ type: "doodle", code: p.code, seat: p.seats[n].seat, token: p.seats[n].token, seed: seed ?? room.seed, ms }),
       },
       body: bytes,
     }),
@@ -419,7 +419,7 @@ test.describe("Doodle On", () => {
     const t2 = (await draw(api, p, 2, { ms: 3000 })).body.tag;
     tags[2] = t2;
 
-    const [flat] = await api.store.pipeline([["HGETALL", `clash:${p.code}`]]);
+    const [flat] = await api.store.pipeline([["HGETALL", `party:${p.code}`]]);
     const secret = flat[flat.indexOf("k") + 1];
     expect(secret).toMatch(/^[0-9a-f-]{36}$/);
 

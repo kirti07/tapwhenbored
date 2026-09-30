@@ -1,9 +1,9 @@
-// A whole Tap Clash, three phones: one round, the results with Share and the
+// A whole Tap Party, three phones: one round, the results with Share and the
 // rematch controls under them, a rematch with a different game, and a host
 // handoff.
 //
 // Runs against the preview server's in-memory room store with
-// CLASH_TIME_SCALE (playwright.config.js), so every duration is scaled down.
+// PARTY_TIME_SCALE (playwright.config.js), so every duration is scaled down.
 // The boards are solved for real, inside the game iframes, by solvers
 // independent of the games' own code.
 
@@ -28,7 +28,7 @@ async function phone(browser, errors, label) {
 async function play(page, game) {
   await expect(screen(page, "play")).toBeVisible({ timeout: 20_000 });
   const frame = page.frameLocator("iframe.round-frame");
-  await expect(frame.locator("html")).toHaveAttribute("data-clash", "on");
+  await expect(frame.locator("html")).toHaveAttribute("data-party", "on");
   // Faster than the scaled minimum solve time would be refused as implausible.
   await page.waitForTimeout(400);
 
@@ -47,13 +47,13 @@ async function play(page, game) {
   }
 }
 
-test("a clash: pick a game, join by link and by code, end the round, podium, rematch another game, handoff", async ({ browser }) => {
+test("a party: pick a game, join by link and by code, end the round, podium, rematch another game, handoff", async ({ browser }) => {
   test.setTimeout(180_000);
   const errors = [];
 
   // The host picks Flip It with a 30 s limit and opens the room.
   const host = await phone(browser, errors, "host");
-  await host.goto("/clash/");
+  await host.goto("/party/");
   await host.fill("#setupName", "Aman");
   await host.locator("#setupPick .pick--flip-it").click();
   await host.locator("#setupPick .pick-cap", { hasText: "30s" }).click();
@@ -68,7 +68,7 @@ test("a clash: pick a game, join by link and by code, end the round, podium, rem
 
   // Riya scans the QR (opens the link).
   const riya = await phone(browser, errors, "riya");
-  await riya.goto(`/clash/?r=${code}`);
+  await riya.goto(`/party/?r=${code}`);
   await expect(riya.locator("#joinNote")).toHaveText(/^Flip It · 30s/);
   await riya.fill("#joinName", "Riya");
   await riya.click("#joinForm button[type=submit]");
@@ -77,7 +77,7 @@ test("a clash: pick a game, join by link and by code, end the round, podium, rem
 
   // The third player types the code, and a name that is markup.
   const evil = await phone(browser, errors, "evil");
-  await evil.goto("/clash/?join");
+  await evil.goto("/party/?join");
   await evil.fill("#codeInput", "aeio");
   await evil.click("#codeForm button[type=submit]");
   await expect(evil.locator("#codeErr")).not.toBeEmpty();
@@ -101,9 +101,9 @@ test("a clash: pick a game, join by link and by code, end the round, podium, rem
   // Joining closes when the host starts: a fourth phone opening the link now
   // is told so, not offered a seat.
   const lateP = await phone(browser, errors, "late");
-  await lateP.goto(`/clash/?r=${code}`);
+  await lateP.goto(`/party/?r=${code}`);
   await expect(screen(lateP, "gone")).toBeVisible();
-  await expect(lateP.locator("#goneH")).toHaveText("This clash has already started");
+  await expect(lateP.locator("#goneH")).toHaveText("This party has already started");
   await lateP.context().close();
 
   await Promise.all([play(host, "flip-it"), play(riya, "flip-it")]);
@@ -133,7 +133,7 @@ test("a clash: pick a game, join by link and by code, end the round, podium, rem
   await expect(host.locator("#hostActions")).toBeVisible();
   await expect(riya.locator("#hostActions")).toBeHidden();
   await expect(riya.locator("#rematchWait")).toBeVisible();
-  expect(await riya.evaluate(() => JSON.parse(localStorage.getItem("twb:clash.guest")).host)).toBe("Aman");
+  expect(await riya.evaluate(() => JSON.parse(localStorage.getItem("twb:party.guest")).host)).toBe("Aman");
 
   // A reload lands back on the results in the same seat, not on the join form.
   await riya.reload();
@@ -176,7 +176,7 @@ test("a clash: pick a game, join by link and by code, end the round, podium, rem
 async function scribble(page) {
   await expect(screen(page, "play")).toBeVisible({ timeout: 20_000 });
   const frame = page.frameLocator("iframe.round-frame");
-  await expect(frame.locator("html")).toHaveAttribute("data-clash", "on");
+  await expect(frame.locator("html")).toHaveAttribute("data-party", "on");
   await expect(frame.locator("#promptDir")).not.toBeEmpty();
   // Faster than the scaled minimum drawing time would be refused.
   await page.waitForTimeout(500);
@@ -189,12 +189,12 @@ async function scribble(page) {
   await frame.locator("#doneBtn").click();
 }
 
-test("a Doodle On clash: draw, name it, vote anonymously, the reveal", async ({ browser }) => {
+test("a Doodle On party: draw, name it, vote anonymously, the reveal", async ({ browser }) => {
   test.setTimeout(120_000);
   const errors = [];
 
   const host = await phone(browser, errors, "host");
-  await host.goto("/clash/");
+  await host.goto("/party/");
   await host.fill("#setupName", "Aman");
   await host.locator("#setupPick .pick--doodle-on").click();
   await expect(host.locator("#setupPick .pick-cap")).toHaveText(["30s", "45s", "60s"]);
@@ -205,7 +205,7 @@ test("a Doodle On clash: draw, name it, vote anonymously, the reveal", async ({ 
   const guests = [];
   for (const name of ["Riya", "Dev"]) {
     const p = await phone(browser, errors, name);
-    await p.goto(`/clash/?r=${code}`);
+    await p.goto(`/party/?r=${code}`);
     await expect(p.locator("#joinNote")).toHaveText(/everyone draws, then the room votes/);
     await p.fill("#joinName", name);
     await p.click("#joinForm button[type=submit]");
@@ -260,7 +260,7 @@ test("a Doodle On clash: draw, name it, vote anonymously, the reveal", async ({ 
   const download = riya.waitForEvent("download");
   await riya.evaluate(() => { navigator.canShare = undefined; });
   await riya.click("#shareBtn");
-  expect((await download).suggestedFilename()).toBe("tap-clash.jpg");
+  expect((await download).suggestedFilename()).toBe("tap-party.jpg");
 
   expect(errors).toEqual([]);
 });

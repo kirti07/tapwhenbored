@@ -11,8 +11,8 @@ import { getJSON, setJSON } from "../shared/ui/prefs.js";
 
 /* The one place the URL is spelled. It carries the trailing slash the rest
    of the site uses, so `trailingSlash: true` never has to redirect it. */
-const API = "/api/clash/";
-const SEATS_KEY = "clash.seats";
+const API = "/api/party/";
+const SEATS_KEY = "party.seats";
 const SEAT_TTL_MS = 3 * 60 * 60 * 1000; // a room lives three hours
 
 /* Server time minus this phone's time. Each answer can only have been stamped
@@ -44,7 +44,7 @@ export function post(body) {
  * (`{ type: "doodle", code, seat, token, seed, ms }`) in a header.
  */
 export function postDoodle(action, image) {
-  return send({ "Content-Type": "image/jpeg", "x-clash": JSON.stringify(action) }, image);
+  return send({ "Content-Type": "image/jpeg", "x-party": JSON.stringify(action) }, image);
 }
 
 async function send(headers, body) {

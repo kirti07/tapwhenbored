@@ -5,30 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f3f2fa">
 <!-- theme-bootstrap -->
-<title>Tap Clash — a phone game for the whole room, free and no signup</title>
-<meta name="description" content="Tap Clash is a free party game for 2–10 people in one room: race the same Flip It or Slide N Order board, or draw the same Doodle On prompt and vote on the best. Everyone scans a QR code. No app, no signup.">
-<link rel="canonical" href="https://www.tapwhenbored.com/clash/">
+<title>Tap Party — party games on everyone's phone, free and no signup</title>
+<meta name="description" content="Tap Party is a free party game for 2–10 people in one room: race the same Flip It or Slide N Order board, or draw the same Doodle On prompt and vote on the best. Everyone scans a QR code. No app, no signup.">
+<link rel="canonical" href="https://www.tapwhenbored.com/party/">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Tap Clash — same board, same moment, everyone's phone">
-<meta property="og:description" content="A free party game for 2–10 people in one room. Scan the code, race the same board. No app, no signup.">
-<meta property="og:url" content="https://www.tapwhenbored.com/clash/">
-<meta property="og:image" content="https://www.tapwhenbored.com/assets/clash-og.jpg">
+<meta property="og:title" content="Tap Party — same game, same moment, everyone's phone">
+<meta property="og:description" content="A free party game for 2–10 people in one room. Scan the code, race the same puzzle or draw and vote. No app, no signup.">
+<meta property="og:url" content="https://www.tapwhenbored.com/party/">
+<meta property="og:image" content="https://www.tapwhenbored.com/assets/party-og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Tap Clash — same board, same moment, everyone's phone">
-<meta name="twitter:description" content="A free party game for 2–10 people in one room. Scan the code, race the same board. No app, no signup.">
-<meta name="twitter:image" content="https://www.tapwhenbored.com/assets/clash-og.jpg">
+<meta name="twitter:title" content="Tap Party — same game, same moment, everyone's phone">
+<meta name="twitter:description" content="A free party game for 2–10 people in one room. Scan the code, race the same puzzle or draw and vote. No app, no signup.">
+<meta name="twitter:image" content="https://www.tapwhenbored.com/assets/party-og.jpg">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  "name": "Tap Clash",
-  "url": "https://www.tapwhenbored.com/clash/",
+  "name": "Tap Party",
+  "url": "https://www.tapwhenbored.com/party/",
   "description": "A free party game for 2–10 people in the same room. The host picks Flip It, Slide N Order or Doodle On and a time limit; everyone joins by QR code and plays the same board — or draws the same prompt and votes — on their own phone.",
   "applicationCategory": "GameApplication",
   "operatingSystem": "Any (web browser)",
-  "image": "https://www.tapwhenbored.com/assets/clash-og.jpg",
+  "image": "https://www.tapwhenbored.com/assets/party-og.jpg",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
   "isPartOf": { "@type": "WebSite", "name": "Tap When Bored", "url": "https://www.tapwhenbored.com/" }
 }
@@ -39,7 +39,7 @@
 <link rel="preload" href="/fonts/silkscreen-latin-700.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
 </head>
-<body class="clash">
+<body class="party">
 <div class="wrap page arc">
   <header class="top">
     <div>
@@ -47,7 +47,7 @@
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
         <span>Games</span>
       </a>
-      <p class="brand-sub clash-brand arc-pix">Tap Clash</p>
+      <p class="brand-sub party-brand arc-pix">Tap Party</p>
     </div>
     <div class="top-r">
       <!-- theme-btn:iconbtn -->
@@ -55,12 +55,12 @@
   </header>
 
   <main id="main" aria-live="polite">
-    <p class="clash-loading" data-screen="loading">Finding the room…</p>
+    <p class="party-loading" data-screen="loading">Finding the room…</p>
 
     <!-- 02 · Host setup: who you are, what the room plays, and for how long. -->
     <form class="scr" data-screen="setup" id="setupForm" hidden>
-      <h1 class="clash-h">Start a clash</h1>
-      <p class="clash-p">Everyone plays the same board on their own phone.</p>
+      <h1 class="party-h">Start a party</h1>
+      <p class="party-p">Everyone plays the same board on their own phone.</p>
       <label class="arc-field">
         <span class="arc-label">You</span>
         <input class="arc-input" id="setupName" name="name" maxlength="24" autocomplete="nickname" placeholder="Your name" required>
@@ -70,8 +70,8 @@
         <div class="faces" id="setupFaces" role="radiogroup" aria-labelledby="setupFaceL"></div>
       </div>
       <label class="arc-field">
-        <span class="arc-label">Clash name</span>
-        <span class="clash-inline">
+        <span class="arc-label">Party name</span>
+        <span class="party-inline">
           <input class="arc-input" id="setupParty" maxlength="40" autocomplete="off">
           <button class="iconbtn" id="setupShuffle" type="button" aria-label="Another name">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>
@@ -79,20 +79,20 @@
         </span>
       </label>
       <div class="pick" id="setupPick"></div>
-      <p class="clash-err" id="setupErr" role="alert"></p>
-      <button class="arc-btn arc-btn--primary clash-cta" type="submit" id="setupGo">Open the room</button>
+      <p class="party-err" id="setupErr" role="alert"></p>
+      <button class="arc-btn arc-btn--primary party-cta" type="submit" id="setupGo">Open the room</button>
     </form>
 
     <!-- Homepage "Join": the four-letter code. -->
     <form class="scr" data-screen="code" id="codeForm" hidden>
-      <h1 class="clash-h">Join a clash</h1>
-      <p class="clash-p">Type the four letters on the host's screen.</p>
+      <h1 class="party-h">Join a party</h1>
+      <p class="party-p">Type the four letters on the host's screen.</p>
       <label class="arc-field">
         <span class="arc-label">Room code</span>
         <input class="arc-input arc-mono code-input" id="codeInput" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" required>
       </label>
-      <p class="clash-err" id="codeErr" role="alert"></p>
-      <button class="arc-btn arc-btn--primary clash-cta" type="submit">Find the room</button>
+      <p class="party-err" id="codeErr" role="alert"></p>
+      <button class="arc-btn arc-btn--primary party-cta" type="submit">Find the room</button>
     </form>
 
     <!-- 04 · Guest join: straight from the QR or the link. Name and face only. -->
@@ -113,10 +113,10 @@
         <span class="arc-label" id="joinFaceL">Pick your face</span>
         <div class="faces" id="joinFaces" role="radiogroup" aria-labelledby="joinFaceL"></div>
       </div>
-      <p class="clash-p" id="joinNote"></p>
-      <p class="clash-err" id="joinErr" role="alert"></p>
-      <button class="arc-btn arc-btn--primary clash-cta" type="submit">Join the clash</button>
-      <p class="clash-fine">No signup. Nothing to install.</p>
+      <p class="party-p" id="joinNote"></p>
+      <p class="party-err" id="joinErr" role="alert"></p>
+      <button class="arc-btn arc-btn--primary party-cta" type="submit">Join the party</button>
+      <p class="party-fine">No signup. Nothing to install.</p>
     </form>
 
     <!-- 03 · Lobby. The host's screen is the one guests scan. -->
@@ -130,15 +130,15 @@
           <p class="lobby-game arc-pix" id="lobbyGame"></p>
         </div>
       </div>
-      <button class="arc-btn arc-btn--ghost clash-wide" id="inviteBtn" type="button">Share invite</button>
+      <button class="arc-btn arc-btn--ghost party-wide" id="inviteBtn" type="button">Share invite</button>
       <p class="share-note" id="inviteNote" role="status"></p>
-      <p class="clash-note" id="wakeNote" hidden>Keep this screen on — your guests are scanning it.</p>
-      <p class="clash-note clash-note--hot" id="hostNote" hidden>You're the host now.</p>
+      <p class="party-note" id="wakeNote" hidden>Keep this screen on — your guests are scanning it.</p>
+      <p class="party-note party-note--hot" id="hostNote" hidden>You're the host now.</p>
       <div class="room-head"><span class="arc-label" id="roomCount"></span><span class="arc-hint" id="roomHint"></span></div>
       <ul class="room" id="roomList"></ul>
-      <p class="clash-err" id="lobbyErr" role="alert"></p>
-      <button class="arc-btn arc-btn--primary clash-cta" id="startBtn" type="button" hidden></button>
-      <p class="clash-wait" id="lobbyWait" hidden></p>
+      <p class="party-err" id="lobbyErr" role="alert"></p>
+      <button class="arc-btn arc-btn--primary party-cta" id="startBtn" type="button" hidden></button>
+      <p class="party-wait" id="lobbyWait" hidden></p>
     </section>
 
     <!-- 05 · Title card: same on every phone, on the server's clock. -->
@@ -154,7 +154,7 @@
     <!-- 06 · Playing a round: the party bar over the real game page. -->
     <section class="scr play" data-screen="play" hidden>
       <div class="partybar arc-screen" id="partybar">
-        <span class="pb-round"><span class="pb-r arc-pix">Tap Clash</span><span class="pb-g arc-pix" id="pbGame"></span></span>
+        <span class="pb-round"><span class="pb-r arc-pix">Tap Party</span><span class="pb-g arc-pix" id="pbGame"></span></span>
         <span class="pb-clock arc-mono" id="pbClock" role="timer"></span>
         <span class="pb-done"><span class="pb-k arc-pix">Done</span><span class="arc-mono" id="pbDone"></span></span>
         <span class="pb-bar" aria-hidden="true"><span id="pbFill"></span></span>
@@ -173,7 +173,7 @@
         <form class="title-form" id="titleForm" hidden>
           <label class="arc-field">
             <span class="arc-label">Name your masterpiece</span>
-            <span class="clash-inline">
+            <span class="party-inline">
               <input class="arc-input" id="titleInput" maxlength="40" autocomplete="off" placeholder="It's obviously a…">
               <button class="arc-btn arc-btn--ghost" type="submit">Save</button>
             </span>
@@ -181,8 +181,8 @@
           <p class="sheet-foot" id="titleNote">Secret until the reveal.</p>
         </form>
         <p class="sheet-foot" id="sheetFoot">Results when everyone's done, or at 0:00.</p>
-        <p class="clash-err" id="endErr" role="alert"></p>
-        <button class="arc-btn arc-btn--ghost clash-cta" id="endBtn" type="button" hidden>End round</button>
+        <p class="party-err" id="endErr" role="alert"></p>
+        <button class="arc-btn arc-btn--ghost party-cta" id="endBtn" type="button" hidden>End round</button>
       </div>
     </section>
 
@@ -194,9 +194,9 @@
         <span class="pb-done"><span class="pb-k arc-pix">Voted</span><span class="arc-mono" id="voteDone"></span></span>
       </div>
       <h1 class="vote-h" id="voteH"></h1>
-      <p class="clash-p vote-p" id="voteP">Anonymous. You can't vote for your own.</p>
+      <p class="party-p vote-p" id="voteP">Anonymous. You can't vote for your own.</p>
       <ul class="vote-grid" id="voteGrid"></ul>
-      <p class="clash-err" id="voteErr" role="alert"></p>
+      <p class="party-err" id="voteErr" role="alert"></p>
       <div id="voteSlot"></div>
     </section>
 
@@ -224,7 +224,7 @@
         <p class="arc-label podium-aw" id="awardsH">Awards</p>
         <ul class="awards" id="awards"></ul>
       </div>
-      <button class="arc-btn arc-btn--primary clash-cta" id="shareBtn" type="button">Share</button>
+      <button class="arc-btn arc-btn--primary party-cta" id="shareBtn" type="button">Share</button>
       <label class="recap-opt" id="recapOpt" hidden><input type="checkbox" id="recapDoodle" checked> Put the top doodle on the card</label>
       <p class="share-note" id="shareNote" role="status"></p>
       <div class="final-actions" id="hostActions" hidden>
@@ -233,20 +233,20 @@
       </div>
       <form class="change" id="changeForm" hidden>
         <div class="pick" id="changePick"></div>
-        <button class="arc-btn arc-btn--primary clash-cta" type="submit">Start the rematch</button>
+        <button class="arc-btn arc-btn--primary party-cta" type="submit">Start the rematch</button>
       </form>
-      <p class="clash-err" id="rematchErr" role="alert"></p>
-      <p class="clash-wait" id="rematchWait" hidden>The host can start a rematch — you'll be pulled straight in.</p>
-      <a class="arc-btn arc-btn--ghost clash-cta" href="/clash/" id="hostOwn">Host your own</a>
+      <p class="party-err" id="rematchErr" role="alert"></p>
+      <p class="party-wait" id="rematchWait" hidden>The host can start a rematch — you'll be pulled straight in.</p>
+      <a class="arc-btn arc-btn--ghost party-cta" href="/party/" id="hostOwn">Host your own</a>
     </section>
 
     <!-- A room that is gone, or a seat that was removed. -->
     <section class="scr" data-screen="gone" hidden>
-      <h1 class="clash-h" id="goneH"></h1>
-      <p class="clash-p" id="goneP"></p>
+      <h1 class="party-h" id="goneH"></h1>
+      <p class="party-p" id="goneP"></p>
       <div class="final-actions">
-        <a class="arc-btn arc-btn--primary" href="/clash/">Start a clash</a>
-        <a class="arc-btn arc-btn--ghost" href="/clash/?join">Enter a code</a>
+        <a class="arc-btn arc-btn--primary" href="/party/">Start a party</a>
+        <a class="arc-btn arc-btn--ghost" href="/party/?join">Enter a code</a>
       </div>
     </section>
   </main>
@@ -254,11 +254,11 @@
   <!-- Readable without JavaScript, for people and for crawlers: every screen
        above is drawn by script, and the first one says only "Finding the
        room…". Hidden while a round is on, where it would sit under the board. -->
-  <details class="clash-about">
-    <summary>What is Tap Clash?</summary>
+  <details class="party-about">
+    <summary>What is Tap Party?</summary>
     <p>
-      Tap Clash is a free party game for 2 to 10 people in the same room, played on
-      everyone's own phone. One person starts a clash and picks the game — Flip It, the
+      Tap Party is a free party game for 2 to 10 people in the same room, played on
+      everyone's own phone. One person starts a party and picks the game — Flip It, the
       lights-out puzzle, Slide N Order, the 15-puzzle, or Doodle On, the drawing game — and
       a time limit. Everyone else scans the QR code or types the four-letter room code, adds
       a name and a face, and the room races the same board at the same moment. In Doodle On
@@ -270,6 +270,6 @@
   </details>
 </div>
 
-<script type="module" src="./clash.js"></script>
+<script type="module" src="./party.js"></script>
 </body>
 </html>

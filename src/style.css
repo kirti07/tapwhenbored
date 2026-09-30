@@ -469,7 +469,7 @@ button { font: inherit; color: inherit; }
 }
 
 .hgrid .attract,
-.hgrid .clash-strip { order: -1; }
+.hgrid .party-strip { order: -1; }
 
 /* In one column the roll collapses to its header.
  *
@@ -535,7 +535,7 @@ button { font: inherit; color: inherit; }
   }
   .hgrid > main { grid-row: 1 / 4; }
   .hgrid .attract,
-  .hgrid .clash-strip { order: 0; }
+  .hgrid .party-strip { order: 0; }
 }
 
 /* A rule-line heading: the label, then a rule filling what is left. Replaces
@@ -951,14 +951,14 @@ button { font: inherit; color: inherit; }
   text-wrap: pretty;
 }
 
-/* -------------------------------------------------------------- tap clash --
+/* -------------------------------------------------------------- tap party --
  * The party mode's strip under the roll, and the line a guest sees after a
- * party. Coral is Tap Clash's accent, passed in inline like a cabinet's. */
+ * party. Coral is Tap Party's accent, passed in inline like a cabinet's. */
 
-.clash-strip { padding: 0 14px 14px; }
-.clash-strip > * { position: relative; z-index: 1; }
+.party-strip { padding: 0 14px 14px; }
+.party-strip > * { position: relative; z-index: 1; }
 
-.clash-strip::before {
+.party-strip::before {
   content: "";
   position: absolute;
   left: 0;
@@ -970,11 +970,11 @@ button { font: inherit; color: inherit; }
   opacity: 0.9;
 }
 
-.clash-strip-bar { display: flex; align-items: center; justify-content: space-between; padding-top: 16px; }
-.clash-strip-bar h2 { margin: 0; font-size: 15px; letter-spacing: 0.08em; }
-.clash-strip-p { margin: 8px 0 12px; color: var(--arc-screen-soft); font-size: 13.5px; line-height: 1.5; }
-.clash-strip-go { display: grid; grid-template-columns: 1.5fr 1fr; gap: 10px; }
-.clash-strip-join {
+.party-strip-bar { display: flex; align-items: center; justify-content: space-between; padding-top: 16px; }
+.party-strip-bar h2 { margin: 0; font-size: 15px; letter-spacing: 0.08em; }
+.party-strip-p { margin: 8px 0 12px; color: var(--arc-screen-soft); font-size: 13.5px; line-height: 1.5; }
+.party-strip-go { display: grid; grid-template-columns: 1.5fr 1fr; gap: 10px; }
+.party-strip-join {
   background: transparent;
   color: var(--arc-screen-ink);
   border-color: var(--arc-screen-line);
