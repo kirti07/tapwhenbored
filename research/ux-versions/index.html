@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tap When Bored — UX version viewer</title>
+<style>
+  :root { --bg:#f2f2f6; --ink:#1a1b2e; --muted:#5c5f7a; --line:#dcdde8; --card:#fff; --accent:#6b4fd8; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  header { position:sticky; top:0; z-index:5; background:var(--card); border-bottom:1px solid var(--line); padding:10px 16px; display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; }
+  header h1 { font-size:15px; margin:0 12px 0 0; }
+  .group { display:flex; gap:4px; align-items:center; }
+  .group span { color:var(--muted); font-size:12px; margin-right:4px; }
+  button { font:inherit; font-size:13px; padding:5px 10px; border:1px solid var(--line); background:var(--card); border-radius:999px; cursor:pointer; color:var(--ink); }
+  button[aria-pressed="true"] { background:var(--accent); color:#fff; border-color:var(--accent); }
+  header a { font-size:13px; color:var(--accent); margin-left:auto; }
+  main { padding:16px; }
+  .version { margin-bottom:28px; }
+  .version h2 { font-size:16px; margin:0 0 4px; }
+  .version p { margin:0 0 10px; color:var(--muted); }
+  .row { display:flex; gap:14px; overflow-x:auto; padding-bottom:10px; }
+  figure { margin:0; flex:0 0 auto; }
+  figcaption { font-size:12px; color:var(--muted); margin-bottom:4px; display:flex; justify-content:space-between; gap:8px; }
+  figcaption a { color:var(--accent); text-decoration:none; }
+  .frame { background:#fff; border:1px solid var(--line); border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.06); }
+  .frame.mobile { width:390px; height:844px; }
+  .frame.desktop { width:640px; height:400px; }
+  .frame.desktop iframe { width:1280px; height:800px; transform:scale(.5); transform-origin:0 0; }
+  .frame.mobile iframe { width:390px; height:844px; }
+  iframe { border:0; display:block; }
+</style>
+</head>
+<body>
+<header>
+  <h1>UX versions</h1>
+  <div class="group"><span>Device</span><button data-set="device" data-val="mobile" aria-pressed="true">Mobile 390</button><button data-set="device" data-val="desktop">Desktop 1280</button></div>
+  <div class="group"><span>Theme</span><button data-set="theme" data-val="light" aria-pressed="true">Light</button><button data-set="theme" data-val="dark">Dark</button></div>
+  <div class="group"><span>Screen</span><button data-set="screen" data-val="all" aria-pressed="true">All</button><button data-set="screen" data-val="home">home</button><button data-set="screen" data-val="play">play</button><button data-set="screen" data-val="end-first">end-first</button><button data-set="screen" data-val="end-returning">end-returning</button><button data-set="screen" data-val="leaderboard">leaderboard</button><button data-set="screen" data-val="account">account</button></div>
+  <a href="../ANALYSIS.html">Analysis →</a>
+</header>
+<main id="main"></main>
+<script>
+const versions = [
+  { dir: "v1-arcade", name: "V1 · Arcade Cabinet", blurb: "High-score ritual, marquee shell, board fills the end card." },
+  { dir: "v2-sticker", name: "V2 · Sticker Book", blurb: "Collect a signed sticker per game; the board is a wall." },
+  { dir: "v3-ledger", name: "V3 · Quiet Ledger", blurb: "Editorial: result, percentile, distribution bar; table on its own page." },
+  { dir: "v4-weekly", name: "V4 · Weekly Table", blurb: "One 5-row weekly window in every end card; resets Sunday." },
+];
+const screens = ["home", "play", "end-first", "end-returning", "leaderboard", "account"];
+const state = { device: "mobile", theme: "light", screen: "all" };
+function render() {
+  const main = document.getElementById("main");
+  main.innerHTML = "";
+  for (const v of versions) {
+    const sec = document.createElement("section"); sec.className = "version";
+    sec.innerHTML = `<h2>${v.name}</h2><p>${v.blurb} · <a href="${v.dir}/README.md">README</a> · <a href="${v.dir}/shots/">screenshots</a></p><div class="row"></div>`;
+    const row = sec.querySelector(".row");
+    for (const s of screens) {
+      if (state.screen !== "all" && state.screen !== s) continue;
+      const src = `${v.dir}/${s}.html?theme=${state.theme}`;
+      const f = document.createElement("figure");
+      f.innerHTML = `<figcaption><span>${s}</span><a href="${src}" target="_blank">open ↗</a></figcaption><div class="frame ${state.device}"><iframe loading="lazy" src="${src}" title="${v.name} ${s}"></iframe></div>`;
+      row.appendChild(f);
+    }
+    main.appendChild(sec);
+  }
+}
+document.querySelectorAll("header button").forEach((b) => b.addEventListener("click", () => {
+  state[b.dataset.set] = b.dataset.val;
+  document.querySelectorAll(`button[data-set="${b.dataset.set}"]`).forEach((x) => x.setAttribute("aria-pressed", x === b));
+  render();
+}));
+render();
+</script>
+</body>
+</html>
