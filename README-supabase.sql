@@ -1076,8 +1076,8 @@ on conflict (game_slug, period) do update
 -- Retire the pre-arcade shape. The carry-over inserts that used to sit here
 -- have done their work -- the records they read are in game_scores, which is
 -- the only place anything reads them from now. Nothing in src/ has called
--- these since the arcade client shipped, and public/sw.js is a tombstone with
--- no fetch handler, so there is no cached bundle that could still try.
+-- these since the arcade client shipped, and the service worker never caches
+-- Supabase requests, so no cached bundle could still try.
 --
 -- Dropping them here rather than deleting the definitions is the point: a
 -- definition deleted from this file lives on forever in a database that

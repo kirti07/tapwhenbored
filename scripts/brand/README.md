@@ -40,6 +40,7 @@ the `#f6f6fb` page ground.
 | `public/icons/icon-192.png` | 192 × 192 | purple fill, mark drawn full-canvas |
 | `public/icons/icon-512.png` | 512 × 512 | purple fill, mark drawn full-canvas |
 | `public/icons/maskable-512.png` | 512 × 512 | purple fill, mark at **56%**, centred |
+| `public/icons/apple-touch-icon.png` | 180 × 180 | `icon-512.png` resized (`sips -z 180 180`) |
 | `public/assets/tapwhenbored-og.jpg` | 1200 × 630 | `#f6f6fb` ground; mark 400 square at x 86 with a soft shadow; wordmark, tagline and `tapwhenbored.com` stacked in the right column, wordmark shrunk to fit |
 | `public/favicon.svg` | 32 viewBox | hand-drawn reduction — see below |
 

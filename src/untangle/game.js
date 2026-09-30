@@ -154,7 +154,7 @@ import { recordPlay } from "../shared/ui/progress.js";
     return buildClusterGraph(n);
   }
 
-  // Today's original behavior: a ring plus uniformly-random non-crossing chords.
+  // A ring plus uniformly-random non-crossing chords.
   function buildUniformGraph(n) {
     var e = [];
     for (var i = 0; i < n; i++) e.push([i, (i + 1) % n]);
@@ -266,8 +266,7 @@ import { recordPlay } from "../shared/ui/progress.js";
   }
 
   // Shared by puzzle generation (count only) and render() (count + per-edge
-  // flags, via the optional flagsOut array) — one implementation instead of
-  // two near-identical double loops.
+  // flags, via the optional flagsOut array).
   function computeCrossings(pos, e, flagsOut) {
     var count = 0;
     for (var i = 0; i < e.length; i++) {
@@ -377,7 +376,7 @@ import { recordPlay } from "../shared/ui/progress.js";
 
   function nodeRadius(rect, n) {
     var base = Math.min(rect.width, rect.height) * 0.05;
-    var scaled = base * Math.sqrt(9 / n); // ease crowding as node count grows past the old baseline of ~9
+    var scaled = base * Math.sqrt(9 / n); // ease crowding as node count grows past ~9
     return Math.max(11, Math.min(22, scaled));
   }
 
@@ -590,10 +589,8 @@ import { recordPlay } from "../shared/ui/progress.js";
     nodes[dragIndex].x = p.x;
     nodes[dragIndex].y = p.y;
     dragMoved = true;
-    /* The previous count used to be re-parsed out of #crossingsVal.textContent
-       on every frame of a drag, which made an audio decision depend on a
-       rendered string — a copy tweak to the HUD would have become a logic bug.
-       render() returns the count, so keep the last one. */
+    /* Use render()'s returned count, never the HUD text, so the audio
+       decision doesn't depend on a rendered string. */
     var before = crossings;
     var after = render();
     if (after < before) sndRelease();

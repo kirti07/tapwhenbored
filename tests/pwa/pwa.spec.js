@@ -1,68 +1,44 @@
-// The PWA layer.
-//
-// The app is installable and nothing more: there is no service worker, no cache
-// and no offline mode, in a browser tab or in the installed app
-// (ARCHITECTURE.md §18, §19). So this file has two halves — the manifest and
-// icons an install needs, and the absence of everything else, which is the part
-// that would regress silently the moment someone reintroduces a worker.
-//
-// Service workers only run on localhost or HTTPS, so a registration left over
-// from an older build is a real possibility here, and the cleanup that deals
-// with it is asserted directly.
+// The PWA layer (ARCHITECTURE.md §18, §19): what an install needs, and the
+// service worker — network-first pages, cache-first files, offline play of a
+// visited game, and cache cleanup across builds. Every other spec runs with
+// workers blocked (playwright.config.js); this one opts back in.
 
 import { test, expect } from "@playwright/test";
 import { games, pages } from "../../src/data/games.js";
 
-/** Every URL currently held in any twb-* cache. */
-function cachedUrls(page) {
+test.use({ serviceWorkers: "allow" });
+
+/** Every pathname held in this build's cache. */
+function cachedPaths(page) {
   return page.evaluate(async () => {
-    const out = [];
-    for (const name of await caches.keys()) {
-      if (!name.startsWith("twb-")) continue;
-      const c = await caches.open(name);
-      for (const req of await c.keys()) out.push(new URL(req.url).pathname);
-    }
-    return out;
+    const name = (await caches.keys()).find((k) => k.startsWith("twb-v2-"));
+    if (!name) return [];
+    const reqs = await (await caches.open(name)).keys();
+    return reqs.map((r) => new URL(r.url).pathname);
   });
 }
 
-/** How many service-worker registrations this origin has. */
-function registrations(page) {
-  return page.evaluate(() =>
-    navigator.serviceWorker.getRegistrations().then(
-      (rs) => rs.length,
-      () => 0,
-    ),
-  );
+/** Waits until the worker controls the page and has finished activating. */
+async function controlled(page) {
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await expect
+    .poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null), {
+      timeout: 10000,
+    })
+    .toBe(true);
 }
 
-/**
- * Makes the page believe it was launched as an installed app.
- *
- * `display-mode` cannot be emulated — Chromium's `Emulation.setEmulatedMedia`
- * ignores the feature, and a real standalone window only comes from launching
- * the browser with `--app` — so the signal itself is stubbed, for this context
- * only and before any page script runs. Nothing in the site reads it any more,
- * which is exactly what the spec using this asserts: an install must not turn
- * caching back on.
- */
-function asInstalledApp(context) {
-  return context.addInitScript(() => {
-    const real = window.matchMedia.bind(window);
-    window.matchMedia = (q) =>
-      String(q).includes("display-mode")
-        ? {
-            matches: true,
-            media: String(q),
-            onchange: null,
-            addEventListener() {},
-            removeEventListener() {},
-            addListener() {},
-            removeListener() {},
-            dispatchEvent: () => false,
-          }
-        : real(q);
-  });
+/** Waits until the idle warm-up has cached every page. */
+async function warmed(page) {
+  const all = ["/", ...pages.map((p) => p.path), ...games.map((g) => g.path)];
+  await expect
+    .poll(async () => {
+      const paths = await cachedPaths(page);
+      return all.filter((p) => !paths.includes(p));
+    }, {
+      timeout: 20000,
+    })
+    .toEqual([]);
 }
 
 test.describe("manifest and icons", () => {
@@ -102,6 +78,16 @@ test.describe("manifest and icons", () => {
     }
   });
 
+  test("iOS gets its touch icon and standalone tags", async ({ page, request }) => {
+    await page.goto("/");
+    const href = await page.locator('link[rel="apple-touch-icon"]').getAttribute("href");
+    expect((await request.get(href)).status()).toBe(200);
+    await expect(page.locator('meta[name="apple-mobile-web-app-capable"]')).toHaveAttribute(
+      "content",
+      "yes",
+    );
+  });
+
   test("every page links the manifest", async ({ page }) => {
     for (const path of ["/", ...pages.map((p) => p.path), ...games.map((g) => g.path)]) {
       await page.goto(path);
@@ -113,158 +99,103 @@ test.describe("manifest and icons", () => {
   });
 });
 
-test.describe("no worker, no cache, no offline", () => {
-  test("no page registers a worker or caches anything", async ({ page }) => {
+test.describe("service worker", () => {
+  test("registers, controls the page and precaches the shell", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator(".shelf")).toBeVisible();
+    await controlled(page);
+    const paths = await cachedPaths(page);
+    for (const p of ["/", "/manifest.webmanifest", "/fonts/nunito-latin-700.woff2"]) {
+      expect(paths).toContain(p);
+    }
+  });
+
+  test("warms every page when idle", async ({ page }) => {
+    await page.goto("/");
+    await controlled(page);
+    await warmed(page);
+  });
+
+  test("a visited game plays offline, whatever its query", async ({ page, context }) => {
+    await page.goto("/");
+    await controlled(page);
+    await warmed(page);
+
+    await context.setOffline(true);
+    try {
+      await page.goto("/honeycomb/");
+      await expect(page.locator("#board .tile").first()).toBeVisible();
+      await page.goto("/flip-it/?utm_source=test");
+      await expect(page.locator("#board .tile").first()).toBeVisible();
+    } finally {
+      await context.setOffline(false);
+    }
+  });
+
+  test("an unsaved page offline gets the offline page, not a browser error", async ({
+    page,
+    context,
+  }) => {
+    await page.goto("/");
+    await controlled(page);
+
+    await context.setOffline(true);
+    try {
+      await page.goto("/not-a-page/");
+      await expect(page.getByRole("heading", { name: "You're offline" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
+    } finally {
+      await context.setOffline(false);
+    }
+  });
+
+  test("pages are network-first: a stale cached copy is replaced online", async ({ page }) => {
+    await page.goto("/");
+    await controlled(page);
+    await page.evaluate(async () => {
+      const name = (await caches.keys()).find((k) => k.startsWith("twb-v2-"));
+      await (await caches.open(name)).put(
+        "/honeycomb/",
+        new Response("<!doctype html><title>stale</title>", {
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        }),
+      );
+    });
+
     await page.goto("/honeycomb/");
     await expect(page.locator("#board .tile").first()).toBeVisible();
-    // Comfortably longer than any idle-callback registration would have taken.
-    await page.waitForTimeout(1500);
-
-    expect(await registrations(page), "nothing may register a worker").toBe(0);
-    expect(
-      await page.evaluate(() => navigator.serviceWorker.controller === null),
-      "no page may be controlled",
-    ).toBe(true);
-    expect(await cachedUrls(page), "nothing may be cached").toEqual([]);
+    expect(await page.title()).not.toBe("stale");
   });
 
-  // The point of removing it: an install buys an app window, not an offline
-  // copy. Nothing reads display-mode any more, and this is what fails if a gate
-  // on it ever comes back.
-  test("an installed launch caches nothing either", async ({ page, context }) => {
-    await asInstalledApp(context);
+  test("the party API is never cached", async ({ page }) => {
+    await page.goto("/");
+    await controlled(page);
+    await page.evaluate(() => fetch("/api/party/?r=ZZZZ").catch(() => {}));
+    await warmed(page);
+    expect((await cachedPaths(page)).filter((p) => p.startsWith("/api/"))).toEqual([]);
+  });
+
+  test("keeps this build's cache and the previous one, and nothing older", async ({
+    page,
+  }) => {
+    // robots.txt carries no registration snippet, so the caches exist first.
+    await page.goto("/robots.txt");
+    await page.evaluate(async () => {
+      for (const name of ["twb-shell-legacy", "twb-runtime", "twb-v2-older", "twb-v2-previous"]) {
+        await (await caches.open(name)).put("/x", new Response("x"));
+      }
+    });
 
     await page.goto("/");
-    await expect(page.locator(".shelf")).toBeVisible();
-    await page.goto("/flip-it/");
-    await expect(page.locator("#board .tile").first()).toBeVisible();
-    await page.waitForTimeout(1500);
-
-    expect(
-      await page.evaluate(() => matchMedia("(display-mode: standalone)").matches),
-      "precondition: the page believes it is the installed app",
-    ).toBe(true);
-    expect(await registrations(page), "an install must not register a worker").toBe(0);
-    expect(await cachedUrls(page), "an install must not cache").toEqual([]);
+    await controlled(page);
+    const keys = await page.evaluate(() => caches.keys());
+    expect(keys).toHaveLength(2);
+    expect(keys).toContain("twb-v2-previous");
+    expect(keys.find((k) => k !== "twb-v2-previous")).toMatch(/^twb-v2-[0-9a-f]{12}$/);
   });
 
-  // /sw.js is a tombstone, not a caching worker: it exists so that a device
-  // still carrying the old one installs something that deletes it. The update
-  // check needs a real script at a real URL, so this must not 404.
   test("/sw.js is served as a script", async ({ request }) => {
     const res = await request.get("/sw.js");
     expect(res.status()).toBe(200);
     expect(res.headers()["content-type"]).toContain("javascript");
-  });
-
-  test("the tombstone removes itself and every twb-* cache", async ({ page }) => {
-    await page.goto("/");
-    // The page's own cleanup snippet has already run by now, so what happens
-    // after this point is the worker's doing, not the page's.
-    await page.waitForTimeout(500);
-
-    await page.evaluate(async () => {
-      const shell = await caches.open("twb-shell-legacy");
-      await shell.put("/", new Response("stale"));
-      const runtime = await caches.open("twb-runtime");
-      await runtime.put("/honeycomb/", new Response("stale"));
-      await navigator.serviceWorker.register("/sw.js");
-    });
-
-    await expect
-      .poll(() => page.evaluate(() => caches.keys()), {
-        message: "the tombstone must delete the old caches",
-        timeout: 10000,
-      })
-      .toEqual([]);
-    await expect
-      .poll(() => registrations(page), {
-        message: "and then unregister itself",
-        timeout: 10000,
-      })
-      .toBe(0);
-  });
-
-  // With no fetch handler in the tombstone, a page it has claimed goes to the
-  // network for everything — which is what stops the session that installs it
-  // from carrying on out of the old cache.
-  test("a page the tombstone claimed is not served from a cache", async ({
-    page,
-    context,
-  }) => {
-    await page.goto("/honeycomb/");
-    await page.waitForTimeout(500);
-    await page.evaluate(async () => {
-      await navigator.serviceWorker.register("/sw.js");
-    });
-    await expect
-      .poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null), {
-        message: "the tombstone must claim this page",
-        timeout: 10000,
-      })
-      .toBe(true);
-
-    await context.setOffline(true);
-    try {
-      let failed = false;
-      await page.reload().catch(() => {
-        failed = true;
-      });
-      expect(failed, "a claimed page must have no cached copy to fall back on").toBe(
-        true,
-      );
-    } finally {
-      await context.setOffline(false);
-    }
-  });
-
-  test("a visited game is not playable offline", async ({ page, context }) => {
-    await page.goto("/honeycomb/");
-    await expect(page.locator("#board .tile").first()).toBeVisible();
-    await page.waitForTimeout(1000);
-
-    await context.setOffline(true);
-    try {
-      let failed = false;
-      await page.reload().catch(() => {
-        failed = true;
-      });
-      expect(failed, "there must be no copy for the browser to serve").toBe(true);
-      // And no worker-generated "not available offline" page either.
-      await expect(page.locator("#board .tile")).toHaveCount(0);
-    } finally {
-      await context.setOffline(false);
-    }
-  });
-
-  // Devices that visited while the site still shipped a worker carry its caches
-  // around, and an active worker would go on answering out of them. Every page
-  // clears them; this is the half of that a test can drive.
-  test("a cache left over from an earlier build is cleared", async ({ page }) => {
-    await page.goto("/");
-    await page.evaluate(async () => {
-      const shell = await caches.open("twb-shell-legacy");
-      await shell.put(
-        "/",
-        new Response("<!doctype html><title>stale", {
-          headers: { "Content-Type": "text/html; charset=utf-8" },
-        }),
-      );
-      const runtime = await caches.open("twb-runtime");
-      await runtime.put("/honeycomb/", new Response("stale"));
-    });
-    expect(await cachedUrls(page), "precondition: a legacy cache exists").not.toEqual(
-      [],
-    );
-
-    await page.reload();
-    await expect
-      .poll(() => page.evaluate(() => caches.keys()), {
-        message: "a legacy cache must not survive a page load",
-        timeout: 5000,
-      })
-      .toEqual([]);
   });
 });

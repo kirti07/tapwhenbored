@@ -1,31 +1,8 @@
-/* How a score is written down.
- *
- * There were five m:ss-family formatters in this codebase and no two agreed.
- * The same honeycomb run read "0:56" on the game's own end card and "0:56.8" in
- * the sticker book; flip-it zero-padded its minutes, so a nine-second solve
- * showed as "00:09". One number, three spellings, depending which page you were
- * looking at.
- *
- * So: one definition, whole seconds, everywhere a *score* is shown — end cards,
- * the book, the homepage badge, the wall.
- *
- * The trade that comes with whole seconds, stated rather than discovered later:
- * flip-it's solves cluster around nine to eleven seconds, so 0:09.4 and 0:09.8
- * both print as 0:09. Two genuinely different global bests can look identical
- * on the wall. That is the chosen behaviour.
- *
- * Running clocks are deliberately not in scope. word-steps counts down to
- * midnight in h:mm:ss and doodle-on counts down a fixed thirty seconds; those
- * are a different job with a different shape, and tenths on a ticking clock
- * would only flicker.
+/* How a score is written down, everywhere a score is shown. Whole seconds by
+ * choice, so close times can print the same. Running clocks are out of scope.
  */
 
-/**
- * Milliseconds as m:ss.
- *
- * The null guard came from honeycomb, which was the only copy that had one and
- * was right to: its HUD renders before a run has a time.
- */
+/** Milliseconds as m:ss; "--:--" before a run has a time. */
 export function formatDuration(ms) {
   if (ms == null || !Number.isFinite(ms)) return "--:--";
   var totalSec = Math.floor(Math.max(0, ms) / 1000);
@@ -34,13 +11,7 @@ export function formatDuration(ms) {
   return m + ":" + (s < 10 ? "0" : "") + s;
 }
 
-
-/**
- * A registry score, formatted by its own `scoreFormat`.
- *
- * Returns null for anything that is not a finite number, so a caller can tell
- * "no score" from "a score of zero" and render a dash rather than a 0.
- */
+/** A registry score by its `scoreFormat`; null (not "0") when there is none. */
 export function formatScore(value, format) {
   if (!Number.isFinite(value)) return null;
   return format === "time" ? formatDuration(value) : value.toLocaleString();

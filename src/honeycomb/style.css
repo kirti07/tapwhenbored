@@ -120,7 +120,7 @@ html, body {
   width: var(--hex-w);
   height: var(--hex-h);
   transform: translate(-50%, -50%);
-  transition: left 0.28s cubic-bezier(.4, 0, .2, 1), top 0.28s cubic-bezier(.4, 0, .2, 1), transform 0.15s ease, filter 0.15s ease;
+  transition: translate 0.28s cubic-bezier(.4, 0, .2, 1), transform 0.15s ease, filter 0.15s ease;
   cursor: default;
   filter: drop-shadow(0 2px 2px rgba(46, 38, 74, 0.22));
 }
@@ -133,14 +133,9 @@ html, body {
 .tile:not([data-hidden]) { --tile-face: var(--tile-clue); }
 
 
-/* A real honeycomb's cells sit edge-to-edge on one plane — no cell floats
-   above its neighbor. So depth stays entirely inside each tile's own
-   silhouette: a concentric wall (the rim, sized evenly larger with no
-   directional offset) reads as the cell's own boundary, and only a small,
-   tight, low-offset shadow lifts it — nowhere near enough reach to fall
-   onto the tile below. Numbered landmarks get a quieter version; every
-   hidden tile is tappable, so they all get the fuller "raised, tap-me"
-   treatment below. */
+/* Cells sit edge-to-edge on one plane, so depth stays inside each tile's
+   silhouette: a concentric rim plus a tight shadow that can't fall onto the
+   tile below. Hidden (tappable) tiles get the fuller raised treatment. */
 .tile--tappable {
   cursor: pointer;
   filter: drop-shadow(0 3px 3px rgba(46, 38, 74, 0.3));
@@ -449,8 +444,7 @@ html, body {
 }
 .overlay.won .overlay-status { color: var(--success); }
 
-/* The sentence that names why the run ended. Before this, a run that finished
-   for a reason the player hadn't spotted just looked like it had stopped. */
+/* The sentence that names why the run ended. */
 .overlay-reason {
   margin: 0;
   max-width: min(80vw, 300px);
@@ -520,11 +514,8 @@ html, body {
   .tile-burst-ring { animation: none; opacity: 0; }
   .tile-burst-shockwave { animation: none; opacity: 0; }
   .tile-flash-hex { animation: none; opacity: 0.3; }
-  /* `.overlay-icon polygon` (0,1,1) loses to `.overlay-icon polygon:first-child`
-     (0,2,1), so the override that was here never actually applied and the end
-     card's two hexagons kept drifting forever under reduced motion. Matching
-     the specificity is the fix; this is the exact trap the audit called
-     "the loss animation out-specifies its override". */
+  /* Must match the specificity of `.overlay-icon polygon:first-child` (0,2,1)
+     or the end card's hexagons keep drifting under reduced motion. */
   .overlay-icon polygon,
   .overlay-icon polygon:first-child,
   .overlay-icon polygon:last-child { animation: none; }
@@ -557,14 +548,9 @@ html, body {
   background: color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
-/* Neon Arcade: same contained-depth cells as light mode, plus glow. Every
-   hidden tile is tappable, so a bright resting glow is a glow on two thirds
-   of the board — the halos merge into one wash and read as decoration rather
-   than as "this one is interactive". So the resting state gets a tight rim
-   and one short bloom that stays inside roughly its own cell, and the wide
-   halo is spent only on the tile being pointed at or pressed. Depth stays
-   inside each cell's silhouette here too — the glow is the only thing
-   allowed to spill past its edge. */
+/* Neon Arcade: same contained-depth cells as light mode, plus glow. Most of
+   the board is tappable, so the resting glow stays tight to each cell and the
+   wide halo is kept for the tile being hovered or pressed. */
 [data-theme="dark"] .tile-hex {
   background:
     radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 45%),

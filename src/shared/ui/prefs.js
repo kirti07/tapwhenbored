@@ -1,36 +1,11 @@
-/* Namespaced, crash-proof access to localStorage.
- *
- * Two problems this exists to solve.
- *
- * The first is that `localStorage` throws. Not "returns null" — throws, on the
- * property access itself, in Safari private mode and anywhere a browser is set
- * to block site data. Seven of the eight games already wrapped every call in a
- * try/catch; bubble-tap did not, and its unguarded read sat inside a function
- * called during module init, so the whole game died before it drew a frame.
- * That is the entire class of bug: it is not enough for most callers to
- * remember, because the one that forgets takes the page down with it.
- *
- * The second is naming. The repo grew three conventions — `untangleBestMoves`,
- * `wordSteps:v1`, `twb_sound` — and nothing stopped a future key colliding with
- * one of them. Everything written through here gets a `twb:` prefix, so the
- * site's keys are greppable in devtools and can never collide with a key some
- * embedded script sets.
- *
- * LEGACY_KEYS migrates the old names forward on first read. It copies rather
- * than moves: a player who somehow loads an older build still finds their best
- * score where that build expects it. The cost is a handful of duplicated
- * strings in storage, which is the right price for not deleting somebody's
- * 40-day streak on a deploy.
- *
- * Values are strings, exactly as localStorage has them, with getJSON/setJSON
- * for the three games that store objects. Deliberately not a generic
- * serialising store: a `get` that sometimes returns a string and sometimes an
- * object is the kind of API that produces `"[object Object]"` in a HUD.
+/* Namespaced (`twb:`), crash-proof localStorage. Access can throw (Safari
+ * private mode, blocked site data), so every call is guarded. Values are
+ * strings; use getJSON/setJSON for objects.
  */
 
 var PREFIX = "twb:";
 
-/* new short name -> the unprefixed key that build shipped before this file. */
+/* Copied forward on first read, never deleted, so older builds still find them. */
 var LEGACY_KEYS = {
   "untangle.best": "untangleBestMoves",
   "slide-n-order.best": "slideNOrderBest",
@@ -45,9 +20,8 @@ var LEGACY_KEYS = {
   calm: "twb_calm",
 };
 
-/* One probe, cached. Every read and write still has its own try/catch — a
-   browser can revoke storage mid-session — but this keeps the common blocked
-   case from throwing and being caught once per call. */
+/* Cached probe; each call still has its own try/catch as storage can be
+   revoked mid-session. */
 var available = null;
 
 function usable() {
@@ -73,8 +47,7 @@ export function get(key, fallback) {
     var v = window.localStorage.getItem(PREFIX + key);
     if (v !== null) return v;
 
-    /* Not found under the new name. Look for the pre-namespace key and, if it
-       is there, copy it forward so this is the last time we look. */
+    /* Fall back to the legacy key and copy it forward. */
     var legacy = LEGACY_KEYS[key];
     if (legacy) {
       var old = window.localStorage.getItem(legacy);
@@ -115,7 +88,6 @@ export function getJSON(key, fallback) {
   }
 }
 
-/** Serialise and write a JSON preference. */
 export function setJSON(key, value) {
   try {
     return set(key, JSON.stringify(value));
@@ -124,15 +96,7 @@ export function setJSON(key, value) {
   }
 }
 
-/**
- * A whole-number preference, or `fallback`.
- *
- * Four games had their own `readBest`, all the same three lines, and two of
- * them wrapped it in a try/catch — dead code, since nothing in this file
- * throws. That is the trouble with a helper each game writes for itself: the
- * defensiveness gets copied along with the logic, and then outlives the reason
- * for it.
- */
+/** A whole-number preference, or `fallback`. */
 export function getInt(key, fallback = null) {
   var raw = get(key, null);
   if (raw === null) return fallback;

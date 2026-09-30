@@ -335,8 +335,7 @@ And the rule that constrains all of the above:
 
 ## 13. If it makes a sound, it has a mute
 
-Six of eight games shipped with sound and no way to stop it. That is not a
-missing feature, it is a game that cannot be played in a waiting room.
+A game with sound and no way to stop it cannot be played in a waiting room.
 
 * Any game that makes a noise has a mute, in reach, on the main screen.
 * The preference is site-wide. Muting in one game mutes the shelf.

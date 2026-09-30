@@ -1,28 +1,10 @@
-/* The homepage: a sticker wall on warm paper.
+/* The homepage (also loaded by /account/ and /wall/): a sticker wall on warm
+ * paper. Card colours come from the registry as inline custom properties, so
+ * the validator checks them.
  *
- * The visual system is research/ux-versions/v2-sticker/home.html, which won
- * second place in the persona study and is the reference this file follows
- * rather than reinterprets. What changed from the old homepage, and why:
- *
- * The ground went from a cool lavender to warm paper. The old page put a
- * photo-realistic wooden marble board on a lavender field — the exact clash
- * GAME-UI-PHILOSOPHY.md uses as its worked example of what not to ship. Flat
- * sticker glyphs tinted from each game's own accent belong to one visual world;
- * eight pieces of unrelated artwork never did.
- *
- * Card colour is now data. It used to be sixteen hand-written `.card--<slug>`
- * rules that nothing validated, so a new game whose CSS pair was forgotten
- * shipped in the fallback purple. Both accents now come from the registry as
- * inline custom properties, and the validator checks them.
- *
- * The shared files these pages take are tokens.css — the self-hosted faces and
- * the tokens that name them — and base.css, for the resets and the two
- * accessibility utilities that must exist on every page in the site: the
- * `hidden` guard and the skip link — and arcade.css, the cabinet chrome the
- * board and the player card are built from. Body copy stays on the system
- * stack: only
- * weight 700 is on the homepage's critical path, and headings are the only
- * place a display face earns it.
+ * Shared files: tokens.css (faces and tokens), base.css (resets, the `hidden`
+ * guard, the skip link) and arcade.css (the cabinet chrome). Body copy stays on
+ * the system stack; only headings use the display face.
  *
  * Shared first, so the rules below can still override them.
  */
@@ -41,18 +23,8 @@
 :root {
   color-scheme: light;
 
-  /* The page palette is the cabinet palette.
-   *
-   * These names are what the three shared pages were written against, and they
-   * stay — but the values are no longer a second set. They point at the
-   * --arc-* tokens in arcade.css, which are the arcade's own and already flip
-   * with the theme, so light and dark are declared once each in one file
-   * rather than three times across two.
-   *
-   * The ground is a cool near-white rather than the warm paper the sticker
-   * design used, and it is flat: an arcade is a room with machines in it, not
-   * a sheet of paper, and the previous grain fought the cabinets sitting on it.
-   */
+  /* The page palette is the cabinet palette: these names point at the --arc-*
+     tokens in arcade.css, which already flip with the theme. */
   --paper: var(--arc-bg);
   --card: var(--arc-card);
   --card-2: var(--arc-sunk);
@@ -67,14 +39,12 @@
   --shadow-s: var(--arc-shadow);
   --shadow-m: var(--arc-shadow);
 
-  --r-m: 14px;
   --r-l: 20px;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-/* Only `color-scheme` needs saying twice now — the colours come from tokens
-   that already know which theme is on. It matters because it is what makes UA
-   form controls and scrollbars dark, and it is not a custom property. */
+/* Only `color-scheme` needs saying twice — the colours come from tokens that
+   already know the theme. It is what makes UA controls and scrollbars dark. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) { color-scheme: dark; }
 }
@@ -119,13 +89,8 @@ button { font: inherit; color: inherit; }
 
 .num { font-variant-numeric: tabular-nums; }
 
-/* `hidden` must actually hide.
- *
- * The attribute is only a UA rule of `display: none`, so any class that sets
- * its own `display` silently outranks it. The two rules that used to do that
- * here — `.btn` and `.nameedit`, from the retired `/book/` page — are gone, but
- * this stays: script hides things with `el.hidden` all over the site, and the
- * next `display` rule added above would quietly break it again. */
+/* `hidden` must actually hide: any class that sets its own `display` outranks
+   the UA rule, and script hides things with `el.hidden` all over the site. */
 [hidden] { display: none !important; }
 
 .wrap { max-width: 1060px; margin: 0 auto; padding: 0 16px; }
@@ -168,10 +133,9 @@ button { font: inherit; color: inherit; }
 
 .top-r { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 
-/* The way back to the shelf. Only the book page has one — the homepage is the
-   shelf — but it lives here so the two pages share one definition, as the game
-   top bars already do. The pseudo-element gives it a 44px target without
-   changing how much ink is on the page. */
+/* The way back to the shelf, shared by the pages that load this stylesheet.
+   The pseudo-element gives it a 44px target without changing how much ink is
+   on the page. */
 .back-link {
   position: relative;
   display: inline-flex;
@@ -230,57 +194,6 @@ button { font: inherit; color: inherit; }
 :root[data-theme="dark"] .iconbtn [data-theme-icon="dark"] { display: none; }
 
 
-/* ---------------------------------------------------------------- shelf -- */
-
-.shelf { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-
-@media (min-width: 640px) { .shelf { grid-template-columns: repeat(3, 1fr); gap: 14px; } }
-@media (min-width: 900px) { .shelf { grid-template-columns: repeat(4, 1fr); gap: 16px; } }
-
-.card {
-  display: flex;
-  flex-direction: column;
-  background: var(--card);
-  border: 1.5px solid var(--line);
-  border-radius: var(--r-l);
-  text-decoration: none;
-  overflow: hidden;
-  box-shadow: var(--shadow-s);
-  transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .card:hover {
-    transform: translateY(-2px);
-    border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
-    box-shadow: var(--shadow-m);
-  }
-}
-
-.card:active { transform: translateY(0); }
-
-@media (prefers-reduced-motion: reduce) {
-  .card { transition: border-color 0.14s ease; }
-  .card:hover { transform: none; }
-}
-
-
-.card-b { padding: 11px 12px 12px; display: flex; flex-direction: column; gap: 1px; flex: 1; }
-
-.card-n {
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  line-height: 1.25;
-}
-
-.card-t { font-size: 12.5px; color: var(--ink-soft); }
-
-@media (prefers-color-scheme: dark) {
-}
-
-
 .honest {
   display: flex;
   align-items: center;
@@ -293,8 +206,6 @@ button { font: inherit; color: inherit; }
 
 .honest svg { width: 14px; height: 14px; flex: none; }
 
-
-.intro { font-size: 13.5px; line-height: 1.6; color: var(--ink-soft); max-width: 68ch; }
 
 /* --------------------------------------------------------------- footer -- */
 
@@ -312,8 +223,7 @@ button { font: inherit; color: inherit; }
 
 .foot-r { margin-left: auto; }
 
-/* The footer had no links until the wall added one, so nothing here sized them.
-   Same 44px floor as everywhere else, and the same trick: the target grows,
+/* Same 44px floor as everywhere else, and the same trick: the target grows,
    the ink does not. */
 .foot a {
   position: relative;
@@ -350,30 +260,11 @@ button { font: inherit; color: inherit; }
  * The marquee, its bulbs and its accent all come from arcade.css. The only
  * thing here is how a card is put together.
  */
-.card .arc-marquee {
-  min-height: 40px;
-  padding: 10px 12px 8px;
-}
-
 .card .arc-marquee .arc-pix {
   font-size: 10px;
   line-height: 1.3;
 }
 
-/* Square corners where the marquee meets the frame, so the band reads as
-   part of the cabinet rather than a sticker laid on top. */
-.card {
-  border-radius: var(--r-l);
-}
-
-/* The heading lives inside the marquee — one title, announced once. Its own
-   size and weight come from .arc-pix, so this only has to undo the margin an
-   h2 carries by default. */
-.card .card-n {
-  margin: 0;
-  font-size: 10px;
-  line-height: 1.3;
-}
 
 
 /* ------------------------------------------------------- the attract panel --
@@ -471,14 +362,8 @@ button { font: inherit; color: inherit; }
 .hgrid .attract,
 .hgrid .party-strip { order: -1; }
 
-/* In one column the roll collapses to its header.
- *
- * Ordering it above the shelf is right — a board with somebody's name on it is
- * the reason to play — but a header, eight 46px rows and a two-line foot is
- * about 500px, and until a board answers most of it is dashes. Above the shelf
- * that is the whole first screen spent on nothing. So the rows and the foot go,
- * the bar becomes a link to the full boards, and the reason to play is still
- * the first thing on the page at a fourteenth of the height.
+/* In one column the roll collapses to its header, which becomes a link to the
+ * full boards, so it doesn't spend the whole first screen above the shelf.
  *
  * 919/920 is deliberate: it is exactly where .hgrid stops being two columns
  * just below, so the panel is either a rail or a link and never a slab. The two
@@ -503,8 +388,8 @@ button { font: inherit; color: inherit; }
   .attract .arc-screen-foot,
   .attract .roll-now { display: none; }
 
-  /* 44px because the whole bar is now a tap target and the site has a floor.
-     The border goes because there is no longer anything under it. */
+  /* 44px because the whole bar is a tap target here; no border, since
+     nothing sits under it. */
   .attract .arc-screen-bar {
     position: relative;
     min-height: 44px;
@@ -538,8 +423,7 @@ button { font: inherit; color: inherit; }
   .hgrid .party-strip { order: 0; }
 }
 
-/* A rule-line heading: the label, then a rule filling what is left. Replaces
-   the three-part eyebrow/title/subtitle head the previous design used. */
+/* A rule-line heading: the label, then a rule filling what is left. */
 .arc-sect {
   display: flex;
   align-items: center;
@@ -561,6 +445,7 @@ button { font: inherit; color: inherit; }
   max-width: 62ch;
   margin: 22px 0 0;
   font-size: 14.5px;
+  line-height: 1.6;
   color: var(--ink-soft);
 }
 
@@ -574,12 +459,8 @@ button { font: inherit; color: inherit; }
 
 @media (min-width: 620px) { .shelf { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; } }
 
-/* Four columns only once the shelf is genuinely wide enough for them.
- *
- * The rail arrives at 920px and takes 348px with it, so a fourth column
- * between there and ~1180px leaves each card too narrow for its own meta line
- * — "no board, on purpose" was being cut to "no board, on pur…", which
- * explains nothing. Three wide cards beat four cropped ones. */
+/* Four columns only once the shelf is wide enough: the 348px rail arrives at
+   920px, and below ~1180px a fourth column truncates the card's meta line. */
 @media (min-width: 1180px) { .shelf { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
 .cab,
@@ -599,6 +480,7 @@ button { font: inherit; color: inherit; }
 @media (hover: hover) and (pointer: fine) {
   .card:hover {
     transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
     box-shadow:
       0 10px 0 -4px color-mix(in srgb, var(--arc-accent) 40%, transparent),
       var(--shadow-m);
@@ -613,7 +495,14 @@ button { font: inherit; color: inherit; }
 }
 
 .card .arc-marquee { min-height: 40px; padding: 10px 12px 8px; }
-.card .card-n { margin: 0; font-size: 10px; line-height: 1.3; }
+.card .card-n {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
 
 /* The glyph well: sunk, wide, and tinted with the game's own accent. */
 .arc-mini {
@@ -628,7 +517,7 @@ button { font: inherit; color: inherit; }
 
 .arc-mini > svg { width: 58px; height: 58px; display: block; }
 
-.card-b { padding: 10px 12px 12px; display: grid; gap: 3px; }
+.card-b { padding: 10px 12px 12px; display: grid; gap: 3px; flex: 1; }
 .card-t { font-size: 12.5px; color: var(--ink-soft); }
 
 /* One line, three states, all of them true: a best, "not played yet", or

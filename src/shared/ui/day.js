@@ -1,35 +1,15 @@
-/* What day it is, for this player.
- *
- * Its own file rather than a corner of leaderboard.js, because two different
- * things need it and only one of them talks to a server. The daily sticker book
- * asks every game what day a round was played on, including untangle and
- * doodle-on — the two games that deliberately never contact Supabase
- * (`leaderboard: false`). Importing the leaderboard client to read a date would
- * put its URL and key constants in their bundles for nothing.
- *
- * The player's own timezone, not UTC. A book that empties at midnight has to
- * empty at *their* midnight, or someone in UTC+13 loses their evening's
- * stickers halfway through the evening.
- */
+/* The player's local day (not UTC). Separate from leaderboard.js so games with
+ * `leaderboard: false` do not bundle the Supabase client. */
 
-/** Today as "YYYY-MM-DD", in the player's timezone. */
 export function localDay(date = new Date()) {
   var pad = (n) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 /**
- * The ISO week a day falls in, as "IYYY-Www" — the key a weekly board uses.
- *
- * It has to agree exactly with what the database derives, which is
- * `to_char(day, 'IYYY-"W"IW')`, or a page would read a board nobody writes to.
- * Hence the ISO rules rather than an approximation: weeks start Monday, and a
- * week belongs to whichever year holds its Thursday — which is why the last
- * days of December can legitimately report week 01 of the next year.
- *
- * Accepts the same "YYYY-MM-DD" string the rest of this module deals in, and
- * parses it as local time rather than through `new Date(string)`, which reads
- * a bare date as UTC and can land on the wrong day west of Greenwich.
+ * The ISO week as "IYYY-Www". Must match the database's
+ * `to_char(day, 'IYYY-"W"IW')` exactly. Parses "YYYY-MM-DD" as local time;
+ * `new Date(string)` would read it as UTC.
  */
 export function isoWeek(day = localDay()) {
   var parts = String(day).split("-");

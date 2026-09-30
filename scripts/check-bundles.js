@@ -1,12 +1,6 @@
-// Reports per-page production weight against the budgets in ARCHITECTURE.md §23.
-//
-// Measures the built output rather than source size, and gzip rather than raw,
-// because that is what a player actually downloads.
-//
-// Warns rather than fails. §23 calls these "guidelines rather than absolute
-// limits", and a game exceeding one should "trigger investigation" — so this
-// makes the number visible in CI without blocking a justified increase. Pass
-// --strict to turn breaches into a non-zero exit.
+// Reports gzipped per-page production weight against ARCHITECTURE.md §23.
+// Warns rather than fails, since §23 budgets are guidelines; --strict exits
+// non-zero on a breach.
 
 import { gzipSync } from "node:zlib";
 import { existsSync, readFileSync } from "node:fs";

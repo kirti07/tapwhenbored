@@ -478,14 +478,10 @@ html, body {
 }
 .go-sub { font-size: 11px; letter-spacing: 0.1em; color: var(--ink-soft); margin: 0 0 4px; }
 /* The gap above PLAY AGAIN belongs to the button, not to the last .go-sub:
-   :last-of-type is structural, so it kept matching #globalBest even when that
-   line was hidden and the card lost its gap in an unconfigured build. */
+   :last-of-type still matches #globalBest when that line is hidden. */
 #gameOverOverlay .overlay-actions { margin-top: 14px; }
-/* This game keeps its own global-best styling rather than importing
-   shared/css/leaderboard.css. Its end card is all-caps and mono-spaced and
-   speaks --ink/--ink-soft, not --accent-dark — the same reason it opts out of
-   tokens.css and shell.css (see shared/css/shell.css). The shared *behaviour*
-   still comes from renderGlobalBest(). */
+/* Own global-best styling (all-caps, mono, --ink) rather than importing
+   shared/css/leaderboard.css; the behaviour still comes from renderGlobalBest(). */
 .go-global.new-global { color: var(--ink); font-weight: 800; letter-spacing: 0.14em; }
 
 .btn {
@@ -507,10 +503,8 @@ html, body {
   transition: transform 0.1s ease;
 }
 .btn:active { transform: scale(0.96); }
-/* The gap under the settings panel's RESTART GAME. It used to sit on
-   `.btn.ghost` itself, which also matched the end card's Share button — and
-   there the two buttons now share a grid row, where a top margin on one of
-   them makes it shorter than its pair. */
+/* Scoped to the settings panel: on the end card's Share button (same
+   `.btn.ghost`) a top margin would make it shorter than its grid-row pair. */
 #settingsPanel .btn.ghost { margin-top: 8px; }
 .btn.ghost {
   border: 1.5px solid var(--line);
@@ -640,10 +634,8 @@ html:has(#gameOverOverlay:not(.hidden)) .top-actions { visibility: hidden; }
 .toggle.on { background: var(--accent-dark); }
 .toggle.on .toggle-dot { left: 22px; }
 
-/* Phones: the header/stats/legend chrome was eating close to half the
-   screen, leaving too little room to actually tap bubbles. Shrink all of it
-   and respect notch/home-indicator safe areas so the playfield (flex: 1)
-   gets almost everything instead. */
+/* Phones: shrink the header/stats/legend chrome and respect safe areas so
+   the playfield (flex: 1) gets almost all of the screen. */
 @media (max-width: 640px) {
   .topbar {
     padding: max(8px, env(safe-area-inset-top)) 14px 6px;
@@ -735,20 +727,11 @@ html:has(#gameOverOverlay:not(.hidden)) .top-actions { visibility: hidden; }
   background: rgba(0, 0, 0, 0.55);
 }
 
-/* Reduced motion.
- *
- * This game had no reduced-motion rule either, and it shipped something worse
- * than an omission: a manual CALM MODE toggle buried in a settings panel,
- * defaulting to off and never seeded from the OS preference. Someone who had
- * already told their device they want less motion still got full-speed
- * drifting bubbles until they went looking for a switch. app.js now reads the
- * preference as the default; this block covers the CSS half.
+/* Reduced motion (app.js also seeds CALM MODE from the OS preference).
  *
  * The pop and explode animations end at `opacity: 0` with `forwards`, and the
- * JS removes the node on their timing — so they cannot simply be switched off
- * or the popped bubbles would stay on screen. They keep the fade and lose the
- * scaling. `screen-flash` goes entirely: a full-viewport black flash is the
- * single most likely thing on this page to hurt somebody. */
+ * JS removes the node on their timing — so they keep the fade and lose the
+ * scaling rather than being switched off. `screen-flash` goes entirely. */
 @media (prefers-reduced-motion: reduce) {
   .bubble.spawning {
     animation: none;
@@ -784,13 +767,8 @@ html:has(#gameOverOverlay:not(.hidden)) .top-actions { visibility: hidden; }
   .bubble { transition: opacity 0.12s linear, box-shadow 0.12s linear; }
 }
 
-/* Share confirmation.
- *
- * This game used to relabel the Share button itself to "LINK COPIED", which
- * destroys the control's accessible name for as long as the message shows and
- * announces nothing. It now uses the same separate line as every other game —
- * styled to bubble-tap's own uppercase, mono-ish register rather than dropped
- * in from the shared sheet. */
+/* Share confirmation: a separate line, so the Share button keeps its
+   accessible name. Styled to this game's uppercase register. */
 .share-note {
   margin: 6px 0 0;
   font-size: 11px;
@@ -806,15 +784,8 @@ html:has(#gameOverOverlay:not(.hidden)) .top-actions { visibility: hidden; }
   .share-note { transition: opacity 0.12s linear; }
 }
 
-/* Tap targets.
- *
- * bubble-tap does not import shell.css, so the site-wide 44x44 floor does not
- * reach it. Its three topbar icon buttons measured 30x30 and its back link
- * 13x13 — the smallest controls anywhere on the site, on the game most likely
- * to be played one-handed at speed.
- *
- * Same technique as the shared sheet: a centred pseudo-element, so the compact
- * look of the bar is untouched and only the reachable area grows. */
+/* Tap targets: a centred pseudo-element grows the reachable area to 44px
+   while the compact look of the bar is untouched. */
 .icon-btn,
 .back-link,
 .howto-link {
@@ -843,11 +814,7 @@ html:has(#gameOverOverlay:not(.hidden)) .top-actions { visibility: hidden; }
 
 .seo-info { font-size: 11px; }
 
-/* Phone landscape.
- *
- * bubble-tap does not import shell.css, so the site-wide short-viewport rule
- * does not reach it — the one page on the site where the playfield is the
- * whole point and vertical space is scarcest. */
+/* Phone landscape: vertical space is scarcest, so the playfield wins. */
 @media (max-height: 480px) {
   .subtitle,
   .seo-info { display: none; }

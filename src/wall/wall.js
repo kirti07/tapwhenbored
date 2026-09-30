@@ -7,9 +7,7 @@
  * as dashes and an empty table. That is the degraded state and it is allowed
  * to be the normal one (ARCHITECTURE.md §26, §27).
  *
- * Two tablists, and both are operable from the keyboard. The mockups this is
- * built from declared `role="tablist"` and implemented no key handling at all,
- * which promises a screen-reader user behaviour that then is not there.
+ * Two tablists, and both are operable from the keyboard.
  */
 
 import { games } from "../data/games.js";
@@ -267,18 +265,8 @@ function selectWindow(tab) {
 
 /**
  * Each cabinet's record, from the one request the homepage already makes. A tab
- * with no number keeps its dash.
- *
- * The tab says "All-time best" and this is the all-time record, which took some
- * getting to. It used to be labelled "Today's best" and filled from the same
- * `game_scores` read — where, for the five games that are not daily, the only
- * row is `period='all'`. So the number under "Today's best" was the all-time
- * record for six of the eight cabinets, and matched the panel's *All-time*
- * board rather than the Today one directly beneath the label.
- *
- * The number is the record; the board below is the top ten named players. Those
- * are the same thing whenever the record holder has a name — which, now that a
- * run carries one, is from here on.
+ * with no number keeps its dash. This is the all-time record (non-daily games
+ * only have a `period='all'` row), so the tab must say "All-time best".
  */
 async function fillTabs() {
   var rows = await fetchAllBests();

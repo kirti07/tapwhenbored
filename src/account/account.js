@@ -73,10 +73,6 @@ function renderName() {
  * Counts only what this browser can answer for on its own — how many boards it
  * has a best on. Nothing here waits on the network, so the line is right on the
  * first frame and does not change under the reader when the ranks land.
- *
- * It used to carry the Word Steps streak too. The sheet below now shows every
- * cabinet's run as its own sticker, so saying one of them again in prose was
- * the same fact twice. The homepage keeps that clause; it has no sheet.
  */
 function renderMeta() {
   var on = boarded.filter(function (g) { return localBest(g) !== null; }).length;
@@ -225,16 +221,11 @@ function initNameEditor() {
 
   /**
    * Save locally, close, then tell the board — in that order, and deliberately.
+   * The board write is what puts the name on the wall.
    *
-   * The name used to stop at `setName()`, so `players.name` was never written
-   * and every board read it back as null: the card said "Kirti" and the wall
-   * said "no name yet", for the same person, forever.
-   *
-   * `pushName()` is not awaited. The local write is the one the player is
-   * looking at, so the editor closes on the frame they press Save and the
-   * network catches up underneath — a slow board costs a status line arriving
-   * late, never a UI that waits. The local name is authoritative either way,
-   * so a failed save loses nothing but the trip.
+   * `pushName()` is not awaited: the editor closes on the frame they press
+   * Save and the network catches up underneath. The local name is
+   * authoritative, so a failed save loses nothing but the trip.
    */
   function commit() {
     setName(input.value);

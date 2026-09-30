@@ -14,7 +14,7 @@
 
 import { games } from "./data/games.js";
 import { localBest, playedToday, wordStepsStreak } from "./shared/ui/progress.js";
-import { signature, UNSIGNED } from "./shared/ui/player.js";
+import { signature } from "./shared/ui/player.js";
 import { initToggle as initThemeToggle } from "./shared/ui/theme.js";
 import { fetchAllBests } from "./shared/ui/leaderboard.js";
 import { formatScore } from "./shared/ui/format.js";

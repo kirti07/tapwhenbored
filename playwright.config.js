@@ -17,6 +17,8 @@ export default defineConfig({
     // Every game URL is a real document, so always navigate with the trailing
     // slash the canonical uses.
     trace: "on-first-retry",
+    // A cached page must never make a spec pass. tests/pwa opts back in.
+    serviceWorkers: "block",
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },

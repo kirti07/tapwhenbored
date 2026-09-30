@@ -208,15 +208,6 @@ export const games = [
   },
 ];
 
-// The homepage's own sitemap entry. Kept here so the sitemap has a single
-// source, rather than being half-generated and half-hardcoded.
-//
-// `ogImage` is the one field here the sitemap does not use: it exists so the
-// homepage's social image is validated the same way a game's is. It used to
-// borrow bubble-tap's art, which meant sharing the site previewed as a single
-// game, and nothing caught it because the validator only ever walked `games`.
-// Landscape rather than the games' 640² squares, so the homepage is the one
-// page that earns a summary_large_image card.
 /* Pages that are neither the homepage nor a game.
  *
  * The build discovers pages from the filesystem, but validation, the sitemap
@@ -226,7 +217,6 @@ export const games = [
 export const pages = [
   {
     slug: "account",
-    title: "Your player card",
     path: "/account/",
     updated: "2026-09-05",
     changefreq: "monthly",
@@ -234,7 +224,6 @@ export const pages = [
   },
   {
     slug: "wall",
-    title: "The wall",
     path: "/wall/",
     // Every game's record on one page. Unlike the book, this is public content
     // and is indexed, so it changes as often as somebody beats a record.
@@ -244,7 +233,6 @@ export const pages = [
   },
   {
     slug: "party",
-    title: "Tap Party",
     path: "/party/",
     // The party mode's front door is indexed: "play a game together on your
     // phones" is a search. Room links (?r=CODE, ?join) are not — they carry
@@ -257,6 +245,10 @@ export const pages = [
   },
 ];
 
+// The homepage's own sitemap entry, so the sitemap has a single source.
+// `ogImage` is not used by the sitemap: it is here so the homepage's social
+// image is validated like a game's. Landscape rather than the games' 640²
+// squares, so the homepage is the one page with a summary_large_image card.
 export const home = {
   path: "/",
   ogImage: "/assets/tapwhenbored-og.jpg",

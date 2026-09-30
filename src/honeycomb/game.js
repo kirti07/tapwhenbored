@@ -12,56 +12,34 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   var MIN_TILES = 30, MAX_TILES = 42;
   var REVEAL_MIN = 0.4, REVEAL_MAX = 0.5;
   // Share of each clue value held back from the opening reveal so that TAPPING
-  // a safe tile pays off too. Opening clues and informative taps come from the
-  // same pool — tiles with 1-4 bomb neighbours — and the opening used to take
-  // essentially all of it, leaving the player a hidden pool of tiles that could
-  // not have been a clue in the first place: 73% of safe taps showed a 0, and
-  // 11% of hives had no informative safe tap anywhere on the board. Held back
-  // per clue value rather than off the top, so the tap pool inherits the same
-  // spread of numbers instead of only the leftover 1s.
-  // Measured at 0.4: 47% zeros, 53% informative, and no hive without one.
+  // a safe tile pays off too — opening clues and informative taps share one
+  // pool. Held back per clue value so the tap pool keeps the same spread.
   var CLUE_RESERVE_SHARE = 0.4;
   var MIN_SAFE_TAPS = 6;     // guarantees this many SAFE (non-bomb) hidden tiles at the start
-  // Share of fully-enclosed cells held back as SAFE tiles. Left to itself the
-  // generator makes essentially all of them bombs (see buildWitness), which
-  // turns "blast every enclosed tile" into free, risk-free progress.
-  // Tuned so an enclosed hidden tile is a bomb at the same rate as any other
-  // hidden tile (measured: 55.7% vs a 56.1% hidden-tile baseline) — a boxed-in
-  // "?" then tells the player nothing on its own, which is the point. Re-measure
-  // whenever CLUSTER_BIAS, BOMB_DENSITY or CLUE_RESERVE_SHARE moves: clustering
-  // pulls bombs into the dense middle of the hive, which is exactly where
-  // enclosed cells are, and the reserve share changes the hidden-tile baseline
-  // this is being matched against.
+  // Share of fully-enclosed cells held back as SAFE tiles; otherwise the
+  // generator makes nearly all of them bombs (see buildWitness). Tuned so an
+  // enclosed "?" is a bomb at the same rate as any other hidden tile.
+  // Re-tune whenever CLUSTER_BIAS, BOMB_DENSITY or CLUE_RESERVE_SHARE moves.
   var ENCLOSED_SAFE_SHARE = 0.25;
   // Chance of placing each bomb next to an existing cluster rather than at
   // random. Clue values are capped by how many bombs happen to touch a tile,
   // so scattering bombs evenly yields almost nothing above a 2 — this is what
   // manufactures the 3s and 4s. Rewards growing a 1 or 2, and actively avoids
   // pushing a cell past MAX_CLUE, since a 5 or 6 can never be shown at all.
-  // Held below the old 0.7 because tight clusters leave whole districts of the
-  // hive with no bomb within reach, and every tile in one shows a 0 however it
-  // is revealed. 0.45 buys ~6 points of informative taps and better bomb-hint
-  // coverage for about half a point of opening 4s.
+  // Kept moderate: tight clusters leave whole districts of the hive showing 0s.
   var CLUSTER_BIAS = 0.45;
   var MAX_HEX = 56; // px cap on the hex "radius" (center to vertex)
-  // Cap on a hive's bounding box, in hex-radius units. computeLayout sizes the
-  // hexes to fit the board box, so a sprawling hive is simply drawn small —
-  // which is why hex size cannot be defended with a lower clamp there (see
-  // computeLayout) and has to be defended here instead. At this cap the
-  // narrowest phone we support (.board-wrap is 331px at a 360px viewport)
-  // still gets ~19px hexes, a 38px-wide tile. Raising it shrinks tiles on
-  // small screens; lowering it rounds hives out and costs shape retries —
-  // 74% of blobs comply at 17, 52% at 16.
+  // Cap on a hive's bounding box, in hex-radius units. computeLayout sizes hexes
+  // to fit the board, so minimum tile size is defended here, not there: at this
+  // cap a 360px phone still gets ~19px hexes. Raising it shrinks small-screen
+  // tiles; lowering it costs shape retries.
   var MAX_SPAN_UNITS = 17;
   var BRANCH_BIAS = 0.4;     // probability of preferring an arm-extending frontier cell over a uniform-random one
   // Whole-blob retries, hunting for a shape that fits MAX_SPAN_UNITS and isn't
-  // clue-eligibility-starved. A rejected blob costs only its own growth — the
-  // bomb layout is skipped — so the headroom is close to free: at 5 attempts
-  // 1.5% of the largest hives still overran the cap, at 8 none do, for 0.1ms
-  // per hive.
+  // clue-eligibility-starved. A rejected blob skips bomb layout, so retries are
+  // close to free.
   var SHAPE_ATTEMPTS = 8;
   var BEST_KEY = "honeycomb.best";
-  // Flat-top axial neighbour offsets.
   var NEIGHBORS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
   // The ONE cell a safe tile ever tries: 12 o'clock. It does not scan the
   // other five — a blocked 12 o'clock is what makes the tile reveal in place
@@ -119,8 +97,7 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   var clearedOnSplit = false; // won, but the final blast also cut the hive
   // Bumped by every generatePuzzle. Deferred work (the destination flash, the
   // blast, the hold before an end card) captures it and bails if it no longer
-  // matches, so a pending timeout can't land on a board it wasn't started for
-  // — "New hive" mid-explosion used to commit that blast to the fresh hive.
+  // matches, so a pending timeout can't land on a board it wasn't started for.
   var runToken = 0;
   var endTimer = null;
 
@@ -240,7 +217,7 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   // degree-2 one exists, since a run of degree-1 picks produces a
   // one-tile-wide corridor whose tiles can never show a clue number above 1
   // (bombCountAt is capped by a tile's own degree). Otherwise picks
-  // uniformly, same as before, so the blob still fills in naturally.
+  // uniformly, so the blob still fills in naturally.
   function pickFrontierCell(frontier, occupied) {
     var arr = Array.from(frontier);
     if (Math.random() < BRANCH_BIAS) {
@@ -262,7 +239,7 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
     // layout retry alone can't fix a shape-level cap, so retry the whole
     // blob, not just the bomb layout, if the best shape found so far is
     // still well short of the eligibility target.
-    // A shape can also starve the witness of shift room, so shapes are now
+    // A shape can also starve the witness of shift room, so shapes are
     // scored the same way layouts are: fitting the screen first, then bombs
     // actually placed, then eligibility.
     var bestShape = null, bestShapeScore = -1;
@@ -487,8 +464,7 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
 
       // Nothing tappable can be blasted without splitting the hive. Stopping
       // here just leaves a hive with fewer bombs than the target — still
-      // fully clearable by the steps already recorded, only easier. (Measured
-      // over thousands of hives: never once reached.)
+      // fully clearable by the steps already recorded, only easier.
       break;
     }
 
@@ -582,14 +558,8 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
         if (isOpeningClueCandidate(neighbor)) candidates.push(neighbor);
       }
       if (hasHint || candidates.length === 0) return;
-      // Deliberately uniform. This used to prefer an INTERIOR neighbour, to
-      // avoid spending tiles from the edge pool that was the only tappable
-      // one. Every tile is tappable now, so that preference had no upside
-      // left and one sharp downside: it stripped the safe tiles out of the
-      // interior, which made every boxed-in hidden tile a guaranteed bomb —
-      // and since removing a boxed-in tile can never split the hive (its six
-      // neighbours form a ring), "blast all the enclosed ones first" became a
-      // free, risk-free opening worth a fifth of the objective.
+      // Deliberately uniform: preferring interior neighbours strips safe tiles
+      // from the interior and makes every boxed-in "?" a guaranteed bomb.
       shuffle(candidates)[0].revealed = true;
     });
   }
@@ -656,12 +626,9 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   function computeLayout() {
     var b = hiveBounds();
     var rect = boardEl.parentElement.getBoundingClientRect();
-    // Capped from above only. A lower clamp here would draw the hive wider
-    // than the box it was handed, and since body is overflow:hidden anything
-    // past the viewport is not merely ugly but untappable: with the old 22px
-    // floor, a 360px phone pushed the hive out of .board-wrap on 73% of boards
-    // and clean off the screen on 27% of them. Hex size cannot be defended
-    // here — only at generation time, by MAX_SPAN_UNITS.
+    // Capped from above only. A lower clamp would push the hive past the
+    // viewport (body is overflow:hidden), making tiles untappable. Minimum hex
+    // size is defended at generation time, by MAX_SPAN_UNITS.
     var size = Math.min(MAX_HEX, rect.width / b.wUnits, rect.height / b.hUnits);
     return { size: size, minUX: b.minUX, minUY: b.minUY, w: b.wUnits * size, h: b.hUnits * size };
   }
@@ -684,16 +651,14 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
       if (t.removed) return;
       var el = tileEls[t.id];
       var p = pixelFor(layout, t.q, t.r);
-      el.wrap.style.left = p.x + "px";
-      el.wrap.style.top = p.y + "px";
+      // `translate`, not left/top: a move then animates on the compositor.
+      el.wrap.style.translate = p.x + "px " + p.y + "px";
       el.wrap.classList.toggle("tile--tappable", isTappable(t));
       if (t.revealed) {
         el.label.textContent = String(bombCountAt(t.q, t.r));
         el.wrap.removeAttribute("data-hidden");
       } else {
-        // "?" is honest now: tapping a safe hidden tile always turns it into
-        // a number, so the mark promises something the player can actually
-        // cash in.
+        // Tapping a safe hidden tile always turns it into a number.
         el.label.textContent = "?";
         el.wrap.setAttribute("data-hidden", "true");
       }
@@ -921,8 +886,7 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
 
   // Stops the clock at the moment the run actually ended and holds the board
   // for `holdMs` so the cause stays visible. The stamp has to happen here,
-  // not in endRun: `ended` makes liveElapsed() read finalElapsedMs, so
-  // leaving it unset showed 0:00 in the HUD for the whole hold.
+  // not in endRun: `ended` makes liveElapsed() read finalElapsedMs.
   function finishRun(reason, holdMs) {
     ended = true;
     finalElapsedMs = Date.now() - runStartTime;
@@ -968,17 +932,15 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
     // turning red.
     lastStrandedCount = stranded;
     tagline.textContent = "The hive split apart.";
-    // Hold on the red group long enough to read it — the whole reason a lost
-    // run used to feel like it just stopped.
+    // Hold on the red group long enough to read it.
     finishRun("broken", BREAK_HOLD_MS);
   }
 
   function endRun(reason) {
     // finishRun has already stopped the timer and stamped finalElapsedMs.
-    // Clearing every bomb is now the only win, so one flag covers both jobs:
+    // Clearing every bomb is the only win, so one flag covers both jobs:
     // whether Play Again gets a fresh board, and whether the run counts
-    // toward best time / the leaderboard. Running out of moves used to bank a
-    // best time with bombs still on the board.
+    // toward best time / the leaderboard.
     wonLastRun = reason === "cleared";
 
     /* A split hive is still a round played to its end, so it earns the sticker
@@ -991,9 +953,8 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
     updateHud();
     showOverlay(reason);
 
-    // Only a win has a completion time worth racing. A run that ran out of
-    // moves has no valid time to submit, and showOverlay has already hidden
-    // the line, so there is nothing left to do here.
+    // Only a win has a completion time worth racing; showOverlay has already
+    // hidden the line for a loss.
     if (!wonLastRun) return;
 
     renderGlobalBest(globalScoreEl, {
@@ -1052,9 +1013,7 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
     return n + " " + word + (n === 1 ? "" : "s");
   }
 
-  // Every card names its cause. The old overlay gave a title and a time, so a
-  // run that ended for a reason the player hadn't noticed just looked like it
-  // had stopped on its own.
+  // Every card names its cause, so a run never looks like it just stopped.
   function reasonText(reason) {
     if (reason === "cleared") {
       return clearedOnSplit

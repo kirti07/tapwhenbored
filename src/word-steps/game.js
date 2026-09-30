@@ -116,9 +116,7 @@ import { recordPlay } from "../shared/ui/progress.js";
   }
 
   // ---------- audio ----------
-  // This game's tone() never took a waveform — every note is a sine — so its
-  // call sites read tone(freq, dur, gain, delay). Adapting here keeps those
-  // call sites untouched rather than rewriting a dozen of them.
+  // Every note is a sine, so call sites omit the waveform.
   function tone(freq, dur, gain, delay) {
     playTone(freq, dur, "sine", gain, delay);
   }
@@ -168,16 +166,8 @@ import { recordPlay } from "../shared/ui/progress.js";
   }
 
   var activeTiles = null;
-  /* The word the player is currently editing.
-   *
-   * This used to exist only as text nodes: attemptCommit() rebuilt it with
-   * tiles.map(t => t.textContent), the picker read the "current" letter back
-   * out of the tile it was about to change, and revert wrote the old letters
-   * back into the DOM. The tiles were the state, and every one of those reads
-   * turned a rendering detail into game logic — a change to how a letter is
-   * displayed would have silently changed which words the game accepts.
-   *
-   * `draft` is now the state; the tiles render it. */
+  /* The word the player is currently editing. `draft` is the state and the
+     tiles only render it — never read letters back out of the DOM. */
   var draft = [];
 
   /* The draft always starts as a copy of the newest committed word — that is
@@ -450,10 +440,8 @@ import { recordPlay } from "../shared/ui/progress.js";
     countdownEl.textContent = pad(h) + ":" + pad(m) + ":" + pad(s);
   }
 
-  // Fewest steps for TODAY's puzzle. The local date goes with every submission
-  // now — renderGlobalBest sends it for every game rather than trusting each one
-  // to remember — which is what keeps a late-night score from being filed
-  // against a different day's puzzle than the one it was played on.
+  // Fewest steps for TODAY's puzzle. renderGlobalBest sends the local date with
+  // every submission, so a late-night score is filed against the right day.
   function showGlobalBest(steps) {
     renderGlobalBest(globalBest, {
       slug: "word-steps",
@@ -523,17 +511,9 @@ import { recordPlay } from "../shared/ui/progress.js";
   letterBackdrop.addEventListener("click", closeLetterPicker);
   letterCloseBtn.addEventListener("click", closeLetterPicker);
 
-  // The puzzle is chosen once, at load. A tab left open past midnight kept
-  // serving yesterday's word — and because loadState() invalidates on
-  // `saved.day !== dayIndex`, the stale board would then also refuse to load
-  // the state it had just written.
-  //
-  // The solved end card already handles this: its countdown calls
-  // location.reload() when it reaches zero. This is the same fix for the case
-  // that had none — an *unsolved* board, where no countdown is running. A
-  // reload rather than an in-place swap for exactly that reason: one rollover
-  // path, already proven, rather than a second one that has to reassign the
-  // puzzle constants that the rest of the file closes over.
+  // The puzzle is chosen once, at load, so a tab left open past midnight must
+  // reload to get the new day (the solved card's countdown does the same).
+  // Reload rather than swap in place: the file closes over the puzzle constants.
   document.addEventListener("visibilitychange", function () {
     if (document.hidden) return;
     if (getDayIndex() !== dayIndex) location.reload();
