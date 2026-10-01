@@ -1,0 +1,78 @@
+/* The lobby's "How to play" bar and sheet. Loaded with how-to.js. The sheet
+ * is the site's shared one (open/close, slide, reduced motion); this adds a
+ * pinned header and footer around a scrolling body, in the game's colour. */
+
+@import "../shared/css/howto.css";
+
+.ht-bar {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 16px 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+/* An "i" in a ring, in the game's colour: no icon file needed. */
+.ht-i { display: grid; place-items: center; width: 16px; height: 16px; border: 1.75px solid var(--game); border-radius: 50%; }
+.ht-i::before { content: "i"; font: 800 10px/1 var(--font-display); color: var(--game); }
+.ht-tile { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--game); color: #fff; }
+.ht-tile svg { width: 17px; height: 17px; }
+.ht-k { margin: 0; font-size: 9px; letter-spacing: 0.12em; color: var(--game); }
+.ht-k--dim { color: var(--ink-dim); }
+
+/* The sheet: header and Got it stay put, the middle scrolls. Hidden from
+   focus and touch when closed, after its slide out. */
+.ht-sheet {
+  --bg: var(--card);
+  display: flex;
+  flex-direction: column;
+  max-height: 92svh;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 10px 0 0;
+  visibility: hidden;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 0.35s;
+}
+.ht-sheet.show { visibility: visible; transition-delay: 0s; }
+.howto-backdrop { --scrim: rgb(11 12 24 / 0.6); }
+.ht-sheet .howto-handle { margin: 0 auto 10px; }
+.ht-head { padding: 0 20px 14px; border-bottom: 1px solid var(--line); }
+.ht-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; }
+.ht-row .ht-tile { width: 44px; height: 44px; border-radius: 13px; }
+.ht-title { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 24px; letter-spacing: 0; line-height: 1.1; }
+.ht-x { width: 34px; height: 34px; border: 0; border-radius: 50%; background: var(--card-2); color: var(--ink-soft); font-size: 18px; cursor: pointer; }
+.ht-x::before { content: "✕"; }
+.ht-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
+.ht-chip { font-size: 9px; padding: 5px 8px; border-radius: 8px; color: var(--game); background: color-mix(in srgb, var(--game) 12%, transparent); }
+
+.ht-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; display: grid; gap: 14px; padding: 16px 20px 20px; }
+.ht-idea { display: grid; gap: 4px; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--game) 12%, transparent); font-size: 14px; line-height: 1.45; }
+.ht-steps { list-style: none; counter-reset: step; margin: 0; padding: 0; display: grid; gap: 14px; }
+.ht-steps li { counter-increment: step; display: grid; grid-template-columns: 26px 1fr; gap: 3px 12px; }
+.ht-steps li::before {
+  content: counter(step);
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--game);
+  color: #fff;
+  font-family: var(--font-pix, inherit);
+  font-size: 11px;
+}
+.ht-steps strong { font-family: var(--font-display); font-weight: 700; font-size: 16px; }
+.ht-steps span { font-size: 13.5px; line-height: 1.45; color: var(--ink-soft); }
+.ht-ends { list-style: none; margin: -6px 0 0; padding: 0; display: grid; gap: 8px; }
+.ht-ends li { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--card-2); font-size: 13.5px; font-weight: 600; line-height: 1.35; }
+.ht-mark { font-size: 17px; }
+.ht-tip { margin: 0; font-size: 13px; line-height: 1.45; color: var(--ink-soft); }
+.ht-foot { padding: 12px 20px calc(16px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); }
+.ht-ok { background: var(--game); }
