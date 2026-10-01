@@ -18,6 +18,8 @@
   --flip: #f0b429;
   --slide: #8b7fe0;
   --doodle: #ff5f96;
+  --humour: #14a38f;
+  --sus: #4f63e8;
   --game: var(--arc-accent);
 }
 
@@ -99,6 +101,8 @@
 .pick--flip-it { --pick: var(--flip); }
 .pick--slide-n-order { --pick: var(--slide); }
 .pick--doodle-on { --pick: var(--doodle); }
+.pick--humour-me { --pick: var(--humour); }
+.pick--sounds-sus { --pick: var(--sus); }
 .pick-game[aria-checked="true"] {
   padding: 12px 14px;
   border: 2px solid var(--pick);
@@ -239,7 +243,8 @@
 /* Screens that are the whole phone drop the site header. */
 body[data-view="title"] .top,
 body[data-view="play"] .top,
-body[data-view="vote"] .top { display: none; }
+body[data-view="vote"] .top,
+body[data-view="game"] .top { display: none; }
 
 /* ------------------------------------------------------------ title card -- */
 
@@ -258,6 +263,8 @@ body[data-view="vote"] .top { display: none; }
 body[data-game="flip-it"] { --game: var(--flip); }
 body[data-game="slide-n-order"] { --game: var(--slide); }
 body[data-game="doodle-on"] { --game: var(--doodle); }
+body[data-game="humour-me"] { --game: var(--humour); }
+body[data-game="sounds-sus"] { --game: var(--sus); }
 
 .title-round { margin: 0; font-size: 11px; letter-spacing: 0.2em; color: var(--arc-screen-soft); }
 .title-game { margin: 8px 0 0; font-size: clamp(30px, 9vw, 44px); color: var(--game); }
@@ -398,6 +405,11 @@ body[data-game="doodle-on"] { --game: var(--doodle); }
 .vote-chip { position: absolute; top: 8px; left: 8px; padding: 4px 8px; border-radius: 999px; font-size: 9px; background: var(--game); color: #fff; }
 .vote-chip:empty { display: none; }
 .vote-tile.is-own .vote-chip { background: var(--ink-dim); }
+/* Humour Me: the answers as a list of lines, not a grid of pictures. */
+.vote-grid--text { grid-template-columns: 1fr; gap: 8px; }
+.vote-text { display: block; padding: 16px 14px; text-align: left; font-family: var(--font-display); font-weight: 700; font-size: 16px; line-height: 1.3; color: var(--ink); }
+.vote-grid--text .vote-chip { top: auto; bottom: 8px; left: auto; right: 8px; }
+.game-final:empty { display: none; }
 
 /* ------------------------------------------------------------ final table -- */
 
@@ -523,4 +535,5 @@ body[data-game="doodle-on"] { --game: var(--doodle); }
 .party-about p { margin: 4px 0 0; }
 body[data-view="title"] .party-about,
 body[data-view="play"] .party-about,
-body[data-view="vote"] .party-about { display: none; }
+body[data-view="vote"] .party-about,
+body[data-view="game"] .party-about { display: none; }

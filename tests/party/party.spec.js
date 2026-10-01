@@ -203,7 +203,7 @@ test("a Doodle On party: draw, name it, vote anonymously, the reveal", async ({ 
   const code = new URL(host.url()).searchParams.get("r");
 
   const guests = [];
-  for (const name of ["Riya", "Dev"]) {
+  for (const name of ["Riya", "Dev", "Kabir"]) {
     const p = await phone(browser, errors, name);
     await p.goto(`/party/?r=${code}`);
     await expect(p.locator("#joinNote")).toHaveText(/everyone draws, then the room votes/);
@@ -212,17 +212,21 @@ test("a Doodle On party: draw, name it, vote anonymously, the reveal", async ({ 
     await expect(screen(p, "lobby")).toBeVisible();
     guests.push(p);
   }
-  const [riya, dev] = guests;
+  const [riya, dev, kabir] = guests;
 
   await host.click("#startBtn");
-  // The title card says what to draw — the same on every phone.
-  await expect(screen(riya, "title")).toBeVisible();
-  const rule = await riya.locator("#titleRule").textContent();
-  expect(rule).toMatch(/^Turn this \w+ into .+\.$/);
-  await expect(host.locator("#titleRule")).toHaveText(rule);
+  // The title card says what to draw. It lasts a second at test speed, so
+  // only the host — first to hear the start — is sure to catch it.
+  await expect(screen(host, "title")).toBeVisible();
+  await expect(host.locator("#titleRule")).toHaveText(/^Turn this \w+ into .+\.$/);
 
-  // Aman and Riya draw; Dev never touches the page.
+  // Aman and Riya draw; Kabir taps Done on a blank page; Dev never touches it.
   await Promise.all([scribble(host), scribble(riya)]);
+  await expect(kabir.frameLocator("iframe.round-frame").locator("html")).toHaveAttribute("data-party", "on");
+  await kabir.waitForTimeout(400);
+  await kabir.frameLocator("iframe.round-frame").locator("#doneBtn").click();
+  await expect(kabir.locator("#sheetH")).toHaveText("Nothing drawn");
+  await expect(host.locator("#pbDone")).toHaveText("3 / 4");
   await expect(host.locator("#sheetH")).toHaveText("Your doodle's in");
   await expect(host.locator("#sheetStill")).toHaveText(/still drawing/);
   await expect(dev.locator("#toast")).toContainText("is done");
@@ -233,8 +237,8 @@ test("a Doodle On party: draw, name it, vote anonymously, the reveal", async ({ 
   await host.click("#endBtn");
 
   // The vote: two doodles, no names; your own is greyed.
-  for (const p of [host, riya, dev]) await expect(screen(p, "vote")).toBeVisible({ timeout: 20_000 });
-  for (const p of [host, riya, dev]) await expect(p.locator("#voteGrid .vote-tile")).toHaveCount(2);
+  for (const p of [host, riya, dev, kabir]) await expect(screen(p, "vote")).toBeVisible({ timeout: 20_000 });
+  for (const p of [host, riya, dev, kabir]) await expect(p.locator("#voteGrid .vote-tile")).toHaveCount(2);
   await expect(host.locator("#voteGrid")).not.toContainText("Aman");
   await expect(host.locator(".vote-tile.is-own")).toHaveCount(1);
   await expect(host.locator(".vote-tile.is-own")).toBeDisabled();
@@ -244,15 +248,17 @@ test("a Doodle On party: draw, name it, vote anonymously, the reveal", async ({ 
   await riya.locator(".vote-tile:not(.is-own)").click();
   await dev.locator(`.vote-tile[data-tag="${tag}"]`).click();
   await expect(dev.locator(`.vote-tile[data-tag="${tag}"]`)).toHaveClass(/is-picked/);
+  await kabir.locator(`.vote-tile[data-tag="${tag}"]`).click();
 
   // Everyone voted: the reveal, with the title as the answer.
-  for (const p of [host, riya, dev]) await expect(screen(p, "final")).toBeVisible({ timeout: 20_000 });
+  for (const p of [host, riya, dev, kabir]) await expect(screen(p, "final")).toBeVisible({ timeout: 20_000 });
   await expect(riya.locator("#podH")).toHaveText("Aman takes it.");
   await expect(riya.locator("#topTitle")).toHaveText("“a very sleepy shark”");
-  await expect(riya.locator("#topBy")).toContainText("Aman · 2 votes");
+  await expect(riya.locator("#topBy")).toContainText("Aman · 3 votes");
   await expect(riya.locator("#restDoodles .doodle")).toHaveCount(1);
-  await expect(riya.locator("#resList .res-row")).toHaveCount(3);
+  await expect(riya.locator("#resList .res-row")).toHaveCount(4);
   await expect(riya.locator("#resList .res-row").nth(2)).toContainText("didn't draw");
+  await expect(riya.locator("#resList .res-row").nth(3)).toContainText("didn't draw");
   await expect.poll(() => riya.locator("#topImg").evaluate((img) => img.naturalWidth)).toBe(256);
   await expect(riya.locator("#recapOpt")).toBeVisible();
 
@@ -309,5 +315,127 @@ test("setup: the games first, grouped by kind; the face and the party name stay 
   await expect(host.locator("#lobbyName")).toHaveText("Game Night");
   await expect(host.locator("#lobbyGame")).toHaveText("Slide N Order · 90s");
   await expect(host.locator("#roomList")).toContainText("🦖");
+  expect(errors).toEqual([]);
+});
+
+/** A host who picks `pick` and three guests who join: [host, ...guests]. */
+async function room4(browser, errors, pick) {
+  const host = await phone(browser, errors, "host");
+  await host.goto("/party/");
+  await host.fill("#setupName", "Aman");
+  await host.locator(`#setupPick .pick--${pick}`).click();
+  // One fixed timer: nothing to pick.
+  await expect(host.locator("#setupPick .pick-caps")).toBeHidden();
+  await host.click("#setupGo");
+  await expect(screen(host, "lobby")).toBeVisible();
+  await expect(host.locator("#startBtn")).toHaveText("Waiting for 3 more");
+  const code = new URL(host.url()).searchParams.get("r");
+  const phones = [host];
+  for (const name of ["Riya", "Dev", "Kabir"]) {
+    const p = await phone(browser, errors, name);
+    await p.goto(`/party/?r=${code}`);
+    await p.fill("#joinName", name);
+    await p.click("#joinForm button[type=submit]");
+    await expect(screen(p, "lobby")).toBeVisible();
+    phones.push(p);
+  }
+  await expect(host.locator("#startBtn")).toHaveText("Start · 4 players");
+  return phones;
+}
+
+test("Humour Me: everyone finishes the phrase, votes anonymously, the reveal, play again", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const errors = [];
+  const phones = await room4(browser, errors, "humour-me");
+  const [host, riya, dev, kabir] = phones;
+  await host.click("#startBtn");
+
+  await expect(screen(host, "title")).toBeVisible();
+  await expect(host.locator("#titleGame")).toHaveText("Humour Me");
+  const phrase = (await host.locator("#titleRule").textContent()).replace("______", "");
+  for (const p of phones) await expect(p.locator(".hm-phrase")).toBeVisible({ timeout: 20_000 });
+  await expect(host.locator(".hm-phrase")).toContainText(phrase.trim().slice(0, 10));
+
+  const lines = ["my emotional support traffic jam", EVIL, "a very good dog needed me", "I was here first"];
+  for (const [n, p] of phones.entries()) {
+    await p.fill(".hm-input", lines[n]);
+    await p.click(".hm-write button[type=submit]");
+  }
+  // Everyone answered: straight to the vote.
+  for (const p of phones) await expect(screen(p, "vote")).toBeVisible({ timeout: 20_000 });
+  await expect(host.locator("#voteH")).toHaveText("Which one's the funniest?");
+  await expect(host.locator("#voteGrid .vote-tile")).toHaveCount(4);
+  await expect(host.locator(".vote-tile.is-own")).toContainText(lines[0]);
+  await expect(host.locator("#voteGrid")).not.toContainText("Aman");
+  const evil = host.locator(".vote-tile", { hasText: EVIL });
+  await expect(evil).toHaveCount(1); // shown as text, never as markup
+  await Promise.all([
+    ...[host, riya, kabir].map((p) => p.locator(".vote-tile", { hasText: lines[2] }).click()),
+    dev.locator(".vote-tile", { hasText: lines[0] }).click(),
+  ]);
+
+  for (const p of phones) await expect(screen(p, "final")).toBeVisible({ timeout: 20_000 });
+  await expect(riya.locator("#podH")).toHaveText("Dev takes it.");
+  await expect(riya.locator(".hm-line")).toHaveText(`“${lines[2]}”`);
+  await expect(riya.locator(".hm-by")).toContainText("Dev · 3 votes");
+  await expect(riya.locator(".hm-list li")).toHaveCount(3);
+  expect(await riya.evaluate(() => window.__pwned)).toBeUndefined();
+
+  // Play again: everyone follows into a new room with the same game.
+  await host.click("#rematchBtn");
+  for (const p of phones) await expect(screen(p, "lobby")).toBeVisible({ timeout: 20_000 });
+  await expect(riya.locator("#lobbyGame")).toHaveText("Humour Me");
+  expect(errors).toEqual([]);
+});
+
+test("Sounds Sus: secret cards, clues, an innocent voted out, the spy caught in lap 2", async ({ browser }) => {
+  test.setTimeout(150_000);
+  const errors = [];
+  const phones = await room4(browser, errors, "sounds-sus");
+  const [host] = phones;
+  await host.click("#startBtn");
+  for (const p of phones) await expect(screen(p, "game")).toBeVisible({ timeout: 20_000 });
+
+  // Everyone peeks: three see the word, one sees SPY.
+  const seen = [];
+  for (const p of phones) {
+    await p.getByRole("button", { name: "Reveal my card" }).click();
+    await expect(p.locator(".ss-card .ss-w")).not.toHaveText("…");
+    seen.push(await p.locator(".ss-card .ss-w").textContent());
+    await p.getByRole("button", { name: "Hide & ready" }).click();
+  }
+  const spy = seen.indexOf("SPY");
+  expect(spy).toBeGreaterThanOrEqual(0);
+  expect(new Set(seen.filter((w) => w !== "SPY")).size).toBe(1);
+
+  // Lap 1: the speaker taps Done; the host calls the vote.
+  // The vote is short at test speed: every phone is on the clues first.
+  await Promise.all(phones.map((p) => expect(p.locator(".ss-order")).toBeVisible({ timeout: 20_000 })));
+  await host.getByRole("button", { name: "Start voting" }).click();
+  const names = ["Aman", "Riya", "Dev", "Kabir"];
+  const inno = [1, 2, 3].find((n) => n !== spy);
+  // The vote is short at test speed: every phone votes at once.
+  await Promise.all(phones.map(async (p, n) => {
+    const target = n === inno ? names[n === 0 ? 1 : 0] : names[inno]; // never yourself
+    await p.locator(".ss-tile", { hasText: target }).click({ timeout: 20_000 });
+  }));
+  // Out, but the spy is not named.
+  await expect(host.locator(".ss-now")).toContainText(`${names[inno]} is out`, { timeout: 20_000 });
+  await expect(host.locator(".ss-now")).toContainText("wasn't the spy");
+  await host.getByRole("button", { name: "Next lap" }).click();
+  await expect(phones[inno].locator(".ss-out")).toContainText("You're out", { timeout: 20_000 });
+  await Promise.all(phones.map((p) => expect(p.locator(".ss-order")).toBeVisible({ timeout: 20_000 })));
+
+  // Lap 2: everyone still in votes for the spy.
+  await host.getByRole("button", { name: "Start voting" }).click();
+  await Promise.all(phones.map(async (p, n) => {
+    if (n === inno) return;
+    const target = n === spy ? names[[0, 1, 2, 3].find((x) => x !== spy && x !== inno)] : names[spy];
+    await p.locator(".ss-tile", { hasText: target }).click({ timeout: 20_000 });
+  }));
+  for (const p of phones) await expect(screen(p, "final")).toBeVisible({ timeout: 20_000 });
+  await expect(host.locator("#podH")).toHaveText("The room wins.");
+  await expect(host.locator(".ss-reveal")).toContainText(`${names[spy]} was the spy`);
+  await expect(host.locator(".ss-reveal")).toContainText(`The word was ${seen[inno === 0 ? 1 : 0] === "SPY" ? seen[2] : seen[inno === 0 ? 1 : 0]}.`);
   expect(errors).toEqual([]);
 });

@@ -1,0 +1,39 @@
+/* Humour Me: the write box and the reveal. Loaded with the module. */
+
+.hm-write { display: grid; gap: 10px; padding: 4px 0 0; }
+.hm-prompt { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; display: grid; gap: 6px; }
+.hm-k { margin: 0; font-size: 9px; letter-spacing: 0.12em; color: var(--game); }
+.hm-phrase { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 24px; line-height: 1.2; }
+.hm-input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 120px;
+  padding: 14px;
+  border: 2px solid var(--game);
+  border-radius: 16px;
+  background: var(--card);
+  color: var(--ink);
+  font: 500 17px/1.4 var(--font-body, inherit);
+  resize: none;
+}
+.hm-input:focus { outline: none; box-shadow: 0 0 0 4px color-mix(in srgb, var(--game) 25%, transparent); }
+.hm-count { justify-self: end; margin-top: -4px; font-size: 12px; color: var(--ink-dim); }
+.hm-faces { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+.hm-faces li { display: grid; justify-items: center; gap: 2px; font-size: 11px; font-weight: 600; color: var(--ink-soft); opacity: 0.45; }
+.hm-faces li.is-in { opacity: 1; }
+.hm-face { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; font-size: 20px; background: var(--card); border: 1px solid var(--line); }
+.is-in .hm-face { border: 2px solid var(--game); background: color-mix(in srgb, var(--game) 12%, var(--card)); }
+
+.hm-win { margin: 14px 0 0; display: grid; gap: 6px; text-align: left; padding: 16px; border-radius: 18px; border: 1px solid var(--arc-screen-line); background: color-mix(in srgb, #fff 5%, transparent); animation: hm-in 0.5s ease-out backwards; }
+.hm-win .hm-k { color: #ffd60a; }
+.hm-was { margin: 0; color: var(--arc-screen-soft); font-size: 14px; }
+.hm-line { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 24px; line-height: 1.2; }
+.hm-by { margin: 0; font-weight: 700; }
+.hm-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; text-align: left; }
+.hm-list li { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, #fff 6%, transparent); animation: hm-in 0.4s ease-out backwards; }
+.hm-who { grid-column: 1 / -1; font-size: 11px; color: var(--arc-screen-soft); }
+.hm-text { font-size: 14px; }
+.hm-votes { font-size: 12px; color: var(--game); align-self: center; }
+.hm-none { margin: 12px 0 0; color: var(--arc-screen-soft); }
+@keyframes hm-in { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .hm-win, .hm-list li { animation: none; } }

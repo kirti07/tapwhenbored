@@ -15,7 +15,13 @@
  * frame's result to the room. The contract is written out in each game.
  *
  * Doodle On adds a vote: the drawings come back as tags with no names, and
- * only the final snapshot says who drew what.
+ * only the final snapshot says who drew what. Humour Me is the same round
+ * with a line of text instead of a drawing.
+ *
+ * Humour Me and Sounds Sus have no game page: they are modules this page
+ * loads (`import()`) once a room picks one, and they draw their own part of
+ * the round. Everything around it — lobby, title card, final, rematch — is
+ * this page's.
  *
  * Everything a player typed reaches the DOM through textContent. The only
  * innerHTML is the QR code, an SVG built by uqr from this page's own URL.
@@ -51,6 +57,8 @@ let hostBefore = null;
 let wake = null;
 let kept = { code: "", tag: "", vote: "" }; // this phone's doodle tag and vote
 let gridFor = ""; // the doodles the vote grid was built from
+let mod = null; // the party-only game's module, once loaded
+let modFor = ""; // which game `mod` is, or is being loaded for
 
 // ---------------------------------------------------------------- helpers --
 
@@ -63,7 +71,9 @@ function el(tag, cls, text) {
 
 const face = (i) => R.FACES[i] || "🙂";
 const game = () => R.GAMES[room.game];
-const doodle = () => game().by === "votes";
+const doodle = () => game().by === "votes"; // Doodle On or Humour Me: a vote
+const drawing = () => room.game === "doodle-on";
+const noun = () => (drawing() ? ["doodle", "drawing", "draw"] : ["answer", "writing", "answer"]);
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const player = (seat) => room.players.find((p) => p.seat === seat);
 const nameOf = (seat) => (player(seat) || { name: "Someone" }).name;
@@ -89,7 +99,7 @@ function resultText(r) {
 
 /** A row of the results: votes for Doodle On, else the result. */
 function rowText(x) {
-  if (!x.result) return doodle() ? "didn't draw" : "didn't finish";
+  if (!x.result) return doodle() ? `didn't ${noun()[2]}` : "didn't finish";
   return doodle() ? plural(x.votes, "vote") : resultText(x.result);
 }
 
@@ -137,7 +147,7 @@ function savedFace() {
 /* The picker's two halves, in the order they are shown. */
 const KINDS = {
   competitive: ["Competitive", "race the room on the same board"],
-  social: ["Social", "draw together, vote for the funniest"],
+  social: ["Social", "play together, the room votes"],
 };
 const icon = (name) => $("pickIcons").content.querySelector(`[data-i="${name}"]`).cloneNode(true);
 
@@ -170,7 +180,10 @@ function gamePicker(container, initial) {
     return b;
   }
 
+  const capsLabel = el("span", "arc-label", "Time limit");
   function drawCaps() {
+    // A game with one fixed timer has nothing to pick.
+    caps.hidden = capsLabel.hidden = R.GAMES[chosen.game].caps.length < 2;
     caps.textContent = "";
     for (const cap of R.GAMES[chosen.game].caps) {
       radio(caps, caps, "pick-cap arc-mono", cap === chosen.cap, () => { chosen.cap = cap; }).textContent = `${cap}s`;
@@ -200,7 +213,7 @@ function gamePicker(container, initial) {
   }
   drawCaps();
 
-  container.append(games, el("span", "arc-label", "Time limit"), caps);
+  container.append(games, capsLabel, caps);
   return () => chosen;
 }
 
@@ -245,8 +258,8 @@ function explain(error) {
     "your own": "That one's yours — pick someone else's.",
     "too late": "Too late — the vote is over.",
     "already started": "This party has already started — joining closed when it began.",
-    [`needs ${R.MIN_PLAYERS} players`]: `A party needs at least ${R.MIN_PLAYERS} players.`,
-  }[error] || "That didn't work. Try again.";
+    "you're out": "You're out — no vote this time.",
+  }[error] || (/^needs \d+ players$/.test(error) ? `This game needs at least ${error.split(" ")[1]} players.` : "That didn't work. Try again.");
 }
 
 function mySeat() {
@@ -299,8 +312,19 @@ function render() {
   const fresh = key !== drawnKey;
   drawnKey = key;
 
-  if (d.phase === "lobby" || d.phase === "title" || d.phase === "play") prepareFrame();
+  if (game().party) {
+    loadModule();
+    if (!mod && d.phase !== "lobby") return; // a moment, on the screen before
+  } else {
+    mod = null;
+    modFor = "";
+    if (d.phase === "lobby" || d.phase === "title" || d.phase === "play") prepareFrame();
+  }
   if (d.phase === "lobby") renderLobby(fresh);
+  else if (d.phase === "play" && room.game === "sounds-sus") {
+    show("game");
+    mod.render($("gameScreen"), ctx(d, fresh));
+  }
   else if (d.phase === "title") renderTitle(d, fresh);
   else if (d.phase === "play") renderPlay(d, fresh);
   else if (d.phase === "vote") renderVote(d, fresh);
@@ -310,6 +334,35 @@ function render() {
 }
 
 setInterval(render, TICK_MS);
+
+/* A party-only game's module: fetched in the lobby, in idle time, so the
+   round never waits on it. */
+const MODULES = {
+  "humour-me": () => import("./games/humour-me.js"),
+  "sounds-sus": () => import("./games/sounds-sus.js"),
+};
+function loadModule() {
+  if (modFor === room.game) return;
+  modFor = room.game;
+  mod = null;
+  const game = room.game;
+  MODULES[game]().then((m) => {
+    if (modFor !== game) return;
+    mod = m;
+    drawnKey = "";
+    render();
+  });
+}
+
+/** What a game module may use: the room as it is, and this page's helpers. */
+function ctx(d, fresh) {
+  return {
+    room, me, d, fresh, now, act, el, face, nameOf, plural, toast,
+    own: (tag) => keepDoodle({ tag }), // this phone's entry, greyed in the vote
+    isHost: me.seat === room.host,
+    time: (ms) => formatDuration(ms + 999),
+  };
+}
 
 // 04 · join ---------------------------------------------------------------
 
@@ -324,7 +377,9 @@ function renderJoin() {
   $("joinBy").textContent = `${host.name} started`;
   $("joinParty").textContent = room.name;
   $("joinWho").textContent = `${here.slice(0, 6).map((p) => face(p.emoji)).join(" ")}  ${here.length} already in`;
-  $("joinNote").textContent = `${game().title} · ${room.cap}s · ${doodle() ? "everyone draws, then the room votes" : "one board, everyone at once"}`;
+  $("joinNote").textContent = game().party
+    ? `${game().title} · ${game().pitch}`
+    : `${game().title} · ${room.cap}s · ${doodle() ? "everyone draws, then the room votes" : "one board, everyone at once"}`;
   if (!joinFace) {
     joinFace = facePicker($("joinFaces"), savedFace());
     $("joinName").value = getName();
@@ -362,7 +417,7 @@ function renderLobby(fresh) {
   if (!fresh) return;
 
   $("lobbyName").textContent = room.name;
-  $("lobbyGame").textContent = `${game().title} · ${room.cap}s`;
+  $("lobbyGame").textContent = game().party ? game().title : `${game().title} · ${room.cap}s`;
   const url = `${location.origin}/party/?r=${room.code}`;
   $("lobbyUrl").textContent = url.replace(/^https?:\/\/(www\.)?/, "");
   const tiles = $("codeTiles");
@@ -397,9 +452,10 @@ function renderLobby(fresh) {
 
   const start = $("startBtn");
   start.hidden = !isHost;
-  start.disabled = here.length < R.MIN_PLAYERS;
-  start.textContent = here.length < R.MIN_PLAYERS
-    ? `Waiting for ${R.MIN_PLAYERS - here.length} more`
+  const min = R.minPlayers(room.game);
+  start.disabled = here.length < min;
+  start.textContent = here.length < min
+    ? `Waiting for ${min - here.length} more`
     : `Start · ${here.length} players`;
   $("lobbyWait").hidden = isHost;
   $("lobbyWait").textContent = `Waiting for ${nameOf(room.host)} to start…`;
@@ -438,7 +494,12 @@ function renderTitle(d, fresh) {
   if (!fresh) return;
   document.body.dataset.game = room.game;
   $("titleGame").textContent = game().title;
-  if (doodle()) {
+  if (mod) {
+    const [rule, cap, chip] = mod.title(room);
+    $("titleRule").textContent = rule;
+    $("titleCap").textContent = cap;
+    $("titleChip").textContent = chip;
+  } else if (doodle()) {
     const p = R.doodleRound(room);
     $("titleRule").textContent = `Turn this ${p.shape} into ${p.direction}.`;
     $("titleCap").textContent = `${room.cap} sec to draw`;
@@ -479,17 +540,17 @@ async function submit(r) {
   frame.done = true;
   pending = { ms: r.ms, moves: r.moves };
   let send = () => post({ type: "result", code, seat: me.seat, token: me.token, seed: r.seed, ms: r.ms, moves: r.moves });
-  if (doodle()) {
-    // A blank page is no doodle: nothing to send, and it did not count.
-    if (!(r.image instanceof Blob)) {
-      pending = { ...pending, blank: true };
-      return render();
-    }
+  if (drawing()) {
     // Stopped at 0:00 by this page's clock, which the frame's can overshoot.
     const d = R.derive(room, now());
     const ms = Math.min(r.ms, d.deadline - d.playAt);
     pending.ms = ms;
     send = () => postDoodle({ type: "doodle", code, seat: me.seat, token: me.token, seed: r.seed, ms }, r.image);
+    // A blank page is no doodle, but it is done: the round need not wait.
+    if (!(r.image instanceof Blob)) {
+      pending.blank = true;
+      send = () => post({ type: "result", code, seat: me.seat, token: me.token, seed: r.seed, ms, blank: true });
+    }
   }
   render();
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -513,9 +574,11 @@ function renderPlay(d, fresh) {
   const playing = eligible.some((p) => p.seat === me.seat);
   const mine = room.results[me.seat] || pending;
 
+  // Humour Me's write box, while this phone has not answered.
+  if (mod) mod.play($("frameSlot"), ctx(d, fresh), playing && !mine);
   // Go, once the frame is ready: tell it how long ago the round began, and
   // Doodle On what to draw.
-  if (playing && !mine && frame.ready && !frame.went) {
+  else if (playing && !mine && frame.ready && !frame.went) {
     frame.went = true;
     const go = { type: "go", elapsed: t - d.playAt };
     if (doodle()) {
@@ -526,7 +589,7 @@ function renderPlay(d, fresh) {
     frame.el.focus();
   }
   // Doodle On hands its drawing in at 0:00, on this page's clock.
-  if (doodle() && frame.went && !frame.done && !frame.stopped && t >= d.deadline) {
+  if (drawing() && frame.went && !frame.done && !frame.stopped && t >= d.deadline) {
     frame.stopped = true;
     frame.el.contentWindow.postMessage({ type: "stop" }, location.origin);
   }
@@ -560,13 +623,13 @@ function renderPlay(d, fresh) {
     $("sheetH").textContent = "You're in for the next one";
     $("sheetSub").textContent = `Watching ${game().title} — the rematch brings you in.`;
   } else if (pending?.error) {
-    $("sheetH").textContent = doodle() ? "Your doodle didn't reach the room" : "Your result didn't reach the room";
+    $("sheetH").textContent = doodle() ? `Your ${noun()[0]} didn't reach the room` : "Your result didn't reach the room";
     $("sheetSub").textContent = doodle() ? "You can still vote." : "It counts as didn't finish.";
-  } else if (pending?.blank) {
+  } else if (pending?.blank || mine.blank) {
     $("sheetH").textContent = "Nothing drawn";
     $("sheetSub").textContent = "A blank page doesn't count — you can still vote.";
   } else if (doodle()) {
-    $("sheetH").textContent = "Your doodle's in";
+    $("sheetH").textContent = `Your ${noun()[0]}'s in`;
     $("sheetSub").textContent = `Handed in at ${formatDuration(mine.ms)}`;
   } else {
     const place = R.placements(room).find((x) => x.seat === me.seat)?.place;
@@ -595,15 +658,16 @@ function renderPlay(d, fresh) {
   const removed = eligible.filter((p) => p.kickedAt != null).length;
   const still = of - done;
   $("sheetStill").hidden = !still && !removed;
-  $("sheetStill").textContent = [still && `${still} still ${doodle() ? "drawing" : "playing"}`, removed && `${removed} left`].filter(Boolean).join(" · ");
-  showTitleForm($("sheet"), playing && room.results[me.seat]);
+  $("sheetStill").textContent = [still && `${still} still ${doodle() ? noun()[1] : "playing"}`, removed && `${removed} left`].filter(Boolean).join(" · ");
+  showTitleForm($("sheet"), drawing() && playing && room.results[me.seat] && !room.results[me.seat].blank);
 
   // The host can call time once half the room is done (rules.js / the API
   // hold the same line), so one wandering player does not hold everyone.
-  const canEnd = me.seat === room.host && done * 2 >= of && done < of;
+  const canEnd = me.seat === room.host && done * 2 >= of && done < of && done >= (game().ballot || 1);
   $("endBtn").hidden = !canEnd;
+  $("endBtn").textContent = room.game === "humour-me" ? "Start voting" : "End round";
   $("sheetFoot").textContent = canEnd
-    ? `Still waiting? Call time — anyone still ${doodle() ? "drawing" : "playing"} won't finish.`
+    ? `Still waiting? Call time — anyone still ${doodle() ? noun()[1] : "playing"} won't finish.`
     : doodle() ? "Then the vote — when everyone's done, or at 0:00." : "Results when everyone's done, or at 0:00.";
 }
 
@@ -633,9 +697,10 @@ function renderVote(d, fresh) {
   document.body.dataset.game = room.game;
   const { done, of } = R.voteProgress(room);
   $("voteDone").textContent = `${done} / ${of}`;
-  $("voteH").textContent = R.doodleRound(room).question;
+  $("voteGame").textContent = game().title;
+  $("voteH").textContent = drawing() ? R.doodleRound(room).question : "Which one's the funniest?";
   const drew = room.results[me.seat];
-  showTitleForm($("voteSlot"), drew && !pending?.error);
+  showTitleForm($("voteSlot"), drawing() && drew && !drew.blank && !pending?.error);
 
   // The grid is built once per set of doodles, so the pictures never reload;
   // every snapshot after that only moves the "your vote" mark.
@@ -645,17 +710,21 @@ function renderVote(d, fresh) {
   if (gridFor !== tags.join()) {
     gridFor = tags.join();
     grid.textContent = "";
-    if (!tags.length) grid.appendChild(el("li", "vote-wait", "Collecting the doodles…"));
+    grid.classList.toggle("vote-grid--text", !drawing());
+    if (!tags.length) grid.appendChild(el("li", "vote-wait", `Collecting the ${noun()[0]}s…`));
     tags.forEach((tag, n) => {
       const li = el("li");
       const b = el("button", "vote-tile");
       b.type = "button";
       b.dataset.tag = tag;
-      const img = el("img");
-      img.src = doodleUrl(room, tag);
-      img.alt = `Doodle ${n + 1}`;
-      img.width = img.height = 256;
-      b.append(img, el("span", "vote-chip arc-pix"));
+      if (drawing()) {
+        const img = el("img");
+        img.src = doodleUrl(room, tag);
+        img.alt = `Doodle ${n + 1}`;
+        img.width = img.height = 256;
+        b.appendChild(img);
+      } else b.appendChild(el("span", "vote-text", room.answers[n].text));
+      b.append(el("span", "vote-chip arc-pix"));
       b.addEventListener("click", () => castVote(tag));
       li.appendChild(b);
       grid.appendChild(li);
@@ -698,14 +767,18 @@ function renderFinal(fresh) {
   $("podParty").textContent = `${room.name} · ${game().title}`;
   const tie = finishers.length > 1 && finishers[1].place === 1;
   $("podH").textContent = !finishers.length
-    ? doodle() ? "Nobody drew anything." : "Nobody cleared it."
+    ? doodle() ? `Nobody ${drawing() ? "drew anything" : "answered"}.` : "Nobody cleared it."
     : doodle() && tie ? "A dead heat — argue it out." : `${nameOf(finishers[0].seat)} takes it.`;
   $("podSub").textContent = margin(finishers);
-  $("podium").hidden = doodle();
-  if (doodle()) drawDoodles(finishers);
-  else drawPodium($("podium"), finishers);
-  $("restDoodles").hidden = $("topDoodle").hidden = !doodle() || !finishers.length;
-  $("recapOpt").hidden = !doodle() || !finishers.length;
+  $("podium").hidden = doodle() || !!mod;
+  $("gameFinal").hidden = !mod;
+  $("resList").hidden = !!mod;
+  const said = mod?.final($("gameFinal"), ctx(null, fresh), finishers);
+  if (said) [$("podH").textContent, $("podSub").textContent] = said;
+  if (!mod && doodle()) drawDoodles(finishers);
+  else if (!mod) drawPodium($("podium"), finishers);
+  $("restDoodles").hidden = $("topDoodle").hidden = !drawing() || !finishers.length;
+  $("recapOpt").hidden = !drawing() || !finishers.length;
   drawTable($("resList"), table);
   drawAwards($("awards"), awards);
   $("awardsH").hidden = !awards.length;
@@ -720,7 +793,7 @@ function renderFinal(fresh) {
 
 /** "Won by 1.2s", "Won by 3 moves", or a tie said out loud. */
 function margin([first, second]) {
-  if (!first) return doodle() ? "Blank pages all round — a rematch, maybe?" : `Nobody finished inside ${room.cap}s — a rematch, maybe?`;
+  if (!first) return doodle() ? "Nothing handed in — a rematch, maybe?" : `Nobody finished inside ${room.cap}s — a rematch, maybe?`;
   if (!second) return doodle() ? "The only doodle — it wins by default." : "The only one to finish.";
   if (doodle()) {
     if (second.place === first.place) return `${plural(first.votes, "vote")} each at the top.`;
@@ -820,7 +893,7 @@ function remember(table) {
    then stops. */
 const recapNote = createNote($("shareNote"));
 $("shareBtn").addEventListener("click", (e) => {
-  if (!doodle()) return;
+  if (!drawing()) return;
   e.stopImmediatePropagation();
   shareRecap();
 });

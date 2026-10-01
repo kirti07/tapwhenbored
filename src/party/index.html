@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#f3f2fa">
 <!-- theme-bootstrap -->
 <title>Tap Party — party games on everyone's phone, free and no signup</title>
-<meta name="description" content="Tap Party is a free party game for 2–10 people in one room: race the same Flip It or Slide N Order board, or draw the same Doodle On prompt and vote on the best. Everyone scans a QR code. No app, no signup.">
+<meta name="description" content="Tap Party is a free party game for 2–10 people in one room: race the same Flip It or Slide N Order board, draw and vote in Doodle On, finish the phrase in Humour Me, or catch the spy in Sounds Sus. Everyone scans a QR code. No app, no signup.">
 <link rel="canonical" href="https://www.tapwhenbored.com/party/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Tap Party — same game, same moment, everyone's phone">
@@ -99,6 +99,8 @@
       <svg data-i="flip-it" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
       <svg data-i="slide-n-order" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 12h18"/><path d="M12 3v18"/></svg>
       <svg data-i="doodle-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>
+      <svg data-i="humour-me" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 12a2 2 0 0 0 2-2V8H8"/><path d="M14 12a2 2 0 0 0 2-2V8h-2"/></svg>
+      <svg data-i="sounds-sus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 11c-1.5 0-2.5.5-3 2"/><path d="M4 6a2 2 0 0 0-2 2v4a5 5 0 0 0 5 5 8 8 0 0 1 5 2 8 8 0 0 1 5-2 5 5 0 0 0 5-5V8a2 2 0 0 0-2-2h-3a8 8 0 0 0-5 2 8 8 0 0 0-5-2z"/><path d="M6 11c1.5 0 2.5.5 3 2"/></svg>
       <svg data-i="competitive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
       <svg data-i="social" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5.8 11.3 2 22l10.7-3.79"/><path d="M4 3h.01"/><path d="M22 8h.01"/><path d="M15 2h.01"/><path d="M22 20h.01"/><path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10"/><path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11-.11.7-.72 1.22-1.43 1.22H17"/><path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98-.7.11-1.22.72-1.22 1.43V7"/><path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"/></svg>
     </template>
@@ -209,7 +211,7 @@
     <!-- D3 · Doodle On's vote: every doodle, no names. -->
     <section class="scr vote" data-screen="vote" hidden>
       <div class="partybar arc-screen">
-        <span class="pb-round"><span class="pb-r arc-pix">Vote</span><span class="pb-g arc-pix">Doodle On</span></span>
+        <span class="pb-round"><span class="pb-r arc-pix">Vote</span><span class="pb-g arc-pix" id="voteGame"></span></span>
         <span class="pb-clock arc-mono" id="voteClock" role="timer"></span>
         <span class="pb-done"><span class="pb-k arc-pix">Voted</span><span class="arc-mono" id="voteDone"></span></span>
       </div>
@@ -218,6 +220,11 @@
       <ul class="vote-grid" id="voteGrid"></ul>
       <p class="party-err" id="voteErr" role="alert"></p>
       <div id="voteSlot"></div>
+    </section>
+
+    <!-- A party-only game's own screen (Sounds Sus), drawn by its module. -->
+    <section class="scr play" data-screen="game" hidden>
+      <div id="gameScreen"></div>
     </section>
 
     <!-- 07/08 · The finale: the results, then what to do next — share, go
@@ -240,6 +247,8 @@
           </figcaption>
         </figure>
         <ul class="doodles" id="restDoodles" hidden></ul>
+        <!-- A party-only game's reveal, drawn by its module. -->
+        <div class="game-final" id="gameFinal" hidden></div>
         <ol class="res-list" id="resList"></ol>
         <p class="arc-label podium-aw" id="awardsH">Awards</p>
         <ul class="awards" id="awards"></ul>
@@ -280,7 +289,9 @@
       Tap Party is a free party game for 2 to 10 people in the same room, played on
       everyone's own phone. One person starts a party and picks the game — Flip It, the
       lights-out puzzle, Slide N Order, the 15-puzzle, or Doodle On, the drawing game — and
-      a time limit. Everyone else scans the QR code or types the four-letter room code, adds
+      a time limit — or Humour Me, where everyone finishes the same phrase and the room
+      votes for the funniest, or Sounds Sus, where everyone knows a secret word except the
+      spy, and the room votes players out until the spy is caught. Everyone else scans the QR code or types the four-letter room code, adds
       a name and a face, and the room races the same board at the same moment. In Doodle On
       everyone turns the same shape into the same idea, then votes, anonymously, on the
       best one. Finish early and you watch the
