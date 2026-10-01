@@ -6,8 +6,10 @@
 // other games, and returns what every phone may see: never the spy or the
 // word until the game is over. Phones render it and count down to `endsAt`.
 //
-// One game is laps of: talk (one clue each, then discussion) → vote → out
-// (host-paced) → the next lap. It ends when the spy is voted out (the room
+// One game is laps of: talk → vote → out (host-paced) → the next lap. Talk is
+// one turn per player still in — it ends on their Done, or at the turn's time
+// (`room.cap`, 45 s) — then a short discussion; the host can start the vote at
+// any point. It ends when the spy is voted out (the room
 // wins), when two players are left (the spy wins), when the host ends it, or
 // when the spy leaves the room.
 
@@ -24,6 +26,7 @@ export const WORDS = [
 ];
 
 const CARD_MS = 20000; // to peek and tap Hide & ready
+const DISCUSS_MS = 60000; // after the last clue
 const VOTE_MS = 30000;
 
 /** mulberry32, as in rules.js: the same order from the same seed. */
@@ -56,7 +59,9 @@ function orderOf(seats, seed, n, spy) {
  *
  * Returns { phase, lap, endsAt, alive, laps, order?, speaker?, ready?, voted?,
  * over? } — phase is card | talk | vote | out | over; `laps` are the finished
- * laps, `{ out, votes: {voter: target} }`, public once each vote closes.
+ * laps, `{ out, votes: {voter: target} }`, public once each vote closes. In
+ * talk, `speaker` is whose turn it is (null in the discussion after the last
+ * clue) and `endsAt` is when that turn, or the discussion, ends.
  */
 export function play(room, sus, spy, word, t) {
   const k = room.scale;
@@ -85,12 +90,23 @@ export function play(room, sus, spy, word, t) {
     const alive = live(start);
     if (alive.length <= 2) return over("spy", n);
     const order = orderOf(alive, room.seed, n, spy);
-    const talkEnd = Math.min(start + room.cap * 1000 * k, sus.call[n] ?? Infinity);
+    // Each turn starts when the one before it ended: on that speaker's Done,
+    // when their time ran out, or when they left the room.
     const said = sus.said[n] || {};
+    const turns = [];
+    let at = start;
+    for (const s of order) {
+      const end = Math.max(at, Math.min(said[s] ?? Infinity, at + room.cap * 1000 * k, kicked[s] ?? Infinity));
+      turns.push({ s, from: at, end, timer: at + room.cap * 1000 * k });
+      at = end;
+    }
+    const discussEnd = at + DISCUSS_MS * k;
+    const talkEnd = Math.min(discussEnd, sus.call[n] ?? Infinity);
     if (T < talkEnd) {
+      const turn = turns.find((x) => T < x.end);
       return stopped(n) || {
-        phase: "talk", lap: n, endsAt: start + room.cap * 1000 * k, alive, laps, order,
-        speaker: order.find((s) => said[s] == null) ?? null,
+        phase: "talk", lap: n, endsAt: turn ? turn.timer : discussEnd, alive, laps, order,
+        speaker: turn ? turn.s : null,
       };
     }
 

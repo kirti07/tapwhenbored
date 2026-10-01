@@ -390,7 +390,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
       const key = roomKey(code);
       const [n] = await store.pipeline([["HINCRBY", key, "seats", 1]]);
       const seat = n - 1;
-      if (seat >= R.MAX_PLAYERS) reject(409, "room full");
+      if (seat >= R.maxPlayers(room.game)) reject(409, "room full");
       const token = crypto.randomUUID();
       const t = now();
       const out = await write(code, [[

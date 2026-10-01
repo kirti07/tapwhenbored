@@ -607,7 +607,7 @@ test.describe("Humour Me", () => {
 test.describe("Sounds Sus", () => {
   /** Four players, started, cards dealt: `{ p, spy, word, sus }`. */
   async function dealt(api, guests = 3) {
-    const p = await party(api, guests, { game: "sounds-sus", cap: 120 });
+    const p = await party(api, guests, { game: "sounds-sus", cap: 45 });
     await toPlay(api, p);
     const cards = [];
     for (let n = 0; n <= guests; n++) cards.push((await p.as(n, { type: "card" })).body);
@@ -716,5 +716,60 @@ test.describe("Sounds Sus", () => {
     const newSpy = cards.findIndex((c) => c.spy);
     const name = (n) => (n === 0 ? "Aman" : `P${n}`);
     expect(name(newSpy)).not.toBe(name(spy));
+  });
+});
+
+test.describe("room size and turns", () => {
+  test("a puzzle room is full at 10; a social room at 12", async () => {
+    const api = setup();
+    for (const [game, max] of [["flip-it", 10], ["humour-me", 12]]) {
+      const p = await party(api, max - 1, { game, cap: R.GAMES[game].cap });
+      expect((await p.room()).players).toHaveLength(max);
+      expect((await api.post({ type: "join", code: p.code, name: "One more", emoji: 1 })).body.error).toBe("room full");
+    }
+  });
+
+  test("a vote gets two more seconds for each entry past eight", () => {
+    expect(R.voteMs("doodle-on", 4)).toBe(R.VOTE_MS);
+    expect(R.voteMs("doodle-on", 12)).toBe(R.VOTE_MS + 8000);
+    expect(R.voteMs("humour-me", 10)).toBe(30000 + 4000);
+  });
+
+  test("Sounds Sus: 45 s per speaker, Done moves on early, then a minute to talk it over", async () => {
+    const api = setup();
+    const p = await party(api, 3, { game: "sounds-sus", cap: 45 });
+    await toPlay(api, p);
+    for (const n of [0, 1, 2, 3]) await p.as(n, { type: "ready" });
+    const sus = async () => (await p.room()).sus;
+    const first = await sus();
+    const [a, b, c, d] = first.order;
+    expect(first).toMatchObject({ phase: "talk", speaker: a });
+    expect(first.endsAt).toBe(api.clock.now() + 45_000);
+
+    api.clock.advance(45_000); // a's time runs out
+    expect((await sus()).speaker).toBe(b);
+    expect((await p.as(a, { type: "said" })).body.error).toBe("not your turn");
+    api.clock.advance(5_000);
+    await p.as(b, { type: "said" }); // b is quick
+    const third = await sus();
+    expect(third.speaker).toBe(c);
+    expect(third.endsAt).toBe(api.clock.now() + 45_000);
+    await p.as(c, { type: "said" });
+    await p.as(d, { type: "said" });
+    const talk = await sus();
+    expect(talk).toMatchObject({ phase: "talk", speaker: null });
+    expect(talk.endsAt).toBe(api.clock.now() + 60_000);
+    api.clock.advance(60_000);
+    expect((await sus()).phase).toBe("vote");
+  });
+
+  test("Sounds Sus: the host can start the vote mid-turn", async () => {
+    const api = setup();
+    const p = await party(api, 3, { game: "sounds-sus", cap: 45 });
+    await toPlay(api, p);
+    api.clock.advance(20_000);
+    api.clock.advance(10_000);
+    await p.as(0, { type: "call" });
+    expect((await p.room()).sus.phase).toBe("vote");
   });
 });

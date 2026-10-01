@@ -209,7 +209,7 @@ function gamePicker(container, initial) {
       const text = el("span", "pick-t");
       // The name, and how many players the game takes, on one line.
       const name = el("span", "pick-name");
-      const who = el("span", "pick-who arc-mono", `${R.minPlayers(slug)}–${R.MAX_PLAYERS}`);
+      const who = el("span", "pick-who arc-mono", `${R.minPlayers(slug)}–${R.maxPlayers(slug)}`);
       who.prepend(icon("players"));
       name.append(el("strong", "", g.title), who);
       text.append(name, el("span", "", g.pitch));
@@ -257,7 +257,7 @@ function answer(res, errEl) {
 function explain(error) {
   return {
     offline: "No connection. Try again in a moment.",
-    "room full": "This room is full — ten is the most.",
+    "room full": room ? `This room is full — ${R.maxPlayers(room.game)} is the most.` : "This room is full.",
     "no such room": "No room with that code. Check the letters?",
     "slow down": "Too many tries. Wait a minute and try again.",
     "name required": "Add a name first.",
@@ -365,7 +365,9 @@ function loadModule() {
 function ctx(d, fresh) {
   return {
     room, me, d, fresh, now, act, el, face, nameOf, plural, toast,
-    own: (tag) => keepDoodle({ tag }), // this phone's entry, greyed in the vote
+    // This phone's entry, greyed in the vote. Redraw: the last answer in
+    // opens the vote, which was drawn before the tag came back.
+    own: (tag) => { keepDoodle({ tag }); drawnKey = ""; render(); },
     isHost: me.seat === room.host,
     time: (ms) => formatDuration(ms + 999),
   };

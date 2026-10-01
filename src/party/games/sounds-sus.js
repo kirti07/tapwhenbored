@@ -16,9 +16,9 @@ let myVote = null; // { key, seat }: this phone's vote in this lap
 let clock = null; // the clock's element, ticked every frame
 let drawnFor = "";
 
-/** The title card: the rules in one line each, and the talk time. */
+/** The title card: the rules in one line each, and each speaker's time. */
 export function title(room) {
-  return ["One of you sees SPY. Give one clue each, then vote someone out.", `${room.cap / 60} min to talk`, "30 sec to vote"];
+  return ["One of you sees SPY. Give one clue each, then vote someone out.", `${room.cap} sec per clue`, "30 sec to vote"];
 }
 
 export function render(screen, c) {

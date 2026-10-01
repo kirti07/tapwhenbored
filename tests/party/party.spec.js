@@ -284,7 +284,7 @@ test("setup: the games first, grouped by kind; the face and the party name stay 
   await expect(kinds.nth(1)).toContainText("Social");
   await expect(kinds.nth(1).locator(".pick--doodle-on")).toContainText("Draw it, then the room votes.");
   // How many players each game takes, beside its name.
-  for (const [slug, range] of [["flip-it", "2–10"], ["slide-n-order", "2–10"], ["doodle-on", "4–10"], ["humour-me", "4–10"], ["sounds-sus", "4–10"]]) {
+  for (const [slug, range] of [["flip-it", "2–10"], ["slide-n-order", "2–10"], ["doodle-on", "4–12"], ["humour-me", "4–12"], ["sounds-sus", "4–12"]]) {
     await expect(host.locator(`#setupPick .pick--${slug} .pick-who`)).toHaveText(range);
   }
   await expect(host.locator('#setupPick [role=radiogroup][aria-label="Game"] [aria-checked=true]')).toHaveCount(1);
@@ -361,7 +361,9 @@ test("Humour Me: everyone finishes the phrase, votes anonymously, the reveal, pl
   await expect(host.locator(".hm-phrase")).toContainText(phrase.trim().slice(0, 10));
 
   const lines = ["my emotional support traffic jam", EVIL, "a very good dog needed me", "I was here first"];
-  for (const [n, p] of phones.entries()) {
+  // The host answers last: their answer opens the vote, and must still be
+  // marked as theirs.
+  for (const [n, p] of [...phones.entries()].reverse()) {
     await p.fill(".hm-input", lines[n]);
     await p.click(".hm-write button[type=submit]");
   }
