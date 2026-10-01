@@ -24,8 +24,9 @@
 
 /* The games a party can be, and the time limits a host may pick. `kind` and
  * `pitch` are what the setup screen says about each: the puzzles are a race,
- * the social games are for laughs. `min` is the fewest players a game starts
- * with (MIN_PLAYERS when absent); `ballot`, the fewest entries a vote needs.
+ * the social games are for laughs. `min` and `max` are how many players a
+ * game takes (MIN_PLAYERS / MAX_PLAYERS when absent); `ballot`, the fewest
+ * entries a vote needs.
  * `party` games have no page of their own: they live only in /party/, drawn
  * by a module the party page loads when the room picks one. Presets,
  * not a free number: a limit is fair only if most of the room can finish, and
@@ -63,6 +64,7 @@ export const GAMES = {
     caps: [30, 45, 60],
     cap: 30,
     min: 4,
+    max: 12,
     ballot: 2,
     // Every phone uploads its drawing at 0:00, on one party Wi-Fi.
     grace: 6000,
@@ -78,6 +80,7 @@ export const GAMES = {
     caps: [45],
     cap: 45,
     min: 4,
+    max: 12,
     ballot: 3,
     vote: 30000,
   },
@@ -89,10 +92,11 @@ export const GAMES = {
     party: true,
     rule: "Everyone knows the word but the spy.",
     win: "Vote the spy out to win.",
-    // The cap is each lap's talk time; the laps are paced by the server.
-    caps: [120],
-    cap: 120,
+    // The cap is each speaker's turn; the laps are paced by the server.
+    caps: [45],
+    cap: 45,
     min: 4,
+    max: 12,
   },
 };
 
@@ -121,6 +125,13 @@ export const PARTY_NAMES = [
 
 /** The fewest players a game starts with. */
 export const minPlayers = (game) => GAMES[game].min || MIN_PLAYERS;
+
+/** The most players a game takes: the social games seat twelve. */
+export const maxPlayers = (game) => GAMES[game].max || MAX_PLAYERS;
+
+/** A vote's length: two more seconds for each entry past eight, so twelve
+ *  doodles or answers can still be read. It ends early once all have voted. */
+export const voteMs = (game, entries) => (GAMES[game].vote || VOTE_MS) + Math.max(0, entries - 8) * 2000;
 
 /** How long after 0:00 a result in flight still counts, at scale 1. */
 export const graceOf = (game) => GAMES[game].grace || GRACE_MS;
@@ -174,8 +185,9 @@ export function timetable(room) {
   endAt = Math.min(endAt, closeAt);
   var voteEnd = endAt;
   var g = GAMES[room.game];
-  if (g.by === "votes" && drew(room, playAt).length >= g.ballot) {
-    voteEnd = endAt + (g.vote || VOTE_MS) * s;
+  var entries = drew(room, playAt).length;
+  if (g.by === "votes" && entries >= g.ballot) {
+    voteEnd = endAt + voteMs(room.game, entries) * s;
     var ats = voters(room, playAt).map((p) => room.votes[p.seat]);
     if (ats.every((a) => a != null)) voteEnd = Math.min(voteEnd, Math.max(endAt, ...ats) + SETTLE_MS * s);
   }

@@ -15,12 +15,12 @@ import "./how-to.css";
  * `cap` is the host's time limit, in seconds. */
 const RULES = {
   "sounds-sus": () => ({
-    chips: ["4–10 players", "~5–10 min", "1 spy"],
+    chips: ["4–12 players", "~5–15 min", "1 spy"],
     idea: "Everyone gets the same secret word, except one player: the spy, whose card just says SPY. Find the spy before they blend in.",
     steps: [
       ["Check your card", "Tap Reveal my card, read it, then Hide & ready. Nobody else can see it, so keep a straight face."],
-      ["Give one clue each", "Go round in the order on screen. Say one word or a short phrase, out loud, that shows you know the word. Never the word itself, and not a clue so easy it gives the word away. The spy bluffs. Tap Done when you've spoken."],
-      ["Talk it over", "Who sounded vague? Who copied someone? Argue it out. The host starts the vote when the room is ready."],
+      ["Give one clue each", "Go round in the order on screen. Say one word or a short phrase, out loud, that shows you know the word. Never the word itself, and not a clue so easy it gives the word away. The spy bluffs. You have 45 seconds; tap Done when you've spoken."],
+      ["Talk it over", "Who sounded vague? Who copied someone? You have a minute to argue it out; the host can start the vote sooner."],
       ["Vote someone out", "Everyone votes in secret. Most votes is out; a tie means nobody. If it wasn't the spy, they sit out the rest of the game, and a new lap of clues starts."],
     ],
     endsLabel: "How it ends",
@@ -28,7 +28,7 @@ const RULES = {
     tip: "Clue tip: too obvious and the spy learns the word; too vague and you start to sound like the spy.",
   }),
   "humour-me": (cap) => ({
-    chips: ["4–10 players", "~2 min", `${cap} sec to write`],
+    chips: ["4–12 players", "~2 min", `${cap} sec to write`],
     idea: "Everyone gets the same unfinished phrase. Write the funniest ending you can, then the room votes for its favourite, without knowing who wrote what.",
     steps: [
       ["Read the phrase", "It's the same on every phone, like “The real reason I'm late is ___.”"],
@@ -40,7 +40,7 @@ const RULES = {
     tip: "Tip: if you're stuck, write the first thing that makes you laugh. You can't edit after you submit.",
   }),
   "doodle-on": (cap) => ({
-    chips: ["4–10 players", "~1 min", `${cap} sec to draw`],
+    chips: ["4–12 players", "~1 min", `${cap} sec to draw`],
     idea: "Everyone gets the same shape and the same idea, like “turn this circle into something dangerous”. Draw it, then the room votes for the best doodle, without knowing who drew what.",
     steps: [
       ["See the prompt", "The shape is already on your page. The title card says what to turn it into."],
