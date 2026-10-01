@@ -24,7 +24,10 @@
 
 /* The games a party can be, and the time limits a host may pick. `kind` and
  * `pitch` are what the setup screen says about each: the puzzles are a race,
- * Doodle On is for laughs. Presets,
+ * the social games are for laughs. `min` is the fewest players a game starts
+ * with (MIN_PLAYERS when absent); `ballot`, the fewest entries a vote needs.
+ * `party` games have no page of their own: they live only in /party/, drawn
+ * by a module the party page loads when the room picks one. Presets,
  * not a free number: a limit is fair only if most of the room can finish, and
  * the server checks every result against it. Flip It is pinned to Medium —
  * Easy's 3–4-move boards clear in under two seconds and tie the room. */
@@ -59,8 +62,37 @@ export const GAMES = {
     win: "The room votes; most votes wins.",
     caps: [30, 45, 60],
     cap: 30,
+    min: 4,
+    ballot: 2,
     // Every phone uploads its drawing at 0:00, on one party Wi-Fi.
     grace: 6000,
+  },
+  "humour-me": {
+    title: "Humour Me",
+    kind: "social",
+    pitch: "Complete the phrase. Most votes wins.",
+    by: "votes",
+    party: true,
+    rule: "Finish the phrase.",
+    win: "Most votes wins.",
+    caps: [45],
+    cap: 45,
+    min: 4,
+    ballot: 3,
+    vote: 30000,
+  },
+  "sounds-sus": {
+    title: "Sounds Sus",
+    kind: "social",
+    pitch: "Everyone knows the word. One of you is faking it.",
+    by: "spy",
+    party: true,
+    rule: "Everyone knows the word but the spy.",
+    win: "Vote the spy out to win.",
+    // The cap is each lap's talk time; the laps are paced by the server.
+    caps: [120],
+    cap: 120,
+    min: 4,
   },
 };
 
@@ -87,6 +119,9 @@ export const PARTY_NAMES = [
   "The Kitchen Cup", "Couch Championship", "The Lunch Hour Open", "Thumbs of Fury",
 ];
 
+/** The fewest players a game starts with. */
+export const minPlayers = (game) => GAMES[game].min || MIN_PLAYERS;
+
 /** How long after 0:00 a result in flight still counts, at scale 1. */
 export const graceOf = (game) => GAMES[game].grace || GRACE_MS;
 
@@ -109,9 +144,10 @@ function doneAt(room, p, closeAt) {
   return p.kickedAt != null && p.kickedAt < closeAt ? p.kickedAt : null;
 }
 
-/** Doodle On: the seats that drew, in the room's round. */
+/** Doodle On and Humour Me: the seats that handed something in. A blank
+ *  Doodle On page counts as done but is not on the ballot. */
 export function drew(room, playAt) {
-  return eligible(room, playAt).filter((p) => room.results[p.seat]);
+  return eligible(room, playAt).filter((p) => room.results[p.seat] && !room.results[p.seat].blank);
 }
 
 /**
@@ -137,8 +173,9 @@ export function timetable(room) {
   if (room.endedAt != null) endAt = Math.min(endAt, room.endedAt);
   endAt = Math.min(endAt, closeAt);
   var voteEnd = endAt;
-  if (GAMES[room.game].by === "votes" && drew(room, playAt).length > 1) {
-    voteEnd = endAt + VOTE_MS * s;
+  var g = GAMES[room.game];
+  if (g.by === "votes" && drew(room, playAt).length >= g.ballot) {
+    voteEnd = endAt + (g.vote || VOTE_MS) * s;
     var ats = voters(room, playAt).map((p) => room.votes[p.seat]);
     if (ats.every((a) => a != null)) voteEnd = Math.min(voteEnd, Math.max(endAt, ...ats) + SETTLE_MS * s);
   }
@@ -150,9 +187,17 @@ function voters(room, playAt) {
   return eligible(room, playAt).filter((p) => p.kickedAt == null);
 }
 
-/** Where the party is at `now`: lobby → title → play → (vote →) final. */
+/**
+ * Where the party is at `now`: lobby → title → play → (vote →) final.
+ * Sounds Sus plays its laps inside "play"; the server works them out, since
+ * only it knows the spy, and says when it is over (`room.sus.over`).
+ */
 export function derive(room, now) {
   if (room.start == null) return { phase: "lobby" };
+  if (GAMES[room.game].by === "spy") {
+    var playAt = room.start + TITLE_MS * room.scale;
+    return { phase: now < playAt ? "title" : room.sus?.over ? "final" : "play", titleAt: room.start, playAt: playAt };
+  }
   var t = timetable(room);
   var phase = now < t.playAt ? "title" : now < t.endAt ? "play" : now < t.voteEnd ? "vote" : "final";
   return Object.assign({ phase: phase }, t);
@@ -258,6 +303,7 @@ export function placements(room) {
   for (var d of room.tally || []) votes[d.seat] = d.votes;
   var rows = eligible(room, timetable(room).playAt).map((p) => {
     var r = room.results[p.seat];
+    if (r?.blank) r = null; // done, but nothing to rank
     var v = votes[p.seat] || 0;
     return { seat: p.seat, result: r || null, key: r ? keyOf(by, r, v) : null, place: null, votes: v };
   });
@@ -294,6 +340,7 @@ export function awards(room) {
   }
 
   if (by === "votes") {
+    if (room.game !== "doodle-on") return out;
     var second = done.filter((x) => x.place === 2);
     give("almost-had-it", "Almost Had It", second.map((x) => ({ seat: x.seat, value: x.votes })));
     // Speed Sketcher: the quickest Done that the room still liked.

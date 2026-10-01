@@ -1,0 +1,64 @@
+/* Sounds Sus: the card, the laps and the reveal. Loaded with the module. */
+
+#gameScreen { display: grid; gap: 12px; }
+.ss-card {
+  justify-self: center;
+  width: min(280px, 72vw);
+  aspect-ratio: 3 / 4;
+  border-radius: 26px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  color: #fff;
+  background: linear-gradient(200deg, var(--sus), #1a1c36);
+  box-shadow: 0 18px 40px -16px color-mix(in srgb, var(--sus) 70%, transparent);
+}
+.ss-card.is-word { background: var(--card); color: var(--ink); border: 3px solid var(--sus); }
+.ss-card.is-spy { background: #1a1c36; border: 3px solid var(--arc-accent); color: var(--arc-accent); }
+.ss-card--small { width: 100%; aspect-ratio: auto; padding: 18px; border-radius: 16px; }
+.ss-q { font-size: 80px; }
+.ss-w { font-weight: 900; font-size: 44px; text-align: center; }
+.ss-w:not(.arc-pix) { font-family: var(--font-display); }
+.ss-card.is-spy .ss-w { font-size: 60px; }
+.ss-cap { font-size: 10px; letter-spacing: 0.16em; opacity: 0.75; text-align: center; }
+.ss-hint { margin: 0; text-align: center; color: var(--ink-soft); font-size: 14px; }
+
+.ss-now, .ss-out, .ss-reveal { display: grid; justify-items: center; gap: 6px; padding: 18px; border-radius: 20px; background: var(--card); border: 1px solid var(--line); text-align: center; }
+.ss-now { border: 2px solid var(--sus); }
+.ss-k { margin: 0; font-size: 10px; letter-spacing: 0.14em; color: var(--sus); }
+.ss-warn { color: var(--arc-accent); }
+.ss-big { margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 26px; }
+.ss-face { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; font-size: 38px; background: color-mix(in srgb, var(--sus) 14%, var(--card)); }
+.ss-face.is-out { opacity: 0.5; filter: grayscale(1); }
+.ss-face.is-spy { border: 3px solid var(--arc-accent); }
+
+.ss-order, .ss-votes { list-style: none; margin: 0; padding: 4px 14px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
+.ss-order li, .ss-votes li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; min-height: 44px; border-bottom: 1px solid var(--line); }
+.ss-order li:last-child, .ss-votes li:last-child { border-bottom: 0; }
+.ss-order .is-now .ss-n { font-weight: 800; }
+.ss-order .is-out { opacity: 0.45; }
+.ss-order .is-out .ss-n { text-decoration: line-through; }
+.ss-f { font-size: 20px; }
+.ss-n { font-weight: 600; }
+.ss-tag { font-size: 8px; padding: 3px 7px; border-radius: 6px; color: #fff; background: var(--sus); }
+.ss-tag:empty { display: none; }
+.ss-order .is-out .ss-tag { background: var(--ink-dim); }
+.ss-votes li { grid-template-columns: auto 1fr auto; grid-template-areas: "f n v" "f from v"; padding: 6px 0; }
+.ss-votes .ss-f { grid-area: f; }
+.ss-votes .ss-n { grid-area: n; }
+.ss-from { grid-area: from; font-size: 12px; color: var(--ink-soft); }
+.ss-v { grid-area: v; font-size: 13px; color: var(--ink-dim); }
+
+.ss-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.ss-tile { width: 100%; min-height: 120px; display: grid; place-content: center; justify-items: center; gap: 6px; border-radius: 18px; border: 2px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+.ss-tile .ss-f { font-size: 38px; }
+.ss-tile .ss-n { font-family: var(--font-display); font-weight: 800; font-size: 17px; }
+.ss-tile.is-picked { border: 3px solid var(--sus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sus) 25%, transparent); }
+.ss-end { margin-top: 8px; }
+
+.game-final .ss-reveal { margin-top: 14px; background: transparent; border-color: var(--arc-screen-line); }
+.game-final .ss-hint { color: var(--arc-screen-soft); }
+.game-final .ss-votes { margin-top: 6px; background: transparent; border-color: var(--arc-screen-line); text-align: left; }
+.game-final .ss-votes li { border-color: var(--arc-screen-line); }
+.game-final .ss-from, .game-final .ss-v { color: var(--arc-screen-soft); }

@@ -94,7 +94,7 @@ test.describe("creating and reading a room", () => {
     expect(res.status).toBe(200);
     expect(res.cache).toBe("public, s-maxage=1");
     expect(Object.keys(res.body.room).sort()).toEqual(
-      ["cap", "code", "endedAt", "game", "host", "name", "next", "players", "results", "scale", "seed", "start", "votes"],
+      ["cap", "code", "endedAt", "game", "host", "name", "next", "players", "prompt", "results", "scale", "seed", "start", "votes"],
     );
     const text = JSON.stringify(res.body);
     expect(text).not.toMatch(/"t:|"s:|token/);
@@ -380,7 +380,7 @@ async function drawnRoom(api, guests = 2) {
 test.describe("Doodle On", () => {
   test("a doodle is a small JPEG, sent while drawing, on the room's board", async () => {
     const api = setup();
-    const p = await party(api, 2, { game: "doodle-on", cap: 30 });
+    const p = await party(api, 3, { game: "doodle-on", cap: 30 });
     expect((await draw(api, p, 1)).status).toBe(409); // not started
     await toPlay(api, p);
     api.clock.advance(5000);
@@ -409,15 +409,14 @@ test.describe("Doodle On", () => {
 
   test("nobody can tell who drew what until the final — and the secret never ships", async () => {
     const api = setup();
-    const p = await party(api, 2, { game: "doodle-on", cap: 30 });
+    const p = await party(api, 3, { game: "doodle-on", cap: 30 });
     await toPlay(api, p);
     api.clock.advance(3000);
     const tags = {};
-    for (const n of [0, 1]) tags[n] = (await draw(api, p, n, { ms: 3000 })).body.tag;
+    for (const n of [0, 1, 2]) tags[n] = (await draw(api, p, n, { ms: 3000 })).body.tag;
     // Still drawing: no tags at all, or the toasts would give them away.
     expect((await p.room()).doodles).toBeUndefined();
-    const t2 = (await draw(api, p, 2, { ms: 3000 })).body.tag;
-    tags[2] = t2;
+    tags[3] = (await draw(api, p, 3, { ms: 3000 })).body.tag;
 
     const [flat] = await api.store.pipeline([["HGETALL", `party:${p.code}`]]);
     const secret = flat[flat.indexOf("k") + 1];
@@ -435,9 +434,11 @@ test.describe("Doodle On", () => {
     await p.as(0, { type: "vote", tag: tags[1] });
     await p.as(1, { type: "vote", tag: tags[0] });
     await p.as(2, { type: "vote", tag: tags[1] });
+    await p.as(3, { type: "vote", tag: tags[2] });
     const mid = JSON.stringify((await api.get(p.code)).body);
     expect(mid).not.toContain('"tag"'); // who voted for what stays on the server
-    expect((await p.room()).votes).toEqual({ 0: api.clock.now(), 1: api.clock.now(), 2: api.clock.now() });
+    const at = api.clock.now();
+    expect((await p.room()).votes).toEqual({ 0: at, 1: at, 2: at, 3: at });
 
     // Everyone voted: the vote settles, then the tally says it all.
     api.clock.advance(R.SETTLE_MS);
@@ -445,18 +446,20 @@ test.describe("Doodle On", () => {
     expect(JSON.stringify(final)).not.toContain(secret);
     expect(final.tally).toContainEqual({ tag: tags[1], seat: 1, votes: 2, title: "" });
     expect(final.tally).toContainEqual({ tag: tags[0], seat: 0, votes: 1, title: "a very sleepy shark" });
-    expect(final.tally).toContainEqual({ tag: tags[2], seat: 2, votes: 0, title: "" });
+    expect(final.tally).toContainEqual({ tag: tags[2], seat: 2, votes: 1, title: "" });
+    expect(final.tally).toContainEqual({ tag: tags[3], seat: 3, votes: 0, title: "" });
   });
 
   test("votes: only during the vote, for a real doodle, never your own, and changeable", async () => {
     const api = setup();
-    const p = await party(api, 2, { game: "doodle-on", cap: 30 });
+    const p = await party(api, 3, { game: "doodle-on", cap: 30 });
     await toPlay(api, p);
     api.clock.advance(3000);
     const t0 = (await draw(api, p, 0, { ms: 3000 })).body.tag;
     expect((await p.as(1, { type: "vote", tag: t0 })).body.error).toBe("not voting");
     const t1 = (await draw(api, p, 1, { ms: 3000 })).body.tag;
     const t2 = (await draw(api, p, 2, { ms: 3000 })).body.tag;
+    await draw(api, p, 3, { ms: 3000 });
     expect((await p.as(0, { type: "vote", tag: t0 })).body.error).toBe("your own");
     expect((await p.as(0, { type: "vote", tag: "000000000000" })).body.error).toBe("bad doodle");
     expect((await p.as(0, { type: "vote", tag: { $ne: 1 } })).body.error).toBe("bad doodle");
@@ -472,13 +475,13 @@ test.describe("Doodle On", () => {
 
   test("a drawing is served from the vote on, by tag and seed, for good", async () => {
     const api = setup();
-    const p = await party(api, 1, { game: "doodle-on", cap: 30 });
+    const p = await party(api, 3, { game: "doodle-on", cap: 30 });
     await toPlay(api, p);
     api.clock.advance(3000);
     const t0 = (await draw(api, p, 0, { ms: 3000, bytes: jpeg(321) })).body.tag;
     const seed = (await p.room()).seed;
     expect((await image(api, p.code, t0, seed)).status).toBe(409); // still drawing
-    await draw(api, p, 1, { ms: 3000 });
+    for (const n of [1, 2, 3]) await draw(api, p, n, { ms: 3000 });
     const got = await image(api, p.code, t0, seed);
     expect(got).toMatchObject({ status: 200, type: "image/jpeg", cache: "public, max-age=31536000, immutable" });
     expect(got.res.headers.get("x-content-type-options")).toBe("nosniff");
@@ -490,7 +493,7 @@ test.describe("Doodle On", () => {
 
   test("titles: the artist's own, cleaned, until the vote is over", async () => {
     const api = setup();
-    const { p } = await drawnRoom(api, 2);
+    const { p } = await drawnRoom(api, 3);
     const long = "x".repeat(60);
     expect((await p.as(1, { type: "title", title: long })).status).toBe(200);
     expect((await p.as(1, { type: "title", title: "   " })).status).toBe(400);
@@ -501,14 +504,217 @@ test.describe("Doodle On", () => {
 
   test("one doodle is no contest: straight to the results", async () => {
     const api = setup();
-    const p = await party(api, 1, { game: "doodle-on", cap: 30 });
+    const p = await party(api, 3, { game: "doodle-on", cap: 30 });
     await toPlay(api, p);
     api.clock.advance(3000);
     await draw(api, p, 0, { ms: 3000 });
-    // The other player never draws; the host calls time.
+    // One taps Done on a blank page: done, but nothing to vote on.
+    const blank = await p.as(1, { type: "result", seed: (await p.room()).seed, ms: 3000, blank: true });
+    expect(blank.body.room.results[1]).toEqual({ ms: 3000, at: api.clock.now(), blank: true });
+    // The other two never draw; the host calls time.
     await p.as(0, { type: "end" });
     const room = await p.room();
     expect(R.derive(room, api.clock.now()).phase).toBe("final");
     expect(room.tally).toEqual([expect.objectContaining({ seat: 0, votes: 0 })]);
+  });
+});
+
+test.describe("party size", () => {
+  test("the social games need four players; the puzzles start with two", async () => {
+    const api = setup();
+    for (const game of ["doodle-on", "humour-me", "sounds-sus"]) {
+      const p = await party(api, 2, { game, cap: R.GAMES[game].cap });
+      expect((await p.as(0, { type: "start" })).body.error, game).toBe("needs 4 players");
+    }
+    const flip = await party(api, 1);
+    expect((await flip.as(0, { type: "start" })).status).toBe(200);
+  });
+});
+
+test.describe("Humour Me", () => {
+  /** A Humour Me room of four, live: everyone but `skip` has answered. */
+  async function answered(api, skip = []) {
+    const p = await party(api, 3, { game: "humour-me", cap: 45 });
+    await toPlay(api, p);
+    api.clock.advance(2000);
+    for (const n of [0, 1, 2, 3]) if (!skip.includes(n)) await p.as(n, { type: "answer", text: `  answer   ${n} ` });
+    return p;
+  }
+
+  test("a phrase is dealt at the start, and each answer is one line, once", async () => {
+    const api = setup();
+    const p = await party(api, 3, { game: "humour-me", cap: 45 });
+    expect((await p.as(1, { type: "answer", text: "early" })).body.error).toBe("round not live");
+    await toPlay(api, p);
+    expect((await p.room()).prompt).toEqual(expect.any(Number));
+    expect((await p.as(1, { type: "answer", text: "   " })).body.error).toBe("answer required");
+    const first = await p.as(1, { type: "answer", text: "x".repeat(150) });
+    expect(first.body.room.results[1]).toMatchObject({ at: api.clock.now() });
+    await p.as(1, { type: "answer", text: "second" });
+    // Not a drawing, not a puzzle result.
+    expect((await p.as(2, { type: "result", seed: (await p.room()).seed, ms: 3000, moves: 3 })).body.error).toBe("wrong game");
+    for (const n of [0, 2, 3]) await p.as(n, { type: "answer", text: `a${n}` });
+    const room = await p.room();
+    expect(room.answers.map((a) => a.text)).toContain("x".repeat(100));
+    expect(JSON.stringify(room)).not.toContain("second");
+  });
+
+  test("answers are anonymous until the final, then the tally names them", async () => {
+    const api = setup();
+    const p = await answered(api);
+    const voting = await p.room();
+    expect(R.derive(voting, api.clock.now()).phase).toBe("vote");
+    expect(voting.answers).toHaveLength(4);
+    expect(voting.answers[0]).toEqual({ tag: expect.stringMatching(/^[0-9a-f]{12}$/), text: expect.stringMatching(/^answer \d$/) });
+    expect(voting.tally).toBeUndefined();
+    const tagOf = (n) => voting.answers.find((a) => a.text === `answer ${n}`).tag;
+    expect((await p.as(0, { type: "vote", tag: tagOf(0) })).body.error).toBe("your own");
+    for (const n of [0, 1, 2]) await p.as(n, { type: "vote", tag: tagOf(3) });
+    await p.as(3, { type: "vote", tag: tagOf(0) });
+    api.clock.advance(R.SETTLE_MS);
+    const final = await p.room();
+    expect(R.derive(final, api.clock.now()).phase).toBe("final");
+    expect(final.tally).toContainEqual(expect.objectContaining({ seat: 3, votes: 3, text: "answer 3" }));
+    expect(R.placements(final)[0]).toMatchObject({ seat: 3, place: 1 });
+  });
+
+  test("fewer than three answers is nothing to vote on; voting early needs three", async () => {
+    const api = setup();
+    const p = await answered(api, [2, 3]);
+    expect((await p.as(0, { type: "end" })).body.error).toBe("not enough done");
+    api.clock.advance(60_000);
+    const room = await p.room();
+    expect(R.derive(room, api.clock.now()).phase).toBe("final");
+
+    const q = await answered(setup(), [3]);
+    expect((await q.as(0, { type: "end" })).status).toBe(200);
+  });
+
+  test("the next room deals a phrase this party has not had", async () => {
+    const api = setup();
+    const p = await answered(api);
+    api.clock.advance(60_000);
+    const before = (await p.room()).prompt;
+    const next = await p.as(0, { type: "rematch" });
+    await api.post({ type: "join", code: next.body.code, name: "P1", emoji: 1 });
+    await api.post({ type: "join", code: next.body.code, name: "P2", emoji: 2 });
+    await api.post({ type: "join", code: next.body.code, name: "P3", emoji: 3 });
+    await api.post({ code: next.body.code, seat: 0, token: next.body.token, type: "start" });
+    expect((await api.get(next.body.code)).body.room.prompt).not.toBe(before);
+  });
+});
+
+test.describe("Sounds Sus", () => {
+  /** Four players, started, cards dealt: `{ p, spy, word, sus }`. */
+  async function dealt(api, guests = 3) {
+    const p = await party(api, guests, { game: "sounds-sus", cap: 120 });
+    await toPlay(api, p);
+    const cards = [];
+    for (let n = 0; n <= guests; n++) cards.push((await p.as(n, { type: "card" })).body);
+    const spy = cards.findIndex((c) => c.spy);
+    return { p, spy, word: cards.find((c) => c.word).word, cards };
+  }
+  const sus = async (p) => (await p.room()).sus;
+  /** Everyone ready, the host calls the vote, and these votes are cast. */
+  async function lap(api, p, votes) {
+    for (const [from, to] of Object.entries(votes)) await p.as(Number(from), { type: "accuse", target: to });
+    api.clock.advance(R.SETTLE_MS + 30_000);
+  }
+
+  test("one spy, one word; each phone gets its own card, and no snapshot names them", async () => {
+    const api = setup();
+    const { p, spy, word, cards } = await dealt(api);
+    expect(cards.filter((c) => c.spy)).toHaveLength(1);
+    expect(cards.filter((c) => c.word === word)).toHaveLength(3);
+    const text = JSON.stringify(await api.get(p.code));
+    expect(text).not.toContain(word);
+    expect(text).not.toMatch(/"spy"/);
+    expect((await sus(p)).phase).toBe("card");
+    for (const n of [0, 1, 2, 3]) await p.as(n, { type: "ready" });
+    const talk = await sus(p);
+    expect(talk).toMatchObject({ phase: "talk", lap: 1, alive: [0, 1, 2, 3] });
+    expect(talk.order[0]).not.toBe(spy);
+    expect(talk.speaker).toBe(talk.order[0]);
+    expect((await p.as(talk.order[1], { type: "said" })).body.error).toBe("not your turn");
+    expect((await p.as(talk.order[0], { type: "said" })).status).toBe(200);
+    expect((await sus(p)).speaker).toBe(talk.order[1]);
+    expect((await p.as(1, { type: "call" })).body.error).toBe("host only");
+  });
+
+  test("an innocent voted out is out — not the spy, and the spy stays secret", async () => {
+    const api = setup();
+    const { p, spy } = await dealt(api);
+    for (const n of [0, 1, 2, 3]) await p.as(n, { type: "ready" });
+    await p.as(0, { type: "call" });
+    const inno = [1, 2, 3].find((s) => s !== spy);
+    const others = [0, 1, 2, 3].filter((s) => s !== inno);
+    expect((await p.as(inno, { type: "accuse", target: inno })).body.error).toBe("bad target");
+    await lap(api, p, { ...Object.fromEntries(others.map((s) => [s, inno])), [inno]: others[0] });
+    const out = await sus(p);
+    expect(out).toMatchObject({ phase: "out", lap: 1 });
+    expect(out.laps[0].out).toBe(inno);
+    expect(out.alive).not.toContain(inno);
+    expect(JSON.stringify(out)).not.toMatch(/"spy"|"over"/);
+    expect((await p.as(1, { type: "lap" })).body.error).toBe("host only");
+    await p.as(0, { type: "lap" });
+    expect(await sus(p)).toMatchObject({ phase: "talk", lap: 2 });
+    await p.as(0, { type: "call" });
+    expect((await p.as(inno, { type: "accuse", target: spy })).body.error).toBe("you're out");
+    expect((await p.as(inno, { type: "card" })).status).toBe(200); // still peeks
+  });
+
+  test("a tie puts nobody out; the spy voted out means the room wins", async () => {
+    const api = setup();
+    const { p, spy, word } = await dealt(api);
+    api.clock.advance(20_000); // nobody tapped ready: the card time runs out
+    await p.as(0, { type: "call" });
+    const [a, b] = [0, 1, 2, 3].filter((s) => s !== spy);
+    await lap(api, p, { [spy]: a, [a]: b, [b]: spy });
+    expect(await sus(p)).toMatchObject({ phase: "out", laps: [{ out: null }] });
+    await p.as(0, { type: "lap" });
+    await p.as(0, { type: "call" });
+    await lap(api, p, Object.fromEntries([0, 1, 2, 3].map((s) => [s, s === spy ? a : spy])));
+    const room = await p.room();
+    expect(room.sus.over).toEqual({ by: "room", spy, word });
+    expect(R.derive(room, api.clock.now()).phase).toBe("final");
+    expect((await p.as(0, { type: "rematch" })).status).toBe(200);
+  });
+
+  test("two left and one is the spy: the spy wins; the host can end it any time", async () => {
+    const api = setup();
+    const { p, spy } = await dealt(api);
+    api.clock.advance(20_000);
+    for (let n = 1; n <= 2; n++) {
+      const alive = (await sus(p)).alive;
+      const target = alive.find((s) => s !== spy);
+      await p.as(0, { type: "call" });
+      await lap(api, p, Object.fromEntries(alive.map((s) => [s, s === target ? spy : target])));
+      if (n === 1) await p.as(0, { type: "lap" });
+    }
+    const end = await sus(p);
+    if (end.over) expect(end.over.by).toBe("spy");
+    else throw new Error(`not over: ${JSON.stringify(end)}`);
+
+    const api2 = setup();
+    const g = await dealt(api2);
+    expect((await g.p.as(1, { type: "end" })).body.error).toBe("host only");
+    await g.p.as(0, { type: "end" });
+    expect((await g.p.room()).sus.over).toMatchObject({ by: "host", spy: g.spy });
+  });
+
+  test("the next room picks a spy who hasn't been one yet", async () => {
+    const api = setup();
+    const { p, spy } = await dealt(api);
+    await p.as(0, { type: "end" });
+    const next = await p.as(0, { type: "rematch" });
+    const seats = [{ seat: 0, token: next.body.token }];
+    for (let n = 1; n <= 3; n++) seats.push((await api.post({ type: "join", code: next.body.code, name: `P${n}`, emoji: n })).body);
+    await api.post({ code: next.body.code, ...seats[0], type: "start" });
+    api.clock.advance(R.TITLE_MS + 1);
+    const cards = [];
+    for (const s of seats) cards.push((await api.post({ code: next.body.code, seat: s.seat, token: s.token, type: "card" })).body);
+    const newSpy = cards.findIndex((c) => c.spy);
+    const name = (n) => (n === 0 ? "Aman" : `P${n}`);
+    expect(name(newSpy)).not.toBe(name(spy));
   });
 });
