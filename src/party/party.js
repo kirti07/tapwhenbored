@@ -59,6 +59,7 @@ let kept = { code: "", tag: "", vote: "" }; // this phone's doodle tag and vote
 let gridFor = ""; // the doodles the vote grid was built from
 let mod = null; // the party-only game's module, once loaded
 let modFor = ""; // which game `mod` is, or is being loaded for
+let howto = null; // the lobby's How to play module, once asked for
 
 // ---------------------------------------------------------------- helpers --
 
@@ -88,6 +89,7 @@ function show(name) {
   screen = name;
   for (const s of document.querySelectorAll("[data-screen]")) s.hidden = s.dataset.screen !== name;
   document.body.dataset.view = name;
+  if (name !== "lobby") howto?.then((m) => m.close());
   if (name === "lobby") keepAwake();
   else if (wake) { wake.release().catch(() => {}); wake = null; }
 }
@@ -205,7 +207,12 @@ function gamePicker(container, initial) {
         drawCaps();
       });
       const text = el("span", "pick-t");
-      text.append(el("strong", "", g.title), el("span", "", g.pitch));
+      // The name, and how many players the game takes, on one line.
+      const name = el("span", "pick-name");
+      const who = el("span", "pick-who arc-mono", `${R.minPlayers(slug)}–${R.MAX_PLAYERS}`);
+      who.prepend(icon("players"));
+      name.append(el("strong", "", g.title), who);
+      text.append(name, el("span", "", g.pitch));
       b.append(el("span", "pick-ico"), text, el("span", "pick-mark"));
       b.firstChild.appendChild(icon(slug));
     }
@@ -416,6 +423,8 @@ function renderLobby(fresh) {
   hostBefore = room.host;
   if (!fresh) return;
 
+  document.body.dataset.game = room.game;
+  showHowto();
   $("lobbyName").textContent = room.name;
   $("lobbyGame").textContent = game().party ? game().title : `${game().title} · ${room.cap}s`;
   const url = `${location.origin}/party/?r=${room.code}`;
@@ -459,6 +468,18 @@ function renderLobby(fresh) {
     : `Start · ${here.length} players`;
   $("lobbyWait").hidden = isHost;
   $("lobbyWait").textContent = `Waiting for ${nameOf(room.host)} to start…`;
+}
+
+/* How to play: a bar above Start that opens the rules. Its module is fetched
+   the first time a lobby shows, so /party/ does not carry five games' rules,
+   and it rebuilds only when the game changes. */
+function showHowto() {
+  howto ||= import("./how-to.js");
+  const { game: slug } = room;
+  howto.then((m) => {
+    if (screen !== "lobby" || room.game !== slug) return;
+    m.mount($("lobbyDock"), room, () => icon(slug), game().title, () => track("howto_opened", { game: slug }));
+  });
 }
 
 $("startBtn").addEventListener("click", async () => {

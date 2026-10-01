@@ -113,7 +113,11 @@
 .pick-ico svg { width: 24px; height: 24px; }
 .pick-t { flex: 1; min-width: 0; display: grid; gap: 3px; }
 .pick-t strong { font-family: var(--font-display); font-weight: 800; font-size: 19px; line-height: 1.15; }
-.pick-t span { font-size: 12.5px; line-height: 1.35; color: var(--ink-soft); }
+.pick-t > span:last-child { font-size: 12.5px; line-height: 1.35; color: var(--ink-soft); }
+.pick-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* How many players a game takes: a quiet chip beside its name. */
+.pick-who { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 6px; background: var(--card-2); color: var(--ink-soft); font-size: 11px; font-weight: 700; }
+.pick-who svg { width: 11px; height: 11px; }
 
 /* The radio mark: a ring, and when chosen a ring in the game's colour with
    a tick drawn from two borders. */
@@ -179,6 +183,24 @@
 .code-input { text-transform: uppercase; letter-spacing: 0.4em; font-size: 22px; text-align: center; }
 
 /* ----------------------------------------------------------------- lobby -- */
+
+/* How to play, Start and the waiting line stay at the bottom while the room
+   scrolls behind them. Fixed, not sticky: body's overflow-x would stop a
+   sticky one. The lobby leaves room for it at the end. */
+.lobby-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: grid;
+  gap: 16px;
+  padding: 22px max(16px, calc(50% - 240px)) calc(12px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, var(--paper) 78%, transparent);
+}
+/* Above Start the gap is a little tighter, so the two still read as a pair. */
+.lobby-dock:has(#startBtn:not([hidden])) { gap: 14px; }
+[data-screen="lobby"] { padding-bottom: 136px; }
 
 .lobby-in { display: grid; justify-items: center; gap: 12px; padding: 18px 14px 16px; position: relative; z-index: 1; }
 

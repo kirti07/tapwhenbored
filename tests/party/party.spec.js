@@ -283,6 +283,10 @@ test("setup: the games first, grouped by kind; the face and the party name stay 
   await expect(kinds.nth(0).locator(".pick-game")).toHaveCount(2);
   await expect(kinds.nth(1)).toContainText("Social");
   await expect(kinds.nth(1).locator(".pick--doodle-on")).toContainText("Draw it, then the room votes.");
+  // How many players each game takes, beside its name.
+  for (const [slug, range] of [["flip-it", "2–10"], ["slide-n-order", "2–10"], ["doodle-on", "4–10"], ["humour-me", "4–10"], ["sounds-sus", "4–10"]]) {
+    await expect(host.locator(`#setupPick .pick--${slug} .pick-who`)).toHaveText(range);
+  }
   await expect(host.locator('#setupPick [role=radiogroup][aria-label="Game"] [aria-checked=true]')).toHaveCount(1);
 
   // Picking across groups keeps one choice, and the limits follow the game.
@@ -437,5 +441,57 @@ test("Sounds Sus: secret cards, clues, an innocent voted out, the spy caught in 
   await expect(host.locator("#podH")).toHaveText("The room wins.");
   await expect(host.locator(".ss-reveal")).toContainText(`${names[spy]} was the spy`);
   await expect(host.locator(".ss-reveal")).toContainText(`The word was ${seen[inno === 0 ? 1 : 0] === "SPY" ? seen[2] : seen[inno === 0 ? 1 : 0]}.`);
+  expect(errors).toEqual([]);
+});
+
+test("lobby: How to play for every game, opens and closes, gone once the host starts", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const errors = [];
+  // Every game's room has its own bar.
+  for (const [slug, title] of [["flip-it", "Flip It"], ["slide-n-order", "Slide N Order"], ["doodle-on", "Doodle On"], ["humour-me", "Humour Me"]]) {
+    const p = await phone(browser, errors, slug);
+    await p.goto("/party/");
+    await p.fill("#setupName", "Aman");
+    await p.locator(`#setupPick .pick--${slug}`).click();
+    await p.click("#setupGo");
+    await expect(p.getByRole("button", { name: `How to play ${title}` })).toBeVisible();
+    await p.getByRole("button", { name: `How to play ${title}` }).click();
+    await expect(p.locator(".ht-sheet .ht-title")).toHaveText(title);
+    await expect(p.locator(".ht-steps li").first()).toBeVisible();
+    await p.context().close();
+  }
+
+  const phones = await room4(browser, errors, "sounds-sus");
+  const [host, riya] = phones;
+  await expect(riya.getByRole("button", { name: "How to play Sounds Sus" })).toBeVisible();
+  // While the sheet is up the page behind is inert, so find the bar by class.
+  const bar = riya.locator(".ht-bar");
+  const sheet = riya.locator(".ht-sheet");
+  await bar.click();
+  await expect(sheet).toBeVisible();
+  await expect(sheet.locator(".ht-steps li")).toHaveCount(4);
+  await expect(sheet).toContainText("Never the word itself, and not a clue so easy it gives the word away.");
+  await expect(bar).toHaveAttribute("aria-expanded", "true");
+  // Four ways out, each handing focus back to the bar.
+  await riya.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
+  await expect(bar).toBeFocused();
+  await bar.click();
+  await riya.click(".ht-ok");
+  await expect(sheet).toBeHidden();
+  await bar.click();
+  await riya.click(".ht-x");
+  await expect(sheet).toBeHidden();
+  await bar.click();
+  await riya.locator(".howto-backdrop").click({ position: { x: 10, y: 10 } });
+  await expect(sheet).toBeHidden();
+
+  // Open when the host starts: it closes, and the bar goes with the lobby.
+  await bar.click();
+  await expect(sheet).toBeVisible();
+  await host.click("#startBtn");
+  await expect(riya.locator('[data-screen="game"]')).toBeVisible({ timeout: 20_000 });
+  await expect(sheet).toBeHidden();
+  await expect(bar).toBeHidden();
   expect(errors).toEqual([]);
 });
