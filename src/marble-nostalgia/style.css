@@ -653,7 +653,7 @@ html, body {
      without moving the board. */
   .marble.shake {
     animation: none;
-    outline: 2px solid var(--danger, #e0788a);
+    outline: 2px solid #e0788a;
     outline-offset: 2px;
   }
 

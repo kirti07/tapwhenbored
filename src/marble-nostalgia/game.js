@@ -100,8 +100,6 @@ import { recordPlay } from "../shared/ui/progress.js";
 
         var marbleCell = document.createElement("div");
         marbleCell.className = "cell";
-        marbleCell.dataset.r = r;
-        marbleCell.dataset.c = c;
         marblesGrid.appendChild(marbleCell);
       }
     }
@@ -285,7 +283,7 @@ import { recordPlay } from "../shared/ui/progress.js";
     el.style.transform = "";
   }
 
-  function doMove(from, mid, to, record) {
+  function doMove(from, mid, to) {
     stopHinting();
     var fromCellEl = marbleCellEl(from[0], from[1]);
     var toCellEl = marbleCellEl(to[0], to[1]);
@@ -313,9 +311,7 @@ import { recordPlay } from "../shared/ui/progress.js";
 
     sndClick();
 
-    if (record) {
-      history.push({ from: from, mid: mid, to: to });
-    }
+    history.push({ from: from, mid: mid, to: to });
 
     updateHud();
     checkEnd();
@@ -428,7 +424,7 @@ import { recordPlay } from "../shared/ui/progress.js";
     if (!mv) return;
     var from = selected;
     clearSelection();
-    doMove(from, mv.mid, mv.to, true);
+    doMove(from, mv.mid, mv.to);
   }
 
   function restart() {
