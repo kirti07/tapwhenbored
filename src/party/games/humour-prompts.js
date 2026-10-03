@@ -1,6 +1,6 @@
 /* Humour Me's phrases. Originals: Cards Against Humanity's text is licensed
  * for non-commercial use only. The server deals one per room by index
- * (`room.content`), so this list ships only with the Humour Me module and
+ * (`room.prompt`), so this list ships only with the Humour Me module and
  * the API, never with the party page. Each has exactly one blank, "___". */
 export const PROMPTS = [
   "The real reason I'm late is ___.",

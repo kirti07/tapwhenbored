@@ -154,7 +154,7 @@ export async function fetchStanding({ slug, period = "day", day = localDay() }) 
  * ("ok", "not_found", "busy", "denied", "blocked", "bad_name", "bad_email"),
  * "refused" from a database without the v2 functions, or "offline", "error"
  * or "unavailable". Never rejects. Tries `<name>_v2` and falls back to the
- * boolean original until the v2 SQL is deployed (ARCHITECTURE.md §19).
+ * boolean original until the v2 SQL is deployed (ARCHITECTURE.md §27).
  */
 async function write(name, body) {
   if (!isLeaderboardAvailable()) return "unavailable";
@@ -188,7 +188,8 @@ export async function savePlayer({ name, email, notifyDisplaced, notifyStreak } 
   if (email !== undefined) body.p_email = email;
   if (notifyDisplaced !== undefined) body.p_notify_displaced = notifyDisplaced;
   if (notifyStreak !== undefined) body.p_notify_streak = notifyStreak;
-  // The server nudges a streak reminder at 8pm local, so it needs the zone.
+  // Stored with the reminder preference, so a streak reminder could reach the
+  // player in their evening. Nothing sends one yet.
   try {
     body.p_tz = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
   } catch { /* no Intl, no reminder */ }

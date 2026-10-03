@@ -13,9 +13,9 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: "list",
   use: {
-    baseURL,
     // Every game URL is a real document, so always navigate with the trailing
     // slash the canonical uses.
+    baseURL,
     trace: "on-first-retry",
     // A cached page must never make a spec pass. tests/pwa opts back in.
     serviceWorkers: "block",

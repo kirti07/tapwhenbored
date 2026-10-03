@@ -5,8 +5,6 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 import { getJSON, setJSON, get as getPref, set as setPref } from "../shared/ui/prefs.js";
 import { recordPlay } from "../shared/ui/progress.js";
 import { getName, clean } from "../shared/ui/player.js";
-/* Was a local formatter that zero-padded the minutes, so a nine-second solve
-   read "00:09". The site now spells a duration one way. */
 import { formatDuration as formatTime } from "../shared/ui/format.js";
 
 (function () {
@@ -664,9 +662,6 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   function track(name) {
     try { window.gtag("event", name, { game: "flip-it" }); } catch (e) { /* analytics never matters */ }
   }
-
-  // ---------- sound toggle ----------
-
 
   // ---------- how to play ----------
   initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });

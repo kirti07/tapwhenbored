@@ -6,7 +6,8 @@
 /* ---- the exit ---- */
 
 /* Sits exactly on the top bar's rightmost icon button. word-steps and
-   bubble-tap override the offsets in their own files. */
+   bubble-tap override the offsets in their own files, and flip-it, doodle-on
+   and word-steps move it for short viewports. */
 .overlay-exit {
   position: absolute;
   top: max(2.4svh, env(safe-area-inset-top, 0px));

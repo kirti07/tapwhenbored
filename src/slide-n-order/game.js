@@ -171,14 +171,10 @@ import { getName, clean } from "../shared/ui/player.js";
     updateMovable();
   }
 
-  /* Where a tile is, asked of the game state rather than of the DOM.
-   *
-   * `tileEls` is already the authoritative index -> element map and is updated
-   * in the same breath as `tiles` on every slide. The old data-index attribute
-   * was a second copy of that fact living on the node, rewritten mid-slide,
-   * and then parsed back out on pointerdown and on keydown — so a missed
-   * attribute write would have produced a tile that moved the wrong way rather
-   * than a visible glitch. Sixteen entries; the scan costs nothing. */
+  /* Where a tile is, asked of the game state rather than of the DOM:
+   * `tileEls` is the index -> element map, updated with `tiles` on every
+   * slide, so there is no second copy on the node to drift. Sixteen entries;
+   * the scan costs nothing. */
   function indexOfTileEl(el) {
     for (var k in tileEls) {
       if (tileEls[k] === el) return parseInt(k, 10);

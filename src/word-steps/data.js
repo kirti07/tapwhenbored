@@ -1,9 +1,8 @@
-// Word Steps data: bundled word list + daily puzzle set.
+// Word Steps data: the daily puzzle set (the word list is dictionary.js).
 // No server, no fetch — today's puzzle is picked deterministically from this array,
 // so the whole game works instantly and offline.
 //
-// Module scope keeps DICTIONARY and PUZZLES off window; game.js imports
-// them as a namespace.
+// Module scope keeps PUZZLES off window; game.js imports them as a namespace.
 
 // day 0 of the puzzle rotation — the day Word Steps launched
 export const LAUNCH_DATE = "2026-08-25";

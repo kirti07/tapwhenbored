@@ -1,16 +1,18 @@
 /* Tap Party: the party page.
  *
- * A party is one round of one game: the host picks the game and the time
- * limit, everyone races the same seeded board, and the results are the
- * finale — with Share, a rematch and "host your own" right under them. A
- * rematch is the next round, in a new room everyone follows into.
+ * A party is one round of one game: the host picks it (and, for the puzzles
+ * and Doodle On, the time limit), everyone plays at once on their own phone,
+ * and the results are the finale — with Share, a rematch and "host your own"
+ * right under them. A rematch is the next round, in a new room everyone
+ * follows into.
  *
  * Which screen is on is never stored anywhere: every tick asks
  * src/party/rules.js where the party is — `derive(room, now)` on the latest
  * snapshot and the server's clock — and draws that. So a phone that locks,
  * reloads or joins late lands on exactly the screen everyone else is on.
  *
- * The round is the real game page in an iframe (`?party=1&seed=…`). This page
+ * A puzzle or Doodle On round is the real game page in an iframe
+ * (`?party=1&seed=…`), so the room races the same seeded board. This page
  * owns the clock: it tells the frame when the round went live and posts the
  * frame's result to the room. The contract is written out in each game.
  *
@@ -99,7 +101,7 @@ function resultText(r) {
   return game().by === "moves" ? `${r.moves} moves` : formatDuration(r.ms);
 }
 
-/** A row of the results: votes for Doodle On, else the result. */
+/** A row of the results: votes in a votes game, else the result. */
 function rowText(x) {
   if (!x.result) return doodle() ? `didn't ${noun()[2]}` : "didn't finish";
   return doodle() ? plural(x.votes, "vote") : resultText(x.result);
@@ -274,7 +276,7 @@ function mySeat() {
 }
 
 /* Analytics that describe the party, not the phone, fire once and only from
-   the host's phone — or ten phones would count one party ten times. */
+   the host's phone — or every phone would count the same party again. */
 const sent = new Set();
 function trackOnce(name, extra) {
   const k = `${code}:${name}`;
@@ -287,11 +289,9 @@ async function act(type, extra, errEl) {
   return answer(await post({ type, code, seat: me.seat, token: me.token, ...extra }), errEl);
 }
 
-/* Presence: the host's controls pass on once the host has been quiet for the
-   away window, so every phone says it is here for the whole party — not just
-   on the screens with host controls, or a host who played the round would
-   come back to the results already replaced. Paced by the room's own scale,
-   like the away window it feeds. */
+/* Presence, on every screen: the host's controls pass on after the away
+   window, so a host busy playing the round must still be heard from. Paced by
+   the room's scale, like the away window. */
 (function ping() {
   if (me && room && !document.hidden) act("ping");
   setTimeout(ping, PING_MS * (room ? room.scale : 1));
@@ -335,7 +335,7 @@ function render() {
   else if (d.phase === "title") renderTitle(d, fresh);
   else if (d.phase === "play") renderPlay(d, fresh);
   else if (d.phase === "vote") renderVote(d, fresh);
-  // A Doodle On final needs the tally, which a snapshot cached a moment
+  // A votes game's final needs the tally, which a snapshot cached a moment
   // before the vote closed does not have yet: the next poll brings it.
   else if (!doodle() || room.tally) renderFinal(fresh);
 }
@@ -667,7 +667,7 @@ function renderPlay(d, fresh) {
   $("sheetLabel").textContent = `Finished · ${done} of ${of}`;
   const list = $("sheetList");
   list.textContent = "";
-  // Doodle On has no order until the vote, so its list is who is done.
+  // A votes game has no order until the vote, so its list is who is done.
   for (const x of R.placements(room)) {
     if (!x.result) continue;
     const isMe = x.seat === me.seat;

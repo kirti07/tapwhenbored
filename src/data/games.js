@@ -56,8 +56,8 @@ export const games = [
     updated: "2026-08-24",
     changefreq: "monthly",
     hasRestart: true,
-    // No overlay: bubble-tap predates the shared page template and shows its
-    // game-over state inline instead.
+    // No #overlay: bubble-tap predates the shared page template, and its end
+    // and pause cards are its own (#gameOverOverlay, #pauseOverlay).
     hasOverlay: false,
     leaderboard: { lowerIsBetter: false, daily: false },
   },
@@ -225,8 +225,9 @@ export const pages = [
   {
     slug: "wall",
     path: "/wall/",
-    // Every game's record on one page. Unlike the book, this is public content
-    // and is indexed, so it changes as often as somebody beats a record.
+    // Every game's record on one page. Unlike the player card, this is
+    // public content and is indexed, so it changes as often as somebody beats
+    // a record.
     updated: "2026-09-05",
     changefreq: "weekly",
     priority: "0.7",

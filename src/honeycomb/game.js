@@ -54,7 +54,7 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   var MIN_BOMBS = 4;
   // How long the board sits, cause visible, before the end card replaces it.
   var BREAK_HOLD_MS = 1500;
-  // Must match the left/top transition on .tile in style.css — a shifted tile
+  // Must match the translate transition on .tile in style.css — a shifted tile
   // only turns into a number once it has actually arrived. Zero when the
   // player has asked for less motion, since then the hop is instant.
   var MOVE_MS = (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) ? 0 : 280;
@@ -84,7 +84,7 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
 
   var tiles = [];         // [{id, q, r, revealed, bomb, removed}]
   var posMap = new Map(); // "q,r" -> tile id
-  var tileEls = [];       // id-indexed { wrap, hex, label }
+  var tileEls = [];       // id-indexed { wrap, label }
   var audioCtx = null;    // lazily created, reused across every bomb blast this session
   var ended = false;
   var moving = false;     // guards against a second tap landing mid-flash/blast
@@ -757,11 +757,9 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   // A low pitch-sweeping thump plus a short filtered noise burst, synthesized
   // rather than a shipped audio file — created and played in the same call,
   // directly inside the click handler, so the AudioContext starts as a
-  // direct result of the user gesture per browser autoplay rules.
+  // direct result of the user gesture per browser autoplay rules. The shared
+  // tone() can't make this; only the site-wide mute comes from there.
   function playBombSound() {
-    // Honeycomb synthesises its blast from an oscillator plus a filtered noise
-    // buffer, which is not something the shared tone() helper does. It keeps
-    // its own synthesis and takes only the site-wide mute from there.
     if (!soundIsOn()) return;
     try {
       var Ctx = window.AudioContext || window.webkitAudioContext;
@@ -927,9 +925,8 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
         stranded++;
       }
     });
-    // The piece the seed didn't reach is whichever side is smaller to name;
-    // seen/stranded is arbitrary, so report the count the player can see
-    // turning red.
+    // The tiles the flood didn't reach turn red; that count is what the end
+    // card reports.
     lastStrandedCount = stranded;
     tagline.textContent = "The hive split apart.";
     // Hold on the red group long enough to read it.
@@ -1074,7 +1071,7 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   });
   initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });
   // Coalesced to one render a frame: a resize arrives in bursts and
-  // renderInstant() rebuilds the whole hive.
+  // renderInstant() re-lays out every tile.
   var resizeFrame = 0;
   window.addEventListener("resize", function () {
     if (resizeFrame) return;

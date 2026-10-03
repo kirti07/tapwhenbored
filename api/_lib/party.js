@@ -33,7 +33,8 @@
 //   t:{seat}    HSET     SHA-256 of the seat's token — never leaves the server
 //   s:{seat}    HSET     last ping — never leaves the server
 //   x:{seat}    HSETNX   when the seat was removed
-//   r:{seat}    HSETNX   { ms, moves, at } — Doodle On: { ms, at }, "drew"
+//   r:{seat}    HSETNX   { ms, moves, at } — Doodle On, Humour Me: { ms, at },
+//                        handed in; a blank Doodle On page adds blank: true
 //   c:{seat}    HSET     Doodle On: the artist's title for their doodle
 //   v:{seat}    HSET     Doodle On, Humour Me: { tag, at }, this seat's vote
 //   a:{seat}    HSETNX   Humour Me: the seat's answer
@@ -73,10 +74,10 @@ const TYPES = [
   "answer", "card", "ready", "said", "accuse", "call", "lap",
 ];
 const HOST_ONLY = ["start", "end", "kick", "rematch", "call", "lap"];
-// Not rate-limited: a seat's own presence, its one result or doodle, and what
-// it says about doodles. A party shares one Wi-Fi address, and ten phones
-// pinging every 10 s would otherwise spend the whole per-minute budget, and a
-// result refused for it would be lost.
+// Not rate-limited: a seat's own presence, its one result, doodle or answer,
+// and its votes and Sounds Sus turns. A party shares one Wi-Fi address, and
+// twelve phones pinging every 10 s would otherwise spend the whole per-minute
+// budget, and a result refused for it would be lost.
 const UNLIMITED = ["ping", "result", "doodle", "title", "vote", "answer", "card", "ready", "said", "accuse"];
 const TAG = /^[0-9a-f]{12}$/;
 
@@ -132,10 +133,11 @@ function clientKey(request) {
 }
 
 /**
- * A room hash as `{ room, tokens, pings, secret, picks, titles }`. `room` is
- * built field by field — an allowlist — so a token hash, a ping time, the
- * secret or who voted for what cannot reach a snapshot by accident. It is
- * exactly the shape src/party/rules.js works on.
+ * A room hash as `{ room, tokens, pings, secret, picks, titles, answers, sus,
+ * spy, word, used, spies }`. `room` is built field by field — an allowlist —
+ * so a token hash, a ping time, the secret, who voted for what, who wrote
+ * what or who the spy is cannot reach a snapshot by accident. It is exactly
+ * the shape src/party/rules.js works on.
  */
 function parseRoom(code, flat) {
   if (!flat || !flat.length) return null;
@@ -207,7 +209,8 @@ function parseRoom(code, flat) {
   };
 }
 
-/** Doodle On: `[{ tag, seat }]` for every seat that drew, in tag order. */
+/** Doodle On, Humour Me: `[{ tag, seat }]` for every seat that handed
+ *  something in, in tag order. */
 async function ballot({ room, secret }) {
   const drew = R.drew(room, R.timetable(room).playAt);
   const out = await Promise.all(
@@ -217,9 +220,11 @@ async function ballot({ room, secret }) {
 }
 
 /**
- * The room as a phone may see it at `t`. Doodle On adds the doodles' tags
- * from the vote on, and only in the final phase says whose each one is, with
- * its votes and its title. Votes of anyone removed from the room do not count.
+ * The room as a phone may see it at `t`. A votes game (Doodle On, Humour Me)
+ * adds the entries' tags from the vote on — Humour Me with each answer's
+ * text — and only in the final phase says whose each one is, with its votes
+ * and its title. Votes of anyone removed from the room do not count. Sounds
+ * Sus adds `sus`, where the game is (see sounds-sus.js).
  */
 async function snapshot(found, t) {
   const { room } = found;

@@ -16,7 +16,7 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     // bubble count is never a fixed number — it's derived from screen area
     // (bigger screen = more room = more bubbles) and grows as you play, up to
     // maxDensityMultiplier. That cap exists only so bubbles stay big enough to
-    // tap accurately and phones don't choke — not an arbitrary "15".
+    // tap accurately and phones don't choke.
     areaPerBubble: 9000,
     densityGrowthPerTap: 0.006,
     maxDensityMultiplier: 3.2,
@@ -230,8 +230,8 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     const isBomb = kind === "bomb";
     const isUnstable = kind === "unstable";
     const isNeutral = kind === "neutral";
-    // bombs are sized exactly like other bubbles — no free tell there.
-    // The only tell is a slower, faintly wobbly drift.
+    // bombs are the same size as other bubbles; they show as a dark shell
+    // with a bomb icon (style.css) and drift slower, with a faint wobble.
     const size = rand(CONFIG.minSize, CONFIG.maxSize);
     const pos = pickSpawnPos(size);
     const progressMul = 1 + Math.min(1, state.taps / 500) * 0.2;
@@ -631,8 +631,8 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
   // The overlays and the sheet sit *inside* .app rather than beside it, so the
   // things to freeze are named individually instead of one wrapper.
   //
-  // The top bar is deliberately NOT in this list: its "Games" link is the only
-  // way off the page on a phone, where the cards have no close button.
+  // The top bar is deliberately NOT in this list: its "Games" link must stay
+  // reachable while a card is up.
   const behindOverlay = [
     document.querySelector(".hud"),
     document.getElementById("playfield"),

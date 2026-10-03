@@ -222,7 +222,7 @@ export function initHowto(opts) {
 
 /**
  * The share confirmation line: a polite live region that hides itself again.
- * Exported for games with their own share logic (word-steps, doodle-on).
+ * Exported for pages with their own share logic (doodle-on, party).
  */
 export function createNote(note) {
   var timer = 0;

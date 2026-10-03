@@ -580,19 +580,10 @@ html, body {
   .howto-link { padding-top: 0.4svh; }
 }
 
-/* Key height.
- *
- * The letter sheet is a keyboard — ten keys to a row, so the width of a key is
- * fixed by the viewport and cannot reach 44px without dropping to seven
- * columns and abandoning the QWERTY layout the player already knows.
- *
- * Every phone keyboard solves this the same way and so does this one: keys stay
- * narrow and get tall. 32x44 is a comfortable, familiar target, and because the
- * rows are a flex column the extra height also increases the vertical pitch, so
- * neighbouring keys move further apart rather than closer together.
- *
- * The sheet grows by about 36px. liftAboveSheet() measures the sheet at open
- * time rather than assuming a height, so the active row still clears it. */
+/* Key height. Ten keys to a QWERTY row can't be 44px wide, so like every phone
+ * keyboard the keys stay narrow and get tall, which also spreads the rows
+ * apart. liftAboveSheet() measures the sheet when it opens, so the taller
+ * sheet still clears the active row. */
 .letter-btn {
   min-height: 44px;
 }

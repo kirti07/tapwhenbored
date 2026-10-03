@@ -3,8 +3,9 @@
  * Everything here is progressive enhancement, and that is a hard rule rather
  * than a preference: the shelf and the intro are indexable content and
  * ARCHITECTURE.md §28 requires them to be static in the built HTML. This file
- * adds three things to a page that is already complete without it — the theme
- * toggle, your best on each cabinet, and the roll's numbers.
+ * fills in a page that is already complete without it: the theme toggle, your
+ * name and today's box, your best on each cabinet, the roll's numbers, and the
+ * "you were a guest" line after a party.
  *
  * If it fails to load, fails to run, or the network is gone, the page is a
  * shelf of cabinets whose meta lines read "not played yet" and a roll of
@@ -123,12 +124,8 @@ function renderBox() {
  * dash and its "Unsigned", both of which were already the right size — this is
  * the whole reason the panel is emitted full and filled in afterwards.
  *
- * Every row means the same thing now: the best anyone has ever managed. It used
- * to mean "all time" for five games and "today" for word-steps, because the
- * read asked for both periods and this loop took whichever row came last — and
- * the response has no ordering, so for a daily game it was genuinely arbitrary
- * which of the two you saw. `fetchAllBests()` returns exactly one row per game,
- * so there is nothing left to pick between.
+ * Every row is the best anyone has ever managed: `fetchAllBests()` returns
+ * exactly one all-time row per game, daily games included.
  */
 async function renderRoll() {
   var rows = await fetchAllBests();

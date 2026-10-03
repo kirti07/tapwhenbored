@@ -1,5 +1,5 @@
 /* The player's local day (not UTC). Separate from leaderboard.js so games with
- * `leaderboard: false` do not bundle the Supabase client. */
+ * `leaderboard: false` do not bundle the leaderboard code. */
 
 export function localDay(date = new Date()) {
   var pad = (n) => String(n).padStart(2, "0");

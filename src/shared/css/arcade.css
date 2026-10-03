@@ -201,7 +201,6 @@
   top: 2px;
 }
 
-/* Full-bleed variant, for the top of a page. */
 /* -------------------------------------------------------------- screen -- */
 
 .arc-screen {
@@ -488,7 +487,6 @@
   font-size: 13px;
 }
 
-/* 1.2s, deliberately under 1Hz, and it snaps rather than fades. */
 /* ------------------------------------------------------------ controls -- */
 
 .arc-btn {
@@ -514,6 +512,7 @@
   box-shadow: 0 4px 0 color-mix(in srgb, var(--arc-accent) 62%, #000);
 }
 
+/* The press is a shadow collapse, not a scale: nothing reflows. */
 .arc-btn--primary:active {
   transform: translateY(3px);
   box-shadow: 0 1px 0 color-mix(in srgb, var(--arc-accent) 62%, #000);
@@ -545,7 +544,7 @@
   box-shadow: none;
 }
 
-/* The press is a shadow collapse, not a scale: nothing reflows. */
+/* Reduced motion: the press still lands, just without the easing. */
 @media (prefers-reduced-motion: reduce) {
   .arc-btn {
     transition-duration: 0.01ms;
@@ -674,7 +673,6 @@
   50% { opacity: 1; }
 }
 
-/* A skeleton on a light surface rather than on the screen. */
 @media (prefers-reduced-motion: reduce) {
   .arc-sk span {
     animation: none;
@@ -933,7 +931,7 @@
 }
 
 /* A card on a light surface, for the parts of the player card that are not a
-   screen: the claim block and the preferences. */
+   screen: streaks, bests and the email preferences. */
 .arc-panel {
   background: var(--arc-card);
   border: 2px solid var(--arc-line);

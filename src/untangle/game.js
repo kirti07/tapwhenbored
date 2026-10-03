@@ -388,8 +388,7 @@ import { recordPlay } from "../shared/ui/progress.js";
   function render() {
     // Reuse the rect cached at drag start instead of re-querying layout on
     // every single pointermove — the board can't resize mid-drag (window
-    // resize is handled separately below). Kept as a zero-arg function since
-    // it's also registered directly as the "resize" event listener.
+    // resize is handled separately below).
     var rect = (dragIndex >= 0 && dragRect) ? dragRect : board.getBoundingClientRect();
     var r = nodeRadius(rect, nodes.length);
     var hitR = hitRadius(r);
@@ -467,8 +466,7 @@ import { recordPlay } from "../shared/ui/progress.js";
     if (ended || count !== 0) return;
     ended = true;
     solvedSeconds = Math.max(0, Math.round((performance.now() - startTime) / 1000));
-    /* Recorded here rather than in showOverlay(), so closing the tab during the
-       win animation still fills today's slot. */
+    /* Recorded at the solve itself, before the end card is drawn. */
     recordPlay("untangle", moves, true);
     if (best == null || moves < best) writeBest(moves);
     updateBestHud();
@@ -552,14 +550,13 @@ import { recordPlay } from "../shared/ui/progress.js";
     var el = e.target.closest(".node-hit");
 
     if (el) {
-      /* hitEls is indexed by node id and is rebuilt whole on every puzzle, so
-         its position *is* the id. Reading it back from a data attribute was a
-         second copy of that with nothing keeping the two in step. */
+      /* hitEls is indexed by node id and rebuilt whole on every puzzle, so its
+         position *is* the id. */
       var idx = hitEls.indexOf(el);
       if (fixed[idx]) { triggerShake(nodeEls[idx]); return; }
 
       activePointerId = e.pointerId;
-      if (!isTouch) { beginDrag(e, el, idx); return; } // desktop: unchanged immediate drag
+      if (!isTouch) { beginDrag(e, el, idx); return; } // desktop: an immediate drag
 
       // Touch: no dragging at all — resolved as a tap-select/deselect/switch
       // in endDrag once the finger lifts, however far it wandered while held

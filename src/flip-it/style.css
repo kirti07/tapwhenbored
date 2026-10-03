@@ -87,9 +87,6 @@ html, body {
   transform: scale(0.94);
 }
 
-/* One button, two glyphs: the muted state swaps which one is drawn. */
-/* Sound-button icon states now live in shared/css/shell.css. */
-
 .tagline {
   margin: 1.4svh 0 0;
   text-align: center;
@@ -286,8 +283,7 @@ html, body {
   box-shadow: inset 0 0 0 1.5px var(--panel-line);
 }
 
-/* Word labels, so these are pills sized by their text rather than the circles
-   that held a single digit. */
+/* Pills sized by their word labels. */
 .level-btn {
   border: none;
   background: transparent;

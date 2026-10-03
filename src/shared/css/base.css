@@ -1,5 +1,4 @@
-/* Site-wide resets. Safe for every page including bubble-tap, which does not
-   share the rest of the page shell. */
+/* Site-wide resets, imported by every page. */
 
 * { box-sizing: border-box; }
 
@@ -27,7 +26,7 @@ summary,
 }
 
 /* `hidden` must win over any `display` rule: visibility across the site is the
-   `hidden` attribute (ARCHITECTURE.md §27). */
+   `hidden` attribute. */
 [hidden] { display: none !important; }
 
 /* Screen-reader-only text. Not `display: none`, which hides it from them too. */
