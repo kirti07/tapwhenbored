@@ -112,7 +112,7 @@
 .pick-ico { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; flex: none; background: var(--pick); color: #252037; }
 .pick-ico svg { width: 24px; height: 24px; }
 .pick-t { flex: 1; min-width: 0; display: grid; gap: 3px; }
-.pick-t strong { font-family: var(--font-display); font-weight: 800; font-size: 19px; line-height: 1.15; }
+.pick-t strong { font-family: var(--font-display); font-weight: 700; font-size: 19px; line-height: 1.15; }
 .pick-t > span:last-child { font-size: 12.5px; line-height: 1.35; color: var(--ink-soft); }
 .pick-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 /* How many players a game takes: a quiet chip beside its name. */
