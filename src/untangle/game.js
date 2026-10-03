@@ -45,6 +45,7 @@ import { recordPlay } from "../shared/ui/progress.js";
   var moves = 0;
   var crossings = 0;   // last rendered count; the HUD is a view of this, never the source
   var startTime = 0;
+  var solvedSeconds = 0; // fixed at the solve, so the card and Share agree
   var ended = false;
   var best = getInt(BEST_KEY);
 
@@ -453,8 +454,7 @@ import { recordPlay } from "../shared/ui/progress.js";
   }
 
   function showOverlay() {
-    var seconds = Math.max(0, Math.round((performance.now() - startTime) / 1000));
-    overlaySub.textContent = moves + (moves === 1 ? " move" : " moves") + " · " + seconds + "s";
+    overlaySub.textContent = moves + (moves === 1 ? " move" : " moves") + " · " + solvedSeconds + "s";
     shareNote.classList.remove("show");
     overlay.classList.add("show");
   }
@@ -466,6 +466,7 @@ import { recordPlay } from "../shared/ui/progress.js";
   function checkSolved(count) {
     if (ended || count !== 0) return;
     ended = true;
+    solvedSeconds = Math.max(0, Math.round((performance.now() - startTime) / 1000));
     /* Recorded here rather than in showOverlay(), so closing the tab during the
        win animation still fills today's slot. */
     recordPlay("untangle", moves, true);
@@ -488,9 +489,8 @@ import { recordPlay } from "../shared/ui/progress.js";
     note: shareNote,
     title: "Untangle",
     text: function () {
-      var seconds = Math.max(0, Math.round((performance.now() - startTime) / 1000));
       return "I untangled it in " + moves + (moves === 1 ? " move" : " moves") +
-        " (" + seconds + "s). Can you untangle yours?";
+        " (" + solvedSeconds + "s). Can you untangle yours?";
     },
   });
 
