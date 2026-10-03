@@ -375,25 +375,6 @@ html, body {
   letter-spacing: 0.05em;
 }
 
-/* ---- seo info ---- */
-
-
-.seo-info summary {
-  cursor: pointer;
-  letter-spacing: 0.06em;
-  font-weight: 600;
-  list-style: none;
-}
-.seo-info summary::-webkit-details-marker { display: none; }
-.seo-info summary::after { content: " ▾"; }
-.seo-info[open] summary::after { content: " ▴"; }
-.seo-info p {
-  margin: 4px 0 0;
-  line-height: 1.5;
-  text-align: left;
-}
-
-
 /* ---- overlay ---- */
 
 .overlay {
@@ -511,19 +492,6 @@ html, body {
   border: 1.5px solid var(--accent);
   background: transparent;
   color: var(--accent-dark);
-}
-
-.share-note {
-  margin: 0;
-  font-size: clamp(11px, 1.5svh, 13px);
-  color: var(--ink-soft);
-  letter-spacing: 0.06em;
-  opacity: 0;
-  transition: opacity 0.25s ease;
-}
-
-.share-note.show {
-  opacity: 1;
 }
 
 /* ==== Neon Arcade (dark theme) ==== */

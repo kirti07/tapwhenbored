@@ -296,7 +296,9 @@ html, body {
   font-weight: 700;
   font-size: clamp(11px, 1.6svh, 13px);
   letter-spacing: 0.06em;
-  min-height: clamp(26px, 3.6svh, 32px);
+  /* They are the first thing a new player touches and sit in a row of three,
+     so a miss lands on the wrong difficulty. */
+  min-height: 44px;
   padding: 0 clamp(10px, 3vw, 16px);
   border-radius: 999px;
   cursor: pointer;
@@ -306,23 +308,6 @@ html, body {
 .level-btn.is-active {
   background: var(--accent);
   color: #fff;
-}
-
-/* ---- SEO disclosure ---- */
-
-.seo-info summary {
-  cursor: pointer;
-  letter-spacing: 0.06em;
-  font-weight: 600;
-  list-style: none;
-}
-.seo-info summary::-webkit-details-marker { display: none; }
-.seo-info summary::after { content: " ▾"; }
-.seo-info[open] summary::after { content: " ▴"; }
-.seo-info p {
-  margin: 4px 0 0;
-  line-height: 1.5;
-  text-align: left;
 }
 
 /* ---- end card ---- */
@@ -435,23 +420,11 @@ html, body {
   color: var(--accent-dark);
 }
 
-.share-note {
-  margin: 0;
-  font-size: clamp(11px, 1.5svh, 13px);
-  color: var(--ink-soft);
-  letter-spacing: 0.06em;
-  opacity: 0;
-  transition: opacity 0.25s ease;
-}
-
-.share-note.show { opacity: 1; }
-
 /* Short viewports: the game keeps its size, the reading matter goes. Nothing is
    removed from the DOM, so it is still in the page source for crawlers. */
 @media (max-height: 480px) {
   .stage { padding-top: 1.4svh; padding-bottom: 1.2svh; }
   .overlay-exit { top: 1.4svh; }
-  .subtitle, .seo-info { display: none; }
   .back-link { margin-bottom: 0.3svh; }
   .tagline { margin-top: 0.6svh; }
 }
@@ -527,10 +500,6 @@ html, body {
   color: #04212a;
   box-shadow: 0 0.8svh 1.8svh color-mix(in srgb, var(--accent) 40%, transparent);
 }
-
-/* The level pills were 30 tall. They are the first thing a new player touches
-   and they sit in a row of three, so a miss lands on the wrong difficulty. */
-.level-btn { min-height: 44px; }
 
 
 /* The time a challenge link asks you to beat, beside your own. */

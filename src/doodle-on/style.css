@@ -390,23 +390,6 @@ html, body {
 
 .done-btn:active { transform: scale(0.96); }
 
-/* ---- seo info ---- */
-
-.seo-info summary {
-  cursor: pointer;
-  letter-spacing: 0.06em;
-  font-weight: 600;
-  list-style: none;
-}
-.seo-info summary::-webkit-details-marker { display: none; }
-.seo-info summary::after { content: " ▾"; }
-.seo-info[open] summary::after { content: " ▴"; }
-.seo-info p {
-  margin: 4px 0 0;
-  line-height: 1.5;
-  text-align: left;
-}
-
 /* ---- result overlay ----
    Translucent, not opaque: the whole point of the finished doodle is that it
    stays visible as the player's result, so the overlay only needs to sit on
@@ -514,19 +497,6 @@ html, body {
   color: var(--purple-dark);
 }
 
-.share-note {
-  margin: 0;
-  font-size: clamp(11px, 1.5svh, 13px);
-  color: var(--ink-soft);
-  letter-spacing: 0.06em;
-  opacity: 0;
-  transition: opacity 0.25s ease;
-}
-
-.share-note.show {
-  opacity: 1;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .idle-hint,
   .prompt.nudge,
@@ -597,7 +567,6 @@ html, body {
 @media (max-height: 480px) {
   .stage { padding-top: 1.4svh; padding-bottom: 1.2svh; }
   .overlay-exit { top: 1.4svh; }
-  .subtitle, .seo-info { display: none; }
   .back-link { margin-bottom: 0.3svh; }
   .howto-link { padding-top: 0.4svh; }
   .prompt { margin-top: 0.5svh; font-size: 12px; }

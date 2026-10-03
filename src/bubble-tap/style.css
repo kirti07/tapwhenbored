@@ -93,11 +93,6 @@ html, body {
   letter-spacing: 0.06em;
   white-space: nowrap;
 }
-/* Gated: on a touch screen a tap leaves a false hover behind that sticks
-   until the next tap somewhere else. */
-@media (hover: hover) and (pointer: fine) {
-  .back-link:hover { color: var(--ink); }
-}
 
 .title {
   margin: 0;
@@ -397,24 +392,12 @@ html, body {
 }
 .legend-item:first-child { border-left: none; padding-left: 0; }
 
-.seo-info {
-  padding: 0 20px 8px;
-  font-size: 9px;
-  color: var(--ink-soft);
-}
-.seo-info summary {
-  cursor: pointer;
-  letter-spacing: 0.08em;
-  font-weight: 600;
-  list-style: none;
-}
-.seo-info summary::-webkit-details-marker { display: none; }
-.seo-info summary::after { content: " ▾"; }
-.seo-info[open] summary::after { content: " ▴"; }
+/* The rest of the disclosure comes from shell.css. */
+.seo-info { padding: 0 20px 8px; }
+.seo-info summary { letter-spacing: 0.08em; }
 .seo-info p {
-  margin: 4px 0 0;
-  line-height: 1.5;
   max-width: 640px;
+  text-align: center;
 }
 
 .bomb-glyph {
@@ -670,7 +653,6 @@ html:has(#gameOverOverlay:not(.hidden)) .top-actions { visibility: hidden; }
 
   .seo-info {
     padding: 0 14px max(6px, env(safe-area-inset-bottom));
-    font-size: 8px;
   }
 }
 
@@ -772,28 +754,21 @@ html:has(#gameOverOverlay:not(.hidden)) .top-actions { visibility: hidden; }
   margin: 6px 0 0;
   font-size: 11px;
   letter-spacing: 0.12em;
-  color: var(--ink-soft, #7a736a);
   text-transform: uppercase;
-  opacity: 0;
-  transition: opacity 0.25s ease;
 }
-.share-note.show { opacity: 1; }
 
 @media (prefers-reduced-motion: reduce) {
   .share-note { transition: opacity 0.12s linear; }
 }
 
 /* Tap targets: a centred pseudo-element grows the reachable area to 44px
-   while the compact look of the bar is untouched. */
-.icon-btn,
-.back-link,
-.howto-link {
+   while the compact look of the bar is untouched. shell.css does the same
+   for the back link and How to play. */
+.icon-btn {
   position: relative;
 }
 
 .icon-btn::after,
-.back-link::after,
-.howto-link::after,
 .overlay-exit::after {
   content: "";
   position: absolute;
@@ -804,18 +779,7 @@ html:has(#gameOverOverlay:not(.hidden)) .top-actions { visibility: hidden; }
   height: 44px;
 }
 
-.seo-info summary {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  font-size: 11px;
-}
-
-.seo-info { font-size: 11px; }
-
 /* Phone landscape: vertical space is scarcest, so the playfield wins. */
 @media (max-height: 480px) {
-  .seo-info { display: none; }
-
   .legend { display: none; }
 }

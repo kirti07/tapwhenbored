@@ -3,8 +3,11 @@
  * Requires --accent-dark. --record is optional and falls back to the accent.
  */
 
+/* min-height reserves the line, so it can never push "Play again" down as
+   it changes state across the network round trip. */
 .overlay-global {
   margin: 0;
+  min-height: 1.35em;
   font-size: clamp(11px, 1.6svh, 13px);
   color: var(--accent-dark);
   font-weight: 600;
@@ -15,10 +18,4 @@
 .overlay-global.new-global {
   color: var(--record, var(--accent-dark));
   font-weight: 800;
-}
-
-/* Reserve the line's height so it can never push "Play again" down as it
-   changes state across the network round trip. */
-.overlay-global {
-  min-height: 1.35em;
 }
