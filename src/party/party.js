@@ -330,7 +330,7 @@ function render() {
   if (d.phase === "lobby") renderLobby(fresh);
   else if (d.phase === "play" && room.game === "sounds-sus") {
     show("game");
-    mod.render($("gameScreen"), ctx(d, fresh));
+    mod.render($("gameScreen"), ctx(fresh));
   }
   else if (d.phase === "title") renderTitle(d, fresh);
   else if (d.phase === "play") renderPlay(d, fresh);
@@ -362,9 +362,9 @@ function loadModule() {
 }
 
 /** What a game module may use: the room as it is, and this page's helpers. */
-function ctx(d, fresh) {
+function ctx(fresh) {
   return {
-    room, me, d, fresh, now, act, el, face, nameOf, plural, toast,
+    room, me, fresh, now, act, el, face, nameOf, plural,
     // This phone's entry, greyed in the vote. Redraw: the last answer in
     // opens the vote, which was drawn before the tag came back.
     own: (tag) => { keepDoodle({ tag }); drawnKey = ""; render(); },
@@ -601,7 +601,7 @@ function renderPlay(d, fresh) {
   const mine = room.results[me.seat] || pending;
 
   // Humour Me's write box, while this phone has not answered.
-  if (mod) mod.play($("frameSlot"), ctx(d, fresh), playing && !mine);
+  if (mod) mod.play($("frameSlot"), ctx(fresh), playing && !mine);
   // Go, once the frame is ready: tell it how long ago the round began, and
   // Doodle On what to draw.
   else if (playing && !mine && frame.ready && !frame.went) {
@@ -793,13 +793,13 @@ function renderFinal(fresh) {
   $("podParty").textContent = `${room.name} · ${game().title}`;
   const tie = finishers.length > 1 && finishers[1].place === 1;
   $("podH").textContent = !finishers.length
-    ? doodle() ? `Nobody ${drawing() ? "drew anything" : "answered"}.` : "Nobody cleared it."
+    ? doodle() ? "Nobody drew anything." : "Nobody cleared it."
     : doodle() && tie ? "A dead heat — argue it out." : `${nameOf(finishers[0].seat)} takes it.`;
   $("podSub").textContent = margin(finishers);
   $("podium").hidden = doodle() || !!mod;
   $("gameFinal").hidden = !mod;
   $("resList").hidden = !!mod;
-  const said = mod?.final($("gameFinal"), ctx(null, fresh), finishers);
+  const said = mod?.final($("gameFinal"), ctx(fresh), finishers);
   if (said) [$("podH").textContent, $("podSub").textContent] = said;
   // Every page blank: no doodle to reveal, and the heading says so.
   if (!mod && doodle()) { if (finishers.length) drawDoodles(finishers); }

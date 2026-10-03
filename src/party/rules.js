@@ -109,10 +109,10 @@ export const MIN_SOLVE_MS = 2000; // anything faster is not a solve
 export const AWAY_MS = 20000;     // a host silent this long hands over (PRD)
 export const VOTE_MS = 20000;     // Doodle On's vote (PRD)
 export const SETTLE_MS = 3000;    // once everyone has voted, time to change a mind
-export const BUZZER_MS = 2000;    // a doodle handed in this close to 0:00
+const BUZZER_MS = 2000;           // a doodle handed in this close to 0:00
 
-export const MIN_PLAYERS = 2;
-export const MAX_PLAYERS = 10;
+const MIN_PLAYERS = 2;
+const MAX_PLAYERS = 10;
 export const MAX_MOVES = 10000;
 
 /* Faces, by index: the API stores the number, never a string from a phone. */

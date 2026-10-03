@@ -29,7 +29,6 @@ export function createMemoryStore(now = Date.now) {
   }
 
   const commands = {
-    PING: () => "PONG",
     // Only the forms the handler sends: SET key value [NX] [EX seconds].
     SET(key, value, ...opts) {
       if (opts.includes("NX") && live(key) !== undefined) return null;

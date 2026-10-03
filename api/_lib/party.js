@@ -137,7 +137,7 @@ function clientKey(request) {
  * secret or who voted for what cannot reach a snapshot by accident. It is
  * exactly the shape src/party/rules.js works on.
  */
-export function parseRoom(code, flat) {
+function parseRoom(code, flat) {
   if (!flat || !flat.length) return null;
   const f = {};
   for (let i = 0; i < flat.length; i += 2) f[flat[i]] = flat[i + 1];
@@ -221,7 +221,7 @@ async function ballot({ room, secret }) {
  * from the vote on, and only in the final phase says whose each one is, with
  * its votes and its title. Votes of anyone removed from the room do not count.
  */
-export async function snapshot(found, t) {
+async function snapshot(found, t) {
   const { room } = found;
   if (room.start == null) return room;
   if (room.game === "sounds-sus") return { ...room, sus: susOf(found, t) };
@@ -259,7 +259,7 @@ function fresh(n, used = []) {
  * Who takes over from a host that has gone quiet: the earliest-joined seat
  * still in the room that has pinged within the away window.
  */
-export function nextHost(room, pings, now) {
+function nextHost(room, pings, now) {
   const away = R.AWAY_MS * room.scale;
   const live = room.players.filter(
     (p) => p.seat !== room.host && p.kickedAt == null && now - (pings[p.seat] || 0) <= away,
@@ -280,7 +280,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
     // EXPIRE NX sets the TTL only if the hash has none, so a write that lands
     // just as a room expires cannot leave behind a hash that lives forever.
     const out = await store.pipeline([...commands, ["EXPIRE", key, TTL_S, "NX"], ["HGETALL", key]]);
-    return { out, room: await snapshot(parseRoom(code, out[out.length - 1]), now()) };
+    return snapshot(parseRoom(code, out[out.length - 1]), now());
   }
 
   /**
@@ -347,7 +347,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
       const key = roomKey(code);
       const [claimed] = await store.pipeline([["HSETNX", key, "seed", randomSeed()], ["EXPIRE", key, TTL_S, "NX"]]);
       if (!claimed) continue;
-      const { room } = await write(code, [[
+      const room = await write(code, [[
         "HSET", key,
         "name", clean(partyName, MAX_PARTY_NAME) || R.PARTY_NAMES[0],
         "scale", scale,
@@ -373,7 +373,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
     return room.sus;
   }
   const susWrite = async ({ code }, field, value) =>
-    ({ room: (await write(code, [["HSETNX", roomKey(code), field, value]])).room });
+    ({ room: await write(code, [["HSETNX", roomKey(code), field, value]]) });
 
   const actions = {
     async create(body) {
@@ -393,13 +393,13 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
       if (seat >= R.maxPlayers(room.game)) reject(409, "room full");
       const token = crypto.randomUUID();
       const t = now();
-      const out = await write(code, [[
+      const joined = await write(code, [[
         "HSET", key,
         `p:${seat}`, JSON.stringify({ name: who.name, emoji: who.emoji, joinedAt: t }),
         `t:${seat}`, await sha256(token),
         `s:${seat}`, t,
       ]]);
-      return { code, seat, token, room: out.room };
+      return { code, seat, token, room: joined };
     },
 
     async ping(body, { code, room, pings, seat }) {
@@ -410,7 +410,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
         pings[seat] = t;
         if (nextHost(room, pings, t) === seat) commands.push(["HSET", key, "h", seat]);
       }
-      return { room: (await write(code, commands)).room };
+      return { room: await write(code, commands) };
     },
 
     /* Starting deals the round's content: Humour Me's phrase, and Sounds
@@ -430,7 +430,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
         const pool = fair.length ? fair : here;
         deal.push(["HSETNX", key, "w", fresh(WORDS.length, used)], ["HSETNX", key, "spy", pool[fresh(pool.length)].seat]);
       }
-      return { room: (await write(code, deal)).room };
+      return { room: await write(code, deal) };
     },
 
     /* A solve — or, in Doodle On, a Done on a blank page: done, so the round
@@ -442,7 +442,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
       const { ms, moves } = body;
       if (!blank && (!Number.isInteger(moves) || moves < 1 || moves > R.MAX_MOVES)) reject(400, "implausible moves");
       const result = JSON.stringify(blank ? { ms, at: t, blank: true } : { ms, moves, at: t });
-      return { room: (await write(code, [["HSETNX", roomKey(code), `r:${seat}`, result]])).room };
+      return { room: await write(code, [["HSETNX", roomKey(code), `r:${seat}`, result]]) };
     },
 
     /* Doodle On's result: the drawing itself. The first one counts. */
@@ -450,7 +450,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
       if (room.game !== "doodle-on") reject(400, "wrong game");
       const t = onTime(room, seat, body);
       if (!isJpeg(body.image)) reject(400, "not a jpeg");
-      const { room: next } = await write(code, [
+      const next = await write(code, [
         ["SET", doodleKey(code, room.seed, seat), toBase64(body.image), "NX", "EX", TTL_S],
         ["HSETNX", roomKey(code), `r:${seat}`, JSON.stringify({ ms: body.ms, at: t })],
       ]);
@@ -466,7 +466,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
       if (!room.results[seat]) reject(409, "no doodle");
       const title = clean(body.title, MAX_TITLE);
       if (!title) reject(400, "title required");
-      return { room: (await write(code, [["HSET", roomKey(code), `c:${seat}`, title]])).room };
+      return { room: await write(code, [["HSET", roomKey(code), `c:${seat}`, title]]) };
     },
 
     /* One vote per seat, for someone else's doodle; it can change until the
@@ -480,7 +480,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
       if (!target) reject(400, "bad doodle");
       if (target.seat === seat) reject(400, "your own");
       const vote = JSON.stringify({ tag: target.tag, at: t });
-      return { room: (await write(code, [["HSET", roomKey(code), `v:${seat}`, vote]])).room };
+      return { room: await write(code, [["HSET", roomKey(code), `v:${seat}`, vote]]) };
     },
 
     /* Humour Me's result: the seat's ending to the phrase. The first one
@@ -494,7 +494,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
       const text = clean(body.text, MAX_ANSWER);
       if (!text) reject(400, "answer required");
       const key = roomKey(code);
-      const { room: next } = await write(code, [
+      const next = await write(code, [
         ["HSETNX", key, `a:${seat}`, text],
         ["HSETNX", key, `r:${seat}`, JSON.stringify({ ms: Math.min(t - d.playAt, room.cap * 1000 * room.scale), at: t })],
       ]);
@@ -528,7 +528,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
       if (!s.alive.includes(ctx.seat)) reject(403, "you're out");
       if (body.target === ctx.seat || !s.alive.includes(body.target)) reject(400, "bad target");
       const vote = JSON.stringify({ to: body.target, at: now() });
-      return { room: (await write(ctx.code, [["HSET", roomKey(ctx.code), `b:${s.lap}:${ctx.seat}`, vote]])).room };
+      return { room: await write(ctx.code, [["HSET", roomKey(ctx.code), `b:${s.lap}:${ctx.seat}`, vote]]) };
     },
 
     async call(body, ctx) {
@@ -549,13 +549,13 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
         const { done, of } = R.progress(room);
         if (done * 2 < of || done < (R.GAMES[room.game].ballot || 1)) reject(409, "not enough done");
       }
-      return { room: (await write(code, [["HSETNX", roomKey(code), "ended", now()]])).room };
+      return { room: await write(code, [["HSETNX", roomKey(code), "ended", now()]]) };
     },
 
     async kick(body, { code, room }) {
       const target = room.players.find((p) => p.seat === body.target);
       if (!target || target.seat === room.host) reject(400, "bad target");
-      return { room: (await write(code, [["HSETNX", roomKey(code), `x:${target.seat}`, now()]])).room };
+      return { room: await write(code, [["HSETNX", roomKey(code), `x:${target.seat}`, now()]]) };
     },
 
     /* The next round is a new room: same name, the same or a new game, and
@@ -571,9 +571,9 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
       if (dealt != null) used[room.game] = [...(used[room.game] || []), dealt];
       const spies = found.spy == null ? found.spies : [...found.spies, room.players.find((p) => p.seat === found.spy)?.name];
       const made = await openRoom(room.name, host, choice, ["u", JSON.stringify(used), "ps", JSON.stringify(spies)]);
-      const out = await write(code, [["HSETNX", roomKey(code), "next", made.code]]);
+      const after = await write(code, [["HSETNX", roomKey(code), "next", made.code]]);
       // A double tap raced us: follow the room that won instead.
-      if (out.room.next !== made.code) return { room: out.room };
+      if (after.next !== made.code) return { room: after };
       return made;
     },
   };

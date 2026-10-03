@@ -48,7 +48,7 @@ function orderOf(seats, seed, n, spy) {
     const j = Math.floor(rand() * (i + 1));
     [out[i], out[j]] = [out[j], out[i]];
   }
-  if (out[0] === spy && out.length > 1) [out[0], out[1]] = [out[1], out[0]];
+  if (out[0] === spy) [out[0], out[1]] = [out[1], out[0]];
   return out;
 }
 
