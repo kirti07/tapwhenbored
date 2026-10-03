@@ -224,6 +224,8 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     '<path d="M11 7 L13.2 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/>' +
     '<circle cx="13.6" cy="2.6" r="1.5" fill="currentColor"/></svg>';
 
+  function calmMul() { return state.calmMode ? 0.35 : 1; }
+
   function createBubble(kind) {
     const isBomb = kind === "bomb";
     const isUnstable = kind === "unstable";
@@ -232,10 +234,11 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     // The only tell is a slower, faintly wobbly drift.
     const size = rand(CONFIG.minSize, CONFIG.maxSize);
     const pos = pickSpawnPos(size);
-    const calmMul = state.calmMode ? 0.35 : 1;
     const progressMul = 1 + Math.min(1, state.taps / 500) * 0.2;
     const angle = rand(0, Math.PI * 2);
-    const speed = rand(...CONFIG.speedRange) * calmMul * progressMul * (isBomb ? CONFIG.bombSpeedMul : 1);
+    // Kept without the calm factor, so toggling Calm can rescale it exactly.
+    const baseSpeed = rand(...CONFIG.speedRange) * progressMul * (isBomb ? CONFIG.bombSpeedMul : 1);
+    const speed = baseSpeed * calmMul();
 
     const el = document.createElement("div");
     // safe bubbles are always purple (c2), unstable bubbles are always
@@ -271,6 +274,7 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
       size,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
+      baseSpeed,
       isBomb,
       isUnstable,
       isNeutral,
@@ -679,14 +683,12 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     state.calmMode = !state.calmMode;
     setPref("calm", state.calmMode);
     syncToggle(motionToggle, state.calmMode);
-    const mul = state.calmMode ? 0.35 : 1;
     for (const b of bubbles) {
       const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
       if (speed > 0) {
-        const norm = 1 / speed;
-        const base = rand(...CONFIG.speedRange) * mul;
-        b.vx = b.vx * norm * base;
-        b.vy = b.vy * norm * base;
+        const scale = (b.baseSpeed * calmMul()) / speed;
+        b.vx *= scale;
+        b.vy *= scale;
       }
     }
   });
