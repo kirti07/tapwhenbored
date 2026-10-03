@@ -798,7 +798,8 @@ function renderFinal(fresh) {
   $("resList").hidden = !!mod;
   const said = mod?.final($("gameFinal"), ctx(null, fresh), finishers);
   if (said) [$("podH").textContent, $("podSub").textContent] = said;
-  if (!mod && doodle()) drawDoodles(finishers);
+  // Every page blank: no doodle to reveal, and the heading says so.
+  if (!mod && doodle()) { if (finishers.length) drawDoodles(finishers); }
   else if (!mod) drawPodium($("podium"), finishers);
   $("restDoodles").hidden = $("topDoodle").hidden = !drawing() || !finishers.length;
   $("recapOpt").hidden = !drawing() || !finishers.length;

@@ -271,6 +271,46 @@ test("a Doodle On party: draw, name it, vote anonymously, the reveal", async ({ 
   expect(errors).toEqual([]);
 });
 
+test("a Doodle On party where every page comes back blank still reaches the final", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const errors = [];
+
+  const host = await phone(browser, errors, "host");
+  await host.goto("/party/");
+  await host.fill("#setupName", "Aman");
+  await host.locator("#setupPick .pick--doodle-on").click();
+  await host.click("#setupGo");
+  await expect(screen(host, "lobby")).toBeVisible();
+  const code = new URL(host.url()).searchParams.get("r");
+  const phones = [host];
+  for (const name of ["Riya", "Dev", "Kabir"]) {
+    const p = await phone(browser, errors, name);
+    await p.goto(`/party/?r=${code}`);
+    await p.fill("#joinName", name);
+    await p.click("#joinForm button[type=submit]");
+    await expect(screen(p, "lobby")).toBeVisible();
+    phones.push(p);
+  }
+  await host.click("#startBtn");
+
+  // Everyone taps Done without drawing a line.
+  await Promise.all(phones.map(async (p) => {
+    await expect(screen(p, "play")).toBeVisible({ timeout: 20_000 });
+    const frame = p.frameLocator("iframe.round-frame");
+    await expect(frame.locator("html")).toHaveAttribute("data-party", "on");
+    await p.waitForTimeout(400);
+    await frame.locator("#doneBtn").click();
+  }));
+
+  for (const p of phones) await expect(screen(p, "final")).toBeVisible({ timeout: 20_000 });
+  await expect(host.locator("#podH")).toHaveText("Nobody drew anything.");
+  await expect(host.locator("#topDoodle")).toBeHidden();
+  await expect(host.locator("#restDoodles")).toBeHidden();
+  await expect(host.locator("#resList .res-row")).toHaveCount(4);
+
+  expect(errors).toEqual([]);
+});
+
 test("setup: the games first, grouped by kind; the face and the party name stay optional", async ({ browser }) => {
   const errors = [];
   const host = await phone(browser, errors, "host");
