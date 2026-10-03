@@ -434,7 +434,7 @@ import { recordPlay } from "../shared/ui/progress.js";
   function restart() {
     ended = false;
     history = [];
-    selected = null;
+    clearSelection();
     hideOverlay();
     buildBoard();
     renderMarbles();
