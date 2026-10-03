@@ -171,9 +171,11 @@ const html = `<!doctype html>
       <div class="overlay-actions">
         <button class="again-btn" id="againBtn">Play again</button>
         <button class="share-btn" id="shareBtn">Share</button>
+        <!-- endcard-wall -->
       </div>
       <p class="share-note" id="shareNote">Link copied</p>
     </div>
+    <!-- endcard-exit -->
   </div>
 
   <script type="module" src="./game.js"></script>
@@ -187,6 +189,7 @@ const css = `/* Shared first: game rules below must be able to override them, an
 @import "../shared/css/base.css";
 @import "../shared/css/shell.css";
 @import "../shared/css/howto.css";
+@import "../shared/css/endcard.css";
 
 /* This game's own palette. The token names are shared; the values are this
    game's identity, so they belong here and never in shared CSS. */
@@ -258,8 +261,7 @@ html, body {
    overlay stays none even when shown, and only the card inside it becomes
    clickable -- which is what every shipped game does, and what leaves the top
    bar tappable behind an open card. Setting pointer-events: auto on the overlay
-   itself instead makes the scrim swallow the tap on "Games", and since no end
-   card has a close button, that leaves a phone with no way off the page. */
+   itself instead makes the scrim swallow the tap on "Games". */
 .overlay {
   position: fixed;
   inset: 0;
@@ -283,10 +285,9 @@ const js = `// ${title}
 // rather than spread across DOM attributes and CSS classes
 // (ARCHITECTURE.md §13).
 
-import { initHowto, initShare, createNote, bindOverlay } from "../shared/ui/shell.js";
+import { initHowto, initShare, bindOverlay } from "../shared/ui/shell.js";
 import { tone, initSoundToggle } from "../shared/ui/audio.js";
 import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
-import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
 
 (function () {
   "use strict";
@@ -330,10 +331,11 @@ import { get as getPref, set as setPref } from "../shared/ui/prefs.js";
   }
 
   // ---------- the page shell ----------
-  // These four come from shared/ui and are not optional: they are what make
-  // the rules sheet and the end card real dialogs (Escape, focus, inert
-  // background), the sound preference site-wide, and localStorage safe in
-  // private mode. See ARCHITECTURE.md §9.
+  // These come from shared/ui and are not optional: they are what make the
+  // rules sheet and the end card real dialogs (Escape, focus, inert
+  // background), and the theme and sound preferences site-wide. Read and write
+  // any other preference through shared/ui/prefs.js, which is safe in private
+  // mode. See ARCHITECTURE.md §9.
   initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });
 
   initShare({
@@ -385,7 +387,7 @@ const entry = `  {
     // a purple card; they are registry data now and the validator wants them.
     accent: "#8b7fe0",
     accentDark: "#a855f7",
-    // The glyph the card and the wall draw, from the sprite in src/index.html.
+    // The glyph the card and the wall draw, from scripts/sprite.svg.
     // Add a <symbol id="st-TODO"> there before this validates.
     sticker: "st-todo",
     // What this game's score counts, and whether the number is milliseconds
@@ -419,7 +421,7 @@ console.log(`Created src/${slug}/ and added the registry entry.
 
 Still to do:
   1. public/assets/${slug}-og.jpg      social preview, raster not SVG (640x640)
-  2. A <symbol id="st-${slug}"> in the sprite at the top of src/index.html,
+  2. A <symbol id="st-${slug}"> in scripts/sprite.svg,
      then set sticker: "st-${slug}" in the registry entry
   3. Replace every TODO in src/${slug}/ and in the registry entry, including
      the description, which is in BOTH the meta tag and the registry and must
