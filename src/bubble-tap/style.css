@@ -13,7 +13,6 @@
   --ink: #262b3d;
   --ink-soft: #767b8c;
   --line: #cfe6f0;
-  --danger: #171512;
   --accent: #4fb6e0;
   --accent-dark: #2e93bd;
   color-scheme: light;
@@ -816,7 +815,6 @@ html:has(#gameOverOverlay:not(.hidden)) .top-actions { visibility: hidden; }
 
 /* Phone landscape: vertical space is scarcest, so the playfield wins. */
 @media (max-height: 480px) {
-  .subtitle,
   .seo-info { display: none; }
 
   .legend { display: none; }
