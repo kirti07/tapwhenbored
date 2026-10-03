@@ -10,7 +10,6 @@
 :root {
   --bg: #fdf3d9;
   --paper: #fffcf2;
-  --paper-edge: #f2e2ad;
   --ink: #262b3d;
   --ink-soft: #767b8c;
   --line: #f2e2ad;
@@ -576,7 +575,6 @@ html, body {
 :root[data-theme="dark"] {
   --bg: #0d0e1a;
   --paper: #14132a;
-  --paper-edge: #2c2850;
   --ink: #f0eefa;
   --ink-soft: #9b96c4;
   --line: #2c2850;
