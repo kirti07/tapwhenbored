@@ -517,8 +517,11 @@ function renderTitle(d, fresh) {
   if (!fresh) return;
   document.body.dataset.game = room.game;
   $("titleGame").textContent = game().title;
+  // Everyone in the round could hand something in, so the most the vote runs.
+  const players = R.eligible(room, d.playAt).length;
+  const voteSec = R.voteMs(room.game, players) / 1000;
   if (mod) {
-    const [rule, cap, chip] = mod.title(room);
+    const [rule, cap, chip] = mod.title(room, voteSec);
     $("titleRule").textContent = rule;
     $("titleCap").textContent = cap;
     $("titleChip").textContent = chip;
@@ -526,13 +529,13 @@ function renderTitle(d, fresh) {
     const p = R.doodleRound(room);
     $("titleRule").textContent = `Turn this ${p.shape} into ${p.direction}.`;
     $("titleCap").textContent = `${room.cap} sec to draw`;
-    $("titleChip").textContent = `${R.VOTE_MS / 1000} sec to vote`;
+    $("titleChip").textContent = `${voteSec} sec to vote`;
   } else {
     $("titleRule").textContent = `${game().rule} ${game().win}`;
     $("titleCap").textContent = `${room.cap} sec`;
     $("titleChip").textContent = "Same board for all";
   }
-  $("titleFoot").textContent = `${R.eligible(room, d.playAt).length} players ready`;
+  $("titleFoot").textContent = `${players} players ready`;
 }
 
 // 06 · playing ------------------------------------------------------------------

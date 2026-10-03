@@ -387,6 +387,33 @@ async function room4(browser, errors, pick) {
   return phones;
 }
 
+test("Humour Me with 9 players: the title card counts the longer vote", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const errors = [];
+  const host = await phone(browser, errors, "host");
+  await host.goto("/party/");
+  await host.fill("#setupName", "Aman");
+  await host.locator("#setupPick .pick--humour-me").click();
+  await host.click("#setupGo");
+  await expect(screen(host, "lobby")).toBeVisible();
+  const code = new URL(host.url()).searchParams.get("r");
+  for (let n = 1; n < 9; n++) {
+    const p = await phone(browser, errors, `P${n}`);
+    await p.goto(`/party/?r=${code}`);
+    await p.fill("#joinName", `P${n}`);
+    await p.click("#joinForm button[type=submit]");
+    await expect(screen(p, "lobby")).toBeVisible();
+  }
+  await expect(host.locator("#startBtn")).toHaveText("Start · 9 players");
+  await host.click("#startBtn");
+
+  // Two more seconds for each entry past eight.
+  await expect(screen(host, "title")).toBeVisible();
+  await expect(host.locator("#titleChip")).toHaveText("32 sec to vote");
+  await expect(host.locator("#titleFoot")).toHaveText("9 players ready");
+  expect(errors).toEqual([]);
+});
+
 test("Humour Me: everyone finishes the phrase, votes anonymously, the reveal, play again", async ({ browser }) => {
   test.setTimeout(120_000);
   const errors = [];

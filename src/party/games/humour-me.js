@@ -14,8 +14,8 @@ const phrase = (room) => PROMPTS[room.prompt] || PROMPTS[0];
 const blankOut = (text) => text.replace("___", "______");
 
 /** The title card: the phrase, and how long there is to write and vote. */
-export function title(room) {
-  return [blankOut(phrase(room)), `${room.cap} sec to write`, "30 sec to vote"];
+export function title(room, voteSec) {
+  return [blankOut(phrase(room)), `${room.cap} sec to write`, `${voteSec} sec to vote`];
 }
 
 let form = null; // { code, root, faces } while this phone is writing
