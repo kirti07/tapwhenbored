@@ -349,7 +349,7 @@ import { recordPlay } from "../shared/ui/progress.js";
     // Each node is two circles: an invisible larger one that owns all pointer/touch
     // interaction (so grabbing a node doesn't need pixel-perfect finger placement),
     // and the small visible dot on top, purely decorative (pointer-events: none).
-    hitEls = nodes.map(function (_, i) {
+    hitEls = nodes.map(function () {
       var el = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       el.setAttribute("class", "node-hit");
       board.appendChild(el);
@@ -636,7 +636,7 @@ import { recordPlay } from "../shared/ui/progress.js";
       return;
     }
 
-    if (dragIndex >= 0) nodeEls[dragIndex].classList.remove("active");
+    nodeEls[dragIndex].classList.remove("active");
     board.classList.remove("dragging");
     dragRect = null;
     if (dragMoved) {
