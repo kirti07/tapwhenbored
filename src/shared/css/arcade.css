@@ -621,23 +621,6 @@
   color: var(--arc-accent-ink);
 }
 
-.arc-sect {
-  font-size: 12px;
-  color: var(--arc-ink-soft);
-  margin: 26px 0 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.arc-sect::after {
-  content: "";
-  flex: 1;
-  height: 2px;
-  background: var(--arc-line);
-  border-radius: 2px;
-}
-
 /* --------------------------------------------------------------- slots -- */
 
 /* States share one grid cell so the region keeps its tallest height.

@@ -39,7 +39,6 @@
   --shadow-s: var(--arc-shadow);
   --shadow-m: var(--arc-shadow);
 
-  --r-l: 20px;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 

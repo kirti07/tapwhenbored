@@ -53,5 +53,4 @@ export function initToggle(btn) {
   });
 
   sync();
-  return { sync: sync };
 }
