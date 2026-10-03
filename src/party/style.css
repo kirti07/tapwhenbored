@@ -180,7 +180,7 @@
 .invite-name { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 24px; }
 .invite-who { margin: 0; color: var(--ink-soft); font-size: 13px; }
 
-.code-input { text-transform: uppercase; letter-spacing: 0.4em; font-size: 22px; text-align: center; }
+.code-input { text-transform: uppercase; letter-spacing: 0.4em; text-align: center; }
 
 /* ----------------------------------------------------------------- lobby -- */
 
