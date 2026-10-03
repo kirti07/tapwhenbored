@@ -44,9 +44,7 @@ const REQUIRED_FIELDS = [
 ];
 
 const errors = [];
-const warnings = [];
 const err = (m) => errors.push(m);
-const warn = (m) => warnings.push(m);
 
 const pageSlugs = new Set(pages.map((p) => p.slug));
 
@@ -531,14 +529,10 @@ function decodeEntities(text) {
 
 // ---------- report ----------
 
-for (const w of warnings) console.warn(`warn  ${w}`);
 for (const e of errors) console.error(`error ${e}`);
 
 if (errors.length) {
   console.error(`\nvalidate: ${errors.length} error(s)`);
   process.exit(1);
 }
-console.log(
-  `validate: ${games.length} games ok` +
-    (warnings.length ? `, ${warnings.length} warning(s)` : ""),
-);
+console.log(`validate: ${games.length} games ok`);
