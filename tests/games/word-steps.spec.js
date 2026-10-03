@@ -59,6 +59,20 @@ test("tapping a letter opens a full picker", async ({ page }) => {
   await expect(page.locator("#letterGrid button")).toHaveCount(26);
 });
 
+test("the picker's close button sits in the header's right corner and closes it", async ({ page }) => {
+  await activeRow(page).locator(".tile").first().click();
+  await expect(page.locator("#letterSheet")).toHaveClass(/show/);
+  // Wait for the sheet's slide-in to settle before measuring.
+  await page.waitForTimeout(400);
+  const header = await page.locator(".letter-sheet-header").boundingBox();
+  const close = await page.locator("#letterCloseBtn").boundingBox();
+  expect(Math.abs(close.x + close.width - (header.x + header.width))).toBeLessThan(1);
+  // Level with the title, not pushed under it.
+  expect(Math.abs(close.y + close.height / 2 - (header.y + header.height / 2))).toBeLessThan(1);
+  await page.locator("#letterCloseBtn").click();
+  await expect(page.locator("#letterSheet")).not.toHaveClass(/show/);
+});
+
 test("a step that is not a word is rejected", async ({ page }) => {
   const before = await currentWord(page);
   const pillBefore = await page.locator("#stepPill").innerText();

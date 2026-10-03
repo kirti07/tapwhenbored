@@ -640,10 +640,8 @@ html, body {
   min-height: 44px;
 }
 
-/* 30x30, and it closes the sheet covering the board. */
-.letter-close {
-  position: relative;
-}
+/* 30x30, and it closes the sheet covering the board. Already absolute, so it
+   anchors the 44px hit area. */
 .letter-close::after {
   content: "";
   position: absolute;
