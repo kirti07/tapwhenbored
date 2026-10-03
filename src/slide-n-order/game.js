@@ -194,7 +194,6 @@ import { getName, clean } from "../shared/ui/player.js";
     btn.setAttribute("aria-label", "Tile " + value);
     tileCellEl(i).appendChild(btn);
     tileEls[i] = btn;
-    return btn;
   }
 
   function updateCorrectness() {
@@ -600,7 +599,7 @@ import { getName, clean } from "../shared/ui/player.js";
     activePointerId = null;
   });
   tilesGrid.addEventListener("keydown", function (e) {
-    if (e.key !== "Enter" && e.key !== " " && e.key !== "Spacebar") return;
+    if (e.key !== "Enter" && e.key !== " ") return;
     var tileEl = e.target.closest(".tile");
     if (!tileEl) return;
     e.preventDefault(); // stop the browser's own click-on-activate; we handle it here
@@ -631,7 +630,7 @@ import { getName, clean } from "../shared/ui/player.js";
     var raw = params.get("seed") || "";
     if (params.get("party") !== "1" || window.self === window.top) return null;
     if (!/^[0-9a-z]{1,7}$/.test(raw) || parseInt(raw, 36) > 0xffffffff) return null;
-    return { seed: parseInt(raw, 36), level: params.get("level") };
+    return { seed: parseInt(raw, 36) };
   }
 
   function joinRound(onGo) {
