@@ -18,6 +18,7 @@
 import { test, expect } from "@playwright/test";
 import { games, home } from "../../src/data/games.js";
 import { DAY, playedOn, withStorage, blockStorage, brokenSpriteRefs } from "../helpers/storage.js";
+import { GAMES, minPlayers, maxPlayers } from "../../src/party/rules.js";
 
 const boarded = games.filter((g) => g.leaderboard !== false);
 const REST = "**/rest/v1/game_scores*";
@@ -402,4 +403,12 @@ test.describe("today's box", () => {
     expect(animation).toBe("none");
     await context.close();
   });
+});
+
+test("the Tap Party strip's player range matches what the party games take", async ({ page }) => {
+  const slugs = Object.keys(GAMES);
+  const lo = Math.min(...slugs.map(minPlayers));
+  const hi = Math.max(...slugs.map(maxPlayers));
+  await page.goto("/");
+  await expect(page.locator(".party-strip .arc-chip")).toHaveText(`${lo}–${hi} players`);
 });
