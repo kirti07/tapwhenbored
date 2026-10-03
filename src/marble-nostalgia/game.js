@@ -54,7 +54,7 @@ import { recordPlay } from "../shared/ui/progress.js";
      finished. This is the fewest marbles ever left — the one number this game
      keeps, and the last gap in the homepage's "Best" badges. */
   var BEST_KEY = "marble-nostalgia.best";
-  var best = null;       // fewest marbles ever left; set below, once readBest exists
+  var best = null;       // fewest marbles ever left; read from prefs below
   var hintsActive = false;
   try {
     hintsActive = !getPref(HINT_STORAGE_KEY, null);

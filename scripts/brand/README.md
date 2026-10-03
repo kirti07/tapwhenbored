@@ -29,9 +29,10 @@ The tile purple is deliberately close to the site's own accent — `#8b7fe0` in
 light, `#a855f7` in dark — so the icon, the splash and the homepage read as one
 product.
 
-The social card also uses the site's tokens from `src/style.css`: `#262b3d` ink,
-`#ff6f5e` warm and `#1f9974` cool for the wordmark, `#767a8c` for the URL, on
-the `#f6f6fb` page ground.
+The social card uses `#262b3d` ink, `#ff6f5e` warm and `#1f9974` cool for the
+wordmark, `#767a8c` for the URL, on a `#f6f6fb` ground. Those were the site's
+tokens when it was drawn; the pages now take their colours from
+`src/shared/css/arcade.css`.
 
 ## Derivatives
 

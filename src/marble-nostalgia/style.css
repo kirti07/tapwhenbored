@@ -98,7 +98,7 @@ html, body {
 .hint-banner {
   position: relative; /* lifts it into its own paint layer so it always draws above
                           the board even if the board overflows its flex box on short
-                          viewports — see the html,body dvh note above */
+                          viewports */
   z-index: 1;
   display: flex;
   align-items: center;
@@ -574,9 +574,8 @@ html, body {
 
 /* Reduced motion.
  *
- * This game had no reduced-motion rule of any kind, and it is the worst
- * offender in the site: three *infinite* animations run whenever the board is
- * idle — the valid-target pulse, the hint bounce and the win glow.
+ * Three *infinite* animations run whenever the board is idle — the
+ * valid-target pulse, the hint bounce and the win glow.
  *
  * The rule is gentler, not zero, and it has a hard constraint here: two of
  * those animations are not decoration, they are the affordance. `target-pulse`
@@ -590,7 +589,7 @@ html, body {
  * marbles sitting on the board until the JS removed them. They keep a plain
  * opacity fade with the scale taken out. */
 @media (prefers-reduced-motion: reduce) {
-  /* Was a 1s pulse. This is its high point, held. */
+  /* Was a 1s pulse. This is its low point, held: the smaller ring. */
   .hole.valid-target::before,
   .hole.valid-target::after { animation: none; }
 
