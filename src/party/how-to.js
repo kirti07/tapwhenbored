@@ -23,9 +23,14 @@ const RULES = {
       ["Give one clue each", `Go round in the order on screen. Say one word or a short phrase, out loud, that shows you know the word. Never the word itself, and not a clue so easy it gives the word away. The spy bluffs. You have ${cap} seconds; tap Done when you've spoken.`],
       ["Talk it over", "Who sounded vague? Who copied someone? You have a minute to argue it out; the host can start the vote sooner."],
       ["Vote someone out", "Everyone votes in secret. Most votes is out; a tie means nobody. If it wasn't the spy, they sit out the rest of the game, and a new lap of clues starts."],
+      ["Spy caught? One last guess", "The spy gets one guess at the word, out loud. Everyone else knows the word, so any of you taps whether they got it."],
     ],
     endsLabel: "How it ends",
-    ends: [["🎉", "The spy is voted out: the room wins."], ["🕵️", "The spy lasts to the final two: the spy wins."]],
+    ends: [
+      ["🎉", "The spy is voted out and guesses wrong: the room wins."],
+      ["🎯", "The spy is voted out but guesses the word: the spy wins."],
+      ["🕵️", "The spy lasts to the final two: the spy wins."],
+    ],
     tip: "Clue tip: too obvious and the spy learns the word; too vague and you start to sound like the spy.",
   }),
   "humour-me": (cap, players) => ({

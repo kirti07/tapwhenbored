@@ -94,7 +94,7 @@ test.describe("creating and reading a room", () => {
     expect(res.status).toBe(200);
     expect(res.cache).toBe("public, s-maxage=1");
     expect(Object.keys(res.body.room).sort()).toEqual(
-      ["cap", "code", "endedAt", "game", "host", "name", "next", "players", "prompt", "results", "scale", "seed", "start", "votes"],
+      ["cap", "code", "endedAt", "game", "host", "name", "next", "players", "prompt", "promptAt", "results", "scale", "seed", "skips", "start", "votes"],
     );
     const text = JSON.stringify(res.body);
     expect(text).not.toMatch(/"t:|"s:|token/);
@@ -590,6 +590,33 @@ test.describe("Humour Me", () => {
     expect((await q.as(0, { type: "end" })).status).toBe(200);
   });
 
+  test("the host skips a phrase once, until someone answers: a new one, and the round starts again", async () => {
+    const api = setup();
+    const p = await party(api, 3, { game: "humour-me", cap: 45 });
+    expect((await p.as(0, { type: "skip" })).body.error).toBe("too late"); // the lobby
+    await toPlay(api, p);
+    api.clock.advance(5000);
+    const dealt = [(await p.room()).prompt];
+    expect((await p.as(1, { type: "skip" })).body.error).toBe("host only");
+    const skipped = (await p.as(0, { type: "skip" })).body.room;
+    expect(skipped).toMatchObject({ skips: 1, promptAt: api.clock.now() });
+    expect(R.derive(skipped, api.clock.now()).phase).toBe("title");
+    expect((await p.as(1, { type: "answer", text: "early" })).body.error).toBe("round not live");
+    expect(skipped.prompt).not.toBe(dealt[0]);
+    expect((await p.as(0, { type: "skip" })).body.error).toBe("no skips left");
+    const last = await p.room();
+    // The whole time to write, counted from the skip.
+    api.clock.advance(R.timetable(last).playAt - api.clock.now() + 44_000);
+    expect(R.derive(await p.room(), api.clock.now()).phase).toBe("play");
+    expect((await p.as(1, { type: "answer", text: "in time" })).status).toBe(200);
+
+    // Once anyone has answered, the phrase stays; and not in other games.
+    expect((await (await answered(setup(), [1, 2, 3])).as(0, { type: "skip" })).body.error).toBe("too late");
+    const flip = await party(setup(), 1);
+    await flip.as(0, { type: "start" });
+    expect((await flip.as(0, { type: "skip" })).body.error).toBe("wrong game");
+  });
+
   test("the next room deals a phrase this party has not had", async () => {
     const api = setup();
     const p = await answered(api);
@@ -674,10 +701,32 @@ test.describe("Sounds Sus", () => {
     await p.as(0, { type: "lap" });
     await p.as(0, { type: "call" });
     await lap(api, p, Object.fromEntries([0, 1, 2, 3].map((s) => [s, s === spy ? a : spy])));
+    // Caught: one guess, judged by anyone but the spy; the word stays secret.
+    const caught = await api.get(p.code);
+    expect(caught.body.room.sus).toMatchObject({ phase: "guess", lap: 2 });
+    expect(JSON.stringify(caught.body)).not.toContain(word);
+    expect((await p.as(spy, { type: "guess", right: true })).body.error).toBe("not yours to judge");
+    await p.as(a, { type: "guess", right: false });
+    expect((await p.as(b, { type: "guess", right: true })).body.error).toBe("not now"); // the first answer counts
     const room = await p.room();
     expect(room.sus.over).toEqual({ by: "room", spy, word });
     expect(R.derive(room, api.clock.now()).phase).toBe("final");
     expect((await p.as(0, { type: "rematch" })).status).toBe(200);
+  });
+
+  test("a caught spy who guesses the word wins; nobody judging in time, the room does", async () => {
+    for (const [judge, by] of [[true, "guess"], [null, "room"]]) {
+      const api = setup();
+      const { p, spy } = await dealt(api);
+      api.clock.advance(20_000);
+      await p.as(0, { type: "call" });
+      const other = [0, 1, 2, 3].find((s) => s !== spy);
+      await lap(api, p, Object.fromEntries([0, 1, 2, 3].map((s) => [s, s === spy ? other : spy])));
+      expect((await sus(p)).phase).toBe("guess");
+      if (judge != null) await p.as(other, { type: "guess", right: judge });
+      else api.clock.advance(60_000);
+      expect((await sus(p)).over).toMatchObject({ by, spy });
+    }
   });
 
   test("two left and one is the spy: the spy wins; the host can end it any time", async () => {

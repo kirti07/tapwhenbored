@@ -12,7 +12,8 @@
  * Everything here is a pure function of a normalised room:
  *
  *   { code, name, seed, scale, game, cap, start, endedAt, next, host,
- *     prompt,                                Humour Me: the phrase's index
+ *     prompt, promptAt, skips,               Humour Me: the phrase's index;
+ *                                            when the host last skipped to it
  *     players: [{ seat, name, emoji, joinedAt, kickedAt }],
  *     results: { [seat]: { ms, moves, at, blank? } },
  *     votes: { [seat]: at },                 votes games: who voted, and when
@@ -41,6 +42,7 @@
  *   min, max      players (MIN_PLAYERS / MAX_PLAYERS when absent)
  *   ballot        the fewest entries a vote needs
  *   vote, grace   overrides for VOTE_MS and GRACE_MS
+ *   skips         how many phrases a Humour Me host may skip in a round
  *   party         no page of its own: drawn by a module /party/ loads when
  *                 the room picks the game
  *
@@ -97,6 +99,7 @@ export const GAMES = {
     max: 12,
     ballot: 3,
     vote: 30000,
+    skips: 1,
   },
   "sounds-sus": {
     title: "Sounds Sus",
@@ -188,7 +191,9 @@ export function drew(room, playAt) {
  */
 export function timetable(room) {
   var s = room.scale;
-  var playAt = room.start + TITLE_MS * s;
+  // A skipped Humour Me phrase starts the round again, title card and all.
+  var titleAt = room.promptAt ?? room.start;
+  var playAt = titleAt + TITLE_MS * s;
   var deadline = playAt + room.cap * 1000 * s;
   var closeAt = deadline + graceOf(room.game) * s;
   var endAt = playAt;
@@ -207,7 +212,7 @@ export function timetable(room) {
     var ats = voters(room, playAt).map((p) => room.votes[p.seat]);
     if (ats.every((a) => a != null)) voteEnd = Math.min(voteEnd, Math.max(endAt, ...ats) + SETTLE_MS * s);
   }
-  return { titleAt: room.start, playAt: playAt, deadline: deadline, closeAt: closeAt, endAt: endAt, voteEnd: voteEnd };
+  return { titleAt: titleAt, playAt: playAt, deadline: deadline, closeAt: closeAt, endAt: endAt, voteEnd: voteEnd };
 }
 
 /** Who votes: everyone in the round who is still in the room. */

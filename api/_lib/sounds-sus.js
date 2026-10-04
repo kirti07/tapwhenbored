@@ -9,9 +9,10 @@
 // One game is laps of: talk → vote → out (host-paced) → the next lap. Talk is
 // one turn per player still in — it ends on their Done, or at the turn's time
 // (`room.cap`, 45 s) — then a short discussion; the host can start the vote at
-// any point. It ends when the spy is voted out (the room
-// wins), when two players are left (the spy wins), when the host ends it, or
-// when the spy leaves the room.
+// any point. It ends when the spy is voted out — the room wins, unless the
+// spy then guesses the word out loud (the others judge it) — when two players
+// are left (the spy wins), when the host ends it, or when the spy leaves the
+// room.
 
 import * as R from "../../src/party/rules.js";
 
@@ -27,6 +28,7 @@ export const WORDS = [
 
 const CARD_MS = 20000; // to peek and tap Hide & ready
 const DISCUSS_MS = 60000; // after the last clue
+const GUESS_MS = 60000; // to judge the caught spy's guess; then the room wins
 const VOTE_MS = R.GAMES["sounds-sus"].vote;
 
 /** Lap `n`'s speaking order: shuffled, with the spy never first. */
@@ -44,10 +46,10 @@ function orderOf(seats, seed, n, spy) {
 /**
  * Where a Sounds Sus game is at `t`. `sus` holds the stored fields:
  * { ready: {seat: at}, lapAt: {n: at}, call: {n: at}, said: {n: {seat: at}},
- *   ballots: {n: {seat: {to, at}}} }.
+ *   ballots: {n: {seat: {to, at}}}, guess: true | false | null }.
  *
  * Returns { phase, lap, endsAt, alive, laps, order?, speaker?, ready?, voted?,
- * over? } — phase is card | talk | vote | out | over; `laps` are the finished
+ * over? } — phase is card | talk | vote | out | guess | over; `laps` are the finished
  * laps, `{ out, votes: {voter: target} }`, public once each vote closes. In
  * talk, `speaker` is whose turn it is (null in the discussion after the last
  * clue) and `endsAt` is when that turn, or the discussion, ends.
@@ -124,7 +126,13 @@ export function play(room, sus, spy, word, t) {
     const tops = Object.keys(count).filter((s) => count[s] === top).map(Number);
     const out = tops.length === 1 ? tops[0] : null;
     laps.push({ out, votes });
-    if (out === spy) return over("room", n);
+    if (out === spy) {
+      // Caught: the spy gets one guess at the word, judged by the others.
+      const guessEnd = voteEnd + GUESS_MS * k;
+      if (sus.guess != null) return over(sus.guess ? "guess" : "room", n);
+      if (T < guessEnd) return stopped(n) || { phase: "guess", lap: n, endsAt: guessEnd, alive: live(t), laps };
+      return over("room", n);
+    }
     if (out != null) outs.add(out);
     if (live(voteEnd).length <= 2) return over("spy", n);
 

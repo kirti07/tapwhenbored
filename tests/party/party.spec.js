@@ -433,6 +433,16 @@ test("Humour Me: everyone finishes the phrase, votes anonymously, the reveal, pl
   for (const p of phones) await expect(p.locator(".hm-phrase")).toBeVisible({ timeout: 20_000 });
   await expect(host.locator(".hm-phrase")).toContainText(phrase.trim().slice(0, 10));
 
+  // The phrase doesn't suit the room: only the host can skip it, and the
+  // round starts again on a new one, title card and all.
+  await expect(riya.getByRole("button", { name: /Skip phrase/ })).toBeHidden();
+  await host.getByRole("button", { name: "Skip phrase" }).click();
+  for (const p of phones) await expect(screen(p, "title")).toBeVisible({ timeout: 20_000 });
+  const next = (await host.locator("#titleRule").textContent()).replace("______", "");
+  expect(next).not.toBe(phrase);
+  for (const p of phones) await expect(p.locator(".hm-phrase")).toContainText(next.trim().slice(0, 10), { timeout: 20_000 });
+  await expect(host.getByRole("button", { name: "Skip phrase" })).toBeHidden(); // once a round
+
   const lines = ["my emotional support traffic jam", EVIL, "a very good dog needed me", "I was here first"];
   // The host answers last: their answer opens the vote, and must still be
   // marked as theirs.
@@ -514,6 +524,16 @@ test("Sounds Sus: secret cards, clues, an innocent voted out, the spy caught in 
     const target = n === spy ? names[[0, 1, 2, 3].find((x) => x !== spy && x !== inno)] : names[spy];
     await p.locator(".ss-tile", { hasText: target }).click({ timeout: 20_000 });
   }));
+  // Caught: the spy gets one guess out loud; anyone else judges it, even a
+  // player already out. The spy can't, and nobody's screen shows the word
+  // but those who hold it.
+  const word = seen.find((w) => w !== "SPY");
+  await expect(phones[spy].locator(".ss-now")).toContainText("You're caught", { timeout: 20_000 });
+  await expect(phones[spy].getByRole("button", { name: "Wrong guess" })).toHaveCount(0);
+  await expect(screen(phones[spy], "game")).not.toContainText(word);
+  await expect(phones[inno].locator(".ss-now")).toContainText(`${names[spy]} is the spy`);
+  await expect(screen(phones[inno], "game")).toContainText(`The word is ${word}.`);
+  await phones[inno].getByRole("button", { name: "Wrong guess" }).click();
   for (const p of phones) await expect(screen(p, "final")).toBeVisible({ timeout: 20_000 });
   await expect(host.locator("#podH")).toHaveText("The room wins.");
   await expect(host.locator(".ss-reveal")).toContainText(`${names[spy]} was the spy`);
@@ -552,7 +572,7 @@ test("lobby: How to play for every game, opens and closes, gone once the host st
   const sheet = riya.locator(".ht-sheet");
   await bar.click();
   await expect(sheet).toBeVisible();
-  await expect(sheet.locator(".ht-steps li")).toHaveCount(4);
+  await expect(sheet.locator(".ht-steps li")).toHaveCount(5);
   await expect(sheet.locator(".ht-chip").first()).toHaveText("4–12 players");
   await expect(sheet).toContainText("Never the word itself, and not a clue so easy it gives the word away.");
   await expect(sheet).toContainText("You have 45 seconds; tap Done");

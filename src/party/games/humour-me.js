@@ -7,11 +7,10 @@
  */
 
 import { GAMES, MAX_ANSWER as MAX } from "../rules.js";
-import { PROMPTS } from "./humour-prompts.js";
+import { phraseFor as phrase } from "./humour-prompts.js";
 import "./humour-me.css";
 
 const BALLOT = GAMES["humour-me"].ballot;
-const phrase = (room) => PROMPTS[room.prompt] || PROMPTS[0];
 const blankOut = (text) => text.replace("___", "______");
 
 /** The title card: the phrase, and how long there is to write and vote. */
@@ -19,11 +18,13 @@ export function title(room, voteSec) {
   return [blankOut(phrase(room)), `${room.cap} sec to write`, `${voteSec} sec to vote`];
 }
 
-let form = null; // { code, root, faces } while this phone is writing
+let form = null; // { key, root, faces, skip } while this phone is writing
 
-/** The write box while this phone has not answered (`open`), else nothing. */
-export function play(slot, { room, me, act, own, el, face, fresh }, open) {
-  if (!open || form?.code !== room.code) {
+/** The write box while this phone has not answered (`open`), else nothing.
+ *  A skipped phrase is a new box. */
+export function play(slot, { room, me, act, own, el, face, fresh, isHost }, open) {
+  const key = `${room.code}:${room.prompt}`;
+  if (!open || form?.key !== key) {
     form?.root.remove();
     form = null;
   }
@@ -48,7 +49,15 @@ export function play(slot, { room, me, act, own, el, face, fresh }, open) {
     const err = el("p", "party-err");
     err.setAttribute("role", "alert");
     const faces = el("ul", "hm-faces");
-    root.append(card, box, count, err, go, el("p", "arc-label", "Locked in"), faces);
+    // The host's way out of a phrase that doesn't suit the room.
+    const skip = el("button", "arc-btn arc-btn--ghost party-cta", "Skip phrase");
+    skip.type = "button";
+    skip.addEventListener("click", async () => {
+      skip.disabled = true;
+      await act("skip", {}, err);
+      skip.disabled = false;
+    });
+    root.append(card, box, count, err, go, skip, el("p", "arc-label", "Locked in"), faces);
     root.addEventListener("submit", async (e) => {
       e.preventDefault();
       if (go.disabled || !box.value.trim()) return;
@@ -58,10 +67,11 @@ export function play(slot, { room, me, act, own, el, face, fresh }, open) {
       go.disabled = false;
     });
     slot.appendChild(root);
-    form = { code: room.code, root, faces };
+    form = { key, root, faces, skip };
     box.focus();
   }
   if (!fresh) return;
+  form.skip.hidden = !isHost || room.skips >= GAMES["humour-me"].skips || Object.keys(room.results).length > 0;
   // Who is locked in — faces only, never what they wrote.
   form.faces.textContent = "";
   for (const p of room.players.filter((x) => x.kickedAt == null && x.joinedAt < room.start)) {
