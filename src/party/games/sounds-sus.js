@@ -8,6 +8,7 @@
  * its own card, fetched with `card`. Loaded only when a room picks the game.
  */
 
+import { GAMES } from "../rules.js";
 import "./sounds-sus.css";
 
 let card = null; // { code, word } or { code, spy: true }
@@ -18,7 +19,7 @@ let drawnFor = "";
 
 /** The title card: the rules in one line each, and each speaker's time. */
 export function title(room) {
-  return ["One of you sees SPY. Give one clue each, then vote someone out.", `${room.cap} sec per clue`, "30 sec to vote"];
+  return ["One of you sees SPY. Give one clue each, then vote someone out.", `${room.cap} sec per clue`, `${GAMES["sounds-sus"].vote / 1000} sec to vote`];
 }
 
 export function render(screen, c) {

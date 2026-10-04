@@ -258,12 +258,7 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     hi.className = "highlight";
     el.appendChild(shell);
     el.appendChild(hi);
-    if (isBomb) {
-      const icon = document.createElement("div");
-      icon.className = "bomb-icon";
-      icon.innerHTML = BOMB_ICON_SVG;
-      el.appendChild(icon);
-    }
+    if (isBomb) addBombIcon(el);
     playfield.appendChild(el);
 
     const bubble = {
@@ -359,18 +354,20 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     return gained;
   }
 
-  function popNormal(b, mul) {
-    b.dead = true;
-    const cx = b.x + b.size / 2;
-    const cy = b.y + b.size / 2;
+  /** Scores a tap on `b`, floats the points over it and plays the pop. */
+  function scoreAt(b, mul) {
     const gained = scoreTap(mul);
-
     const label = state.combo >= 3 ? `+${gained} ×${state.combo}` : `+${gained}`;
-    showFloatText(cx, cy, label);
-    showBurstRing(cx, cy, b.size);
-    b.el.classList.add("popping");
+    showFloatText(b.x + b.size / 2, b.y + b.size / 2, label);
     ensureAudio();
     playPop(state.combo);
+  }
+
+  function popNormal(b, mul) {
+    b.dead = true;
+    scoreAt(b, mul);
+    showBurstRing(b.x + b.size / 2, b.y + b.size / 2, b.size);
+    b.el.classList.add("popping");
     bubbles = bubbles.filter((x) => x !== b);
     removeBubbleEl(b, 300);
     updateStats();
@@ -385,14 +382,7 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     b.isUnstable = Math.random() < CONFIG.neutralResolveUnstableChance;
     b.el.classList.remove(...NEUTRAL_COLOR_CLASSES);
     b.el.classList.add(b.isUnstable ? "c4" : "c2");
-
-    const cx = b.x + b.size / 2;
-    const cy = b.y + b.size / 2;
-    const gained = scoreTap(CONFIG.neutralValueMul);
-    const label = state.combo >= 3 ? `+${gained} ×${state.combo}` : `+${gained}`;
-    showFloatText(cx, cy, label);
-    ensureAudio();
-    playPop(state.combo);
+    scoreAt(b, CONFIG.neutralValueMul);
     updateStats();
   }
 
@@ -435,10 +425,14 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     b.isBomb = true;
     b.el.classList.remove("c2", "c4");
     b.el.classList.add("bomb");
+    addBombIcon(b.el);
+  }
+
+  function addBombIcon(el) {
     const icon = document.createElement("div");
     icon.className = "bomb-icon";
     icon.innerHTML = BOMB_ICON_SVG;
-    b.el.appendChild(icon);
+    el.appendChild(icon);
   }
 
   function triggerUnstable(b) {

@@ -915,6 +915,15 @@ function remember(table) {
   setJSON(GUEST_KEY, { host: room.players[0].name, party: room.name, place: mine.place || 0, at: Date.now() });
 }
 
+/** What a share says, ahead of its link: "Aman won "Friday night" — Flip It
+ *  on Tap Party. Start your own:". */
+function shareText() {
+  const [first] = R.placements(room);
+  const who = first?.result ? `${nameOf(first.seat)} won` : "We played";
+  return `${who} "${room.name}" — ${game().title} on Tap Party. Start your own:`;
+}
+const shareUrl = () => `${location.origin}/party/?from=share`;
+
 /* Doodle On shares a picture: the recap card, drawn on a canvas only when
    someone taps Share. Registered ahead of the link share below, which it
    then stops. */
@@ -930,9 +939,7 @@ async function shareRecap() {
   if (!blob) return;
   track("recap_shared");
   const file = new File([blob], "tap-party.jpg", { type: "image/jpeg" });
-  const [first] = R.placements(room);
-  const who = first?.result ? `${nameOf(first.seat)} won` : "We played";
-  const text = `${who} "${room.name}" — Doodle On on Tap Party. Start your own: ${location.origin}/party/?from=share`;
+  const text = `${shareText()} ${shareUrl()}`;
   if (navigator.canShare?.({ files: [file] })) {
     navigator.share({ files: [file], text }).catch(() => {});
     return;
@@ -1004,12 +1011,8 @@ initShare({
   btn: $("shareBtn"),
   note: $("shareNote"),
   title: "Tap Party",
-  text: () => {
-    const [first] = R.placements(room);
-    const who = first?.result ? `${nameOf(first.seat)} won` : "We played";
-    return `${who} "${room.name}" — ${game().title} on Tap Party. Start your own:`;
-  },
-  url: () => `${location.origin}/party/?from=share`,
+  text: shareText,
+  url: shareUrl,
 });
 $("shareBtn").addEventListener("click", () => track("result_shared"));
 

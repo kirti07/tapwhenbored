@@ -7,28 +7,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { RESERVED, SLUG } from "./slugs.js";
 
 const rootDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const srcDir = path.join(rootDir, "src");
 const registryPath = path.join(srcDir, "data", "games.js");
-
-const RESERVED = new Set([
-  "assets",
-  "static",
-  "icons",
-  "data",
-  "shared",
-  "api",
-  "_vercel",
-  // public/fonts/ is served at /fonts/.
-  "fonts",
-  // Non-game pages (src/data/games.js `pages`). Keep this in step with the
-  // same list in scripts/validate-games.js.
-  "account",
-  "wall",
-  // Retired page; its URL was indexed.
-  "book",
-]);
 
 const slug = process.argv[2];
 const die = (msg) => {
@@ -37,7 +20,7 @@ const die = (msg) => {
 };
 
 if (!slug) die("usage: npm run game:new <slug>");
-if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug))
+if (!SLUG.test(slug))
   die(`"${slug}" must be lowercase kebab-case, e.g. "tile-flip"`);
 if (RESERVED.has(slug)) die(`"${slug}" is reserved and would collide with a build path`);
 

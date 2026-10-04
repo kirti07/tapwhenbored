@@ -6,27 +6,11 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { games, home, pages, SITE_URL } from "../src/data/games.js";
+import { RESERVED, SLUG } from "./slugs.js";
 
 const rootDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const srcDir = path.join(rootDir, "src");
 const publicDir = path.join(rootDir, "public");
-
-// Slugs that would collide with build output or platform paths.
-const RESERVED = new Set([
-  "assets",
-  "static",
-  "icons",
-  "data",
-  "shared",
-  "api",
-  "_vercel",
-  // public/fonts/ is served at /fonts/.
-  "fonts",
-  // Non-game pages. "book" stays reserved: its retired URL was indexed.
-  "account",
-  "book",
-  "wall",
-]);
 
 const REQUIRED_FIELDS = [
   "slug",
@@ -77,7 +61,7 @@ for (const g of games) {
 
   if (!g.slug) continue;
 
-  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(g.slug))
+  if (!SLUG.test(g.slug))
     err(`${where}: slug must be lowercase kebab-case`);
   if (RESERVED.has(g.slug)) err(`${where}: "${g.slug}" is a reserved slug`);
   if (seen.has(g.slug)) err(`${where}: duplicate slug`);
@@ -119,14 +103,10 @@ for (const g of games) {
     err(`${where}: sticker "${g.sticker}" must look like "st-<name>"`);
 
   // Public assets are referenced by absolute path and copied verbatim.
-  for (const field of ["ogImage"]) {
-    const ref = g[field];
-    if (!ref) continue;
-    if (!ref.startsWith("/"))
-      err(`${where}: ${field} "${ref}" must be an absolute path`);
-    else if (!existsSync(path.join(publicDir, ref.slice(1))))
-      err(`${where}: ${field} "${ref}" does not exist under public/`);
-  }
+  if (g.ogImage && !g.ogImage.startsWith("/"))
+    err(`${where}: ogImage "${g.ogImage}" must be an absolute path`);
+  else if (g.ogImage && !existsSync(path.join(publicDir, g.ogImage.slice(1))))
+    err(`${where}: ogImage "${g.ogImage}" does not exist under public/`);
 }
 
 if (!home || home.path !== "/") err("games.js: home.path must be \"/\"");
@@ -191,15 +171,7 @@ for (const g of games) {
   if (!g.leaderboard && hasGlobalEl)
     err(`src/${g.slug}/index.html: has #globalBest but leaderboard is false`);
 
-  const canonical = html.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
-  const expected = `${SITE_URL}${g.path}`;
-  if (!canonical) err(`src/${g.slug}/index.html: no canonical link`);
-  else if (canonical !== expected)
-    err(`src/${g.slug}/index.html: canonical "${canonical}" should be "${expected}"`);
-
-  const ogUrl = html.match(/<meta property="og:url" content="([^"]+)"/)?.[1];
-  if (ogUrl && ogUrl !== expected)
-    err(`src/${g.slug}/index.html: og:url "${ogUrl}" should be "${expected}"`);
+  checkUrls(`src/${g.slug}/index.html`, html, g.path);
 
   if (!html.includes("<title>")) err(`src/${g.slug}/index.html: missing <title>`);
 
@@ -214,16 +186,6 @@ for (const g of games) {
         `src/data/games.js (${g.slug}).description — they are the same text ` +
         "in two places and must not drift",
     );
-  }
-
-  // Every /assets/... reference must resolve, whether written absolute or as a
-  // full production URL.
-  const refs = new Set(
-    [...html.matchAll(/\/assets\/[A-Za-z0-9._-]+/g)].map((m) => m[0]),
-  );
-  for (const ref of refs) {
-    if (!existsSync(path.join(publicDir, ref.slice(1))))
-      err(`src/${g.slug}/index.html: references missing asset ${ref}`);
   }
 }
 
@@ -251,7 +213,7 @@ if (!existsSync(homepage)) {
   // structured data.
   for (const [marker, what] of [
     ["<!-- games-shelf -->", "game shelf"],
-      ["<!-- wall-tiles -->", "wall tiles"],
+    ["<!-- wall-tiles -->", "wall tiles"],
     ['"hasPart": []', "WebSite hasPart JSON-LD"],
     ["<!-- theme-bootstrap -->", "theme bootstrap"],
   ]) {
@@ -274,26 +236,10 @@ if (!existsSync(homepage)) {
         'absolute ("/assets/...") or the build fails',
     );
 
-  // The same URL and asset checks the games get.
-  const canonical = html.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
-  const expected = `${SITE_URL}${home.path}`;
-  if (!canonical) err("src/index.html: no canonical link");
-  else if (canonical !== expected)
-    err(`src/index.html: canonical "${canonical}" should be "${expected}"`);
-
-  const ogUrl = html.match(/<meta property="og:url" content="([^"]+)"/)?.[1];
-  if (ogUrl && ogUrl !== expected)
-    err(`src/index.html: og:url "${ogUrl}" should be "${expected}"`);
+  checkUrls("src/index.html", html, home.path);
 
   for (const tag of ["<title>", 'name="description"']) {
     if (!html.includes(tag)) err(`src/index.html: missing ${tag}`);
-  }
-
-  for (const ref of new Set(
-    [...html.matchAll(/\/assets\/[A-Za-z0-9._-]+/g)].map((m) => m[0]),
-  )) {
-    if (!existsSync(path.join(publicDir, ref.slice(1))))
-      err(`src/index.html: references missing asset ${ref}`);
   }
 
   // The homepage's social image is the site's, not a game's.
@@ -357,10 +303,7 @@ for (const p of pages) {
   if (markers !== 1)
     err(`${where}: expected exactly one <!-- theme-bootstrap --> marker, found ${markers}`);
 
-  const canonical = html.match(/<link rel="canonical" href="([^"]+)"/);
-  if (!canonical) err(`${where}: missing a canonical link`);
-  else if (canonical[1] !== `${SITE_URL}${p.path}`)
-    err(`${where}: canonical is "${canonical[1]}" but pages says "${SITE_URL}${p.path}"`);
+  checkUrls(where, html, p.path);
 
   if (!/<title>[^<]+<\/title>/.test(html)) err(`${where}: missing a <title>`);
   if (!/<meta name="description" content="[^"]+"/.test(html))
@@ -430,6 +373,23 @@ for (const p of pages) {
             "and the page it opens must be the same colour",
         );
     }
+  }
+}
+
+/* The canonical link and og:url name the page's own URL, and every
+   /assets/... reference resolves, whether written absolute or as a full
+   production URL. */
+function checkUrls(where, html, urlPath) {
+  const expected = `${SITE_URL}${urlPath}`;
+  const canonical = html.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
+  if (!canonical) err(`${where}: no canonical link`);
+  else if (canonical !== expected) err(`${where}: canonical "${canonical}" should be "${expected}"`);
+
+  const ogUrl = html.match(/<meta property="og:url" content="([^"]+)"/)?.[1];
+  if (ogUrl && ogUrl !== expected) err(`${where}: og:url "${ogUrl}" should be "${expected}"`);
+
+  for (const ref of new Set([...html.matchAll(/\/assets\/[A-Za-z0-9._-]+/g)].map((m) => m[0]))) {
+    if (!existsSync(path.join(publicDir, ref.slice(1)))) err(`${where}: references missing asset ${ref}`);
   }
 }
 

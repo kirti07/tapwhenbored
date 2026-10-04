@@ -9,17 +9,18 @@
  */
 
 import { initHowto } from "../shared/ui/shell.js";
+import { MAX_ANSWER, minPlayers, maxPlayers } from "./rules.js";
 import "./how-to.css";
 
 /* Per game: the chips, the idea, the steps, how it ends, and one tip.
- * `cap` is the host's time limit, in seconds. */
+ * `cap` is the host's time limit, in seconds; `players` the room's range. */
 const RULES = {
-  "sounds-sus": () => ({
-    chips: ["4–12 players", "~5–15 min", "1 spy"],
+  "sounds-sus": (cap, players) => ({
+    chips: [players, "~5–15 min", "1 spy"],
     idea: "Everyone gets the same secret word, except one player: the spy, whose card just says SPY. Find the spy before they blend in.",
     steps: [
       ["Check your card", "Tap Reveal my card, read it, then Hide & ready. Nobody else can see it, so keep a straight face."],
-      ["Give one clue each", "Go round in the order on screen. Say one word or a short phrase, out loud, that shows you know the word. Never the word itself, and not a clue so easy it gives the word away. The spy bluffs. You have 45 seconds; tap Done when you've spoken."],
+      ["Give one clue each", `Go round in the order on screen. Say one word or a short phrase, out loud, that shows you know the word. Never the word itself, and not a clue so easy it gives the word away. The spy bluffs. You have ${cap} seconds; tap Done when you've spoken.`],
       ["Talk it over", "Who sounded vague? Who copied someone? You have a minute to argue it out; the host can start the vote sooner."],
       ["Vote someone out", "Everyone votes in secret. Most votes is out; a tie means nobody. If it wasn't the spy, they sit out the rest of the game, and a new lap of clues starts."],
     ],
@@ -27,20 +28,20 @@ const RULES = {
     ends: [["🎉", "The spy is voted out: the room wins."], ["🕵️", "The spy lasts to the final two: the spy wins."]],
     tip: "Clue tip: too obvious and the spy learns the word; too vague and you start to sound like the spy.",
   }),
-  "humour-me": (cap) => ({
-    chips: ["4–12 players", "~2 min", `${cap} sec to write`],
+  "humour-me": (cap, players) => ({
+    chips: [players, "~2 min", `${cap} sec to write`],
     idea: "Everyone gets the same unfinished phrase. Write the funniest ending you can, then the room votes for its favourite, without knowing who wrote what.",
     steps: [
       ["Read the phrase", "It's the same on every phone, like “The real reason I'm late is ___.”"],
-      ["Write your ending", `You have ${cap} seconds and 100 characters. Funny beats clever; short beats long.`],
+      ["Write your ending", `You have ${cap} seconds and ${MAX_ANSWER} characters. Funny beats clever; short beats long.`],
       ["Vote for the funniest", "Answers show up with no names. Tap your favourite; you can't pick your own. Reading them out loud is half the fun."],
     ],
     endsLabel: "Who wins",
     ends: [["🏆", "The answer with the most votes wins. Ties share the win."]],
     tip: "Tip: if you're stuck, write the first thing that makes you laugh. You can't edit after you submit.",
   }),
-  "doodle-on": (cap) => ({
-    chips: ["4–12 players", "~1 min", `${cap} sec to draw`],
+  "doodle-on": (cap, players) => ({
+    chips: [players, "~1 min", `${cap} sec to draw`],
     idea: "Everyone gets the same shape and the same idea, like “turn this circle into something dangerous”. Draw it, then the room votes for the best doodle, without knowing who drew what.",
     steps: [
       ["See the prompt", "The shape is already on your page. The title card says what to turn it into."],
@@ -51,8 +52,8 @@ const RULES = {
     ends: [["🏆", "The doodle with the most votes wins. Ties share the win."]],
     tip: "Tip: a quick, funny doodle beats a slow, careful one. Don't hand in a blank page.",
   }),
-  "flip-it": (cap) => ({
-    chips: ["2–10 players", `${cap} sec`, "Same board"],
+  "flip-it": (cap, players) => ({
+    chips: [players, `${cap} sec`, "Same board"],
     idea: "Everyone gets the same board of lit tiles at the same moment. Race to turn them all off.",
     steps: [
       ["Tap a tile", "It flips, and so do the tiles directly above, below, left and right of it."],
@@ -62,8 +63,8 @@ const RULES = {
     ends: [["🏆", "The fastest clear wins. Not finished when time runs out counts as didn't finish."]],
     tip: "Tip: work row by row from the top, then clean up the bottom.",
   }),
-  "slide-n-order": (cap) => ({
-    chips: ["2–10 players", `${cap} sec`, "Same board"],
+  "slide-n-order": (cap, players) => ({
+    chips: [players, `${cap} sec`, "Same board"],
     idea: "Everyone gets the same scrambled 4×4 board at the same moment. Slide the tiles back into order, 1 to 15.",
     steps: [
       ["Slide a tile", "Tap a tile next to the empty space to slide it in."],
@@ -96,7 +97,7 @@ export function mount(dock, room, icon, title, onOpen) {
   parts?.sheet.remove();
   parts?.backdrop.remove();
 
-  const r = RULES[room.game](room.cap);
+  const r = RULES[room.game](room.cap, `${minPlayers(room.game)}–${maxPlayers(room.game)} players`);
   const tile = () => {
     const t = el("span", "ht-tile");
     t.appendChild(icon());

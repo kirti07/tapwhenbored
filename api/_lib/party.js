@@ -67,12 +67,7 @@ const MAX_BODY = 4096;
 const MAX_NAME = 24;
 const MAX_PARTY_NAME = 40;
 const MAX_TITLE = 40;
-const MAX_ANSWER = 100;
 const MAX_IMAGE = 16384; // a 256 px JPEG of a doodle is ~8 KB
-const TYPES = [
-  "create", "join", "ping", "start", "result", "end", "kick", "rematch", "doodle", "title", "vote",
-  "answer", "card", "ready", "said", "accuse", "call", "lap",
-];
 const HOST_ONLY = ["start", "end", "kick", "rematch", "call", "lap"];
 // Not rate-limited: a seat's own presence, its one result, doodle or answer,
 // and its votes and Sounds Sus turns. A party shares one Wi-Fi address, and
@@ -108,6 +103,10 @@ async function sha256(text) {
   const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return Array.from(new Uint8Array(bytes), (b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+/** An entry's tag: a hash of the room secret and the seat, so no phone can
+ *  tell whose an entry is until the final. */
+const tagOf = async (secret, seat) => (await sha256(`${secret}:${seat}`)).slice(0, 12);
 
 function randomCode() {
   const bytes = crypto.getRandomValues(new Uint8Array(4));
@@ -202,10 +201,10 @@ function parseRoom(code, flat) {
   room.players.sort((a, b) => a.seat - b.seat);
   const spy = f.spy != null ? Number(f.spy) : null;
   const word = f.w != null ? Number(f.w) : null;
-  const json = (v, empty) => (v ? JSON.parse(v) : empty);
+  const parse = (v, empty) => (v ? JSON.parse(v) : empty);
   return {
     room, tokens, pings, secret: f.k || "", picks, titles, answers, sus, spy, word,
-    used: json(f.u, {}), spies: json(f.ps, []),
+    used: parse(f.u, {}), spies: parse(f.ps, []),
   };
 }
 
@@ -213,9 +212,7 @@ function parseRoom(code, flat) {
  *  something in, in tag order. */
 async function ballot({ room, secret }) {
   const drew = R.drew(room, R.timetable(room).playAt);
-  const out = await Promise.all(
-    drew.map(async (p) => ({ tag: (await sha256(`${secret}:${p.seat}`)).slice(0, 12), seat: p.seat })),
-  );
+  const out = await Promise.all(drew.map(async (p) => ({ tag: await tagOf(secret, p.seat), seat: p.seat })));
   return out.sort((a, b) => (a.tag < b.tag ? -1 : 1));
 }
 
@@ -260,6 +257,11 @@ function fresh(n, used = []) {
   return pool[crypto.getRandomValues(new Uint32Array(1))[0] % pool.length];
 }
 
+/** Refuses a seat that is not playing this round: it joined too late. */
+function inRound(room, playAt, seat) {
+  if (!R.eligible(room, playAt).some((p) => p.seat === seat)) reject(403, "not in this round");
+}
+
 /**
  * Who takes over from a host that has gone quiet: the earliest-joined seat
  * still in the room that has pinged within the away window.
@@ -296,8 +298,8 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
     const t = now();
     const d = R.derive(room, t);
     if (d.phase !== "play") reject(409, "round not live");
-    // Removed seats were already refused in post(); this is "joined too late".
-    if (!R.eligible(room, d.playAt).some((p) => p.seat === seat)) reject(403, "not in this round");
+    // Removed seats were already refused in post().
+    inRound(room, d.playAt, seat);
     if (body.seed !== room.seed) reject(400, "wrong board");
     const maxMs = Math.min(room.cap * 1000 * room.scale, t - d.playAt + R.graceOf(room.game) * room.scale);
     const ms = body.ms;
@@ -336,9 +338,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
   }
 
   /** The game and time limit a create or rematch asks for, checked. */
-  function setup(body, fallback) {
-    const game = body.game ?? fallback.game;
-    const cap = body.cap ?? fallback.cap;
+  function setup(game, cap) {
     if (!R.validSetup(game, cap)) reject(400, "bad game");
     return { game, cap };
   }
@@ -384,7 +384,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
     async create(body) {
       // A game with no time limit given gets that game's default one.
       const game = body.game ?? R.DEFAULT_GAME;
-      return openRoom(body.party, player(body), setup(body, { game, cap: R.GAMES[game]?.cap }));
+      return openRoom(body.party, player(body), setup(game, body.cap ?? R.GAMES[game]?.cap));
     },
 
     /* Joining closes when the host starts: the round is whoever is in the
@@ -459,8 +459,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
         ["SET", doodleKey(code, room.seed, seat), toBase64(body.image), "NX", "EX", TTL_S],
         ["HSETNX", roomKey(code), `r:${seat}`, JSON.stringify({ ms: body.ms, at: t })],
       ]);
-      const tag = (await sha256(`${found.secret}:${seat}`)).slice(0, 12);
-      return { room: next, tag };
+      return { room: next, tag: await tagOf(found.secret, seat) };
     },
 
     /* The artist names their doodle, until the vote is over. It is shown
@@ -480,7 +479,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
       const t = now();
       const d = R.derive(room, t);
       if (d.phase !== "vote") reject(409, "not voting");
-      if (!R.eligible(room, d.playAt).some((p) => p.seat === seat)) reject(403, "not in this round");
+      inRound(room, d.playAt, seat);
       const target = TAG.test(body.tag || "") && (await ballot(found)).find((x) => x.tag === body.tag);
       if (!target) reject(400, "bad doodle");
       if (target.seat === seat) reject(400, "your own");
@@ -494,9 +493,9 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
       if (room.game !== "humour-me") reject(400, "wrong game");
       const t = now();
       const d = R.derive(room, t);
-      if (d.phase !== "play" || t > d.deadline + R.GRACE_MS * room.scale) reject(409, "round not live");
-      if (!R.eligible(room, d.playAt).some((p) => p.seat === seat)) reject(403, "not in this round");
-      const text = clean(body.text, MAX_ANSWER);
+      if (d.phase !== "play" || t > d.deadline + R.graceOf(room.game) * room.scale) reject(409, "round not live");
+      inRound(room, d.playAt, seat);
+      const text = clean(body.text, R.MAX_ANSWER);
       if (!text) reject(400, "answer required");
       const key = roomKey(code);
       const next = await write(code, [
@@ -504,13 +503,13 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
         ["HSETNX", key, `r:${seat}`, JSON.stringify({ ms: Math.min(t - d.playAt, room.cap * 1000 * room.scale), at: t })],
       ]);
       // Its tag, so this phone can grey out its own answer in the vote.
-      return { room: next, tag: (await sha256(`${found.secret}:${seat}`)).slice(0, 12) };
+      return { room: next, tag: await tagOf(found.secret, seat) };
     },
 
     /* Sounds Sus: this seat's own card, and nobody else's. */
     async card(body, { room, seat, found }) {
       if (room.game !== "sounds-sus" || room.start == null) reject(409, "no card yet");
-      if (!R.eligible(room, R.derive(room, now()).playAt).some((p) => p.seat === seat)) reject(403, "not in this round");
+      inRound(room, R.derive(room, now()).playAt, seat);
       return found.spy === seat ? { spy: true } : { word: WORDS[found.word] };
     },
 
@@ -568,7 +567,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
     async rematch(body, { code, room, seat, found }) {
       if (R.derive(room, now()).phase !== "final") reject(409, "party not over");
       if (room.next) return { room };
-      const choice = setup(body, room);
+      const choice = setup(body.game ?? room.game, body.cap ?? room.cap);
       const host = room.players.find((p) => p.seat === seat);
       // What this party has used so far, so the next room deals something new.
       const used = { ...found.used };
@@ -603,7 +602,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
       try { body = JSON.parse(text); } catch { reject(400, "bad json"); }
       if (body?.type === "doodle") reject(400, "bad type");
     }
-    if (!body || typeof body !== "object" || !TYPES.includes(body.type)) reject(400, "bad type");
+    if (!body || typeof body !== "object" || !Object.hasOwn(actions, body.type)) reject(400, "bad type");
     return body;
   }
 
@@ -648,7 +647,7 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
     if (!TAG.test(tag)) return json({ error: "bad doodle" }, 400, "no-store");
     const found = await read(code);
     if (!found || String(found.room.seed) !== seed) return json({ error: "no such doodle" }, 404, "no-store");
-    const phase = found.room.start == null ? "lobby" : R.derive(found.room, now()).phase;
+    const phase = R.derive(found.room, now()).phase;
     if (phase !== "vote" && phase !== "final") return json({ error: "not yet" }, 409, "no-store");
     const hit = (await ballot(found)).find((x) => x.tag === tag);
     const [data] = hit ? await store.pipeline([["GET", doodleKey(code, seed, hit.seat)]]) : [null];

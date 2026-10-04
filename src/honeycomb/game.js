@@ -141,9 +141,8 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
     return !tile.removed && !tile.revealed;
   }
 
-  function isConnected(map) {
-    if (map.size === 0) return true;
-    var start = map.keys().next().value;
+  // Every key in `map` that `start` reaches through neighbours.
+  function reachFrom(map, start) {
     var seen = new Set([start]);
     var stack = [start];
     while (stack.length) {
@@ -154,7 +153,11 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
         if (map.has(nk) && !seen.has(nk)) { seen.add(nk); stack.push(nk); }
       }
     }
-    return seen.size === map.size;
+    return seen;
+  }
+
+  function isConnected(map) {
+    return map.size === 0 || reachFrom(map, map.keys().next().value).size === map.size;
   }
 
   // ---------- generation ----------
@@ -907,16 +910,7 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   }
 
   function handleBreak(map, seedKey) {
-    var seen = new Set([seedKey]);
-    var stack = [seedKey];
-    while (stack.length) {
-      var k = stack.pop();
-      var qr = parseKey(k);
-      for (var i = 0; i < NEIGHBORS.length; i++) {
-        var nk = key(qr[0] + NEIGHBORS[i][0], qr[1] + NEIGHBORS[i][1]);
-        if (map.has(nk) && !seen.has(nk)) { seen.add(nk); stack.push(nk); }
-      }
-    }
+    var seen = reachFrom(map, seedKey);
     var stranded = 0;
     tiles.forEach(function (t) {
       if (t.removed) return;

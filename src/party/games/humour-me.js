@@ -6,10 +6,11 @@
  * module draws what is Humour Me's own. Loaded only when a room picks it.
  */
 
+import { GAMES, MAX_ANSWER as MAX } from "../rules.js";
 import { PROMPTS } from "./humour-prompts.js";
 import "./humour-me.css";
 
-const MAX = 100;
+const BALLOT = GAMES["humour-me"].ballot;
 const phrase = (room) => PROMPTS[room.prompt] || PROMPTS[0];
 const blankOut = (text) => text.replace("___", "______");
 
@@ -75,8 +76,8 @@ export function final(box, { room, el, face, nameOf, plural }, finishers) {
   box.textContent = "";
   const byseat = Object.fromEntries((room.tally || []).map((d) => [d.seat, d]));
   const who = (seat) => `${face(room.players.find((p) => p.seat === seat).emoji)} ${nameOf(seat)}`;
-  if (finishers.length < 3) {
-    box.appendChild(el("p", "hm-none", "Fewer than three answers came in, so there was nothing to vote on."));
+  if (finishers.length < BALLOT) {
+    box.appendChild(el("p", "hm-none", `Fewer than ${BALLOT} answers came in, so there was nothing to vote on.`));
     return ["Not enough answers.", blankOut(phrase(room))];
   }
   const [top] = finishers;

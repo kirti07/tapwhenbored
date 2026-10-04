@@ -354,7 +354,9 @@ import { getName, clean } from "../shared/ui/player.js";
     fallbackTimer = setTimeout(done, duration + 60); // safety net if transitionend doesn't fire
   }
 
-  function commitSlide(i) {
+  /** Moves tile `i` into the blank and counts the move. The keyboard passes
+   *  the cell it left, to animate from; a pointer has already carried it. */
+  function commitSlide(i, fromCell) {
     var el = tileEls[i];
     if (!el) return; // stale settle callback from a state that no longer exists
     var toCell = tileCellEl(blankIndex);
@@ -367,6 +369,7 @@ import { getName, clean } from "../shared/ui/player.js";
     delete tileEls[i];
     toCell.appendChild(el);
     tileEls[oldBlank] = el;
+    if (fromCell) flip(el, fromCell, toCell);
 
     sndSlide();
     moves += 1;
@@ -377,29 +380,10 @@ import { getName, clean } from "../shared/ui/player.js";
   }
 
   function slideTile(i) {
-    var fromCell = tileCellEl(i);
-    var toCell = tileCellEl(blankIndex);
     var el = tileEls[i];
-    var oldBlank = blankIndex;
-
-    el.classList.remove("movable"); // the bounce animation would fight the FLIP transform below
+    el.classList.remove("movable"); // the bounce animation would fight the FLIP transform
     el.classList.remove("bounce");
-
-    tiles[oldBlank] = tiles[i];
-    tiles[i] = null;
-    blankIndex = i;
-
-    delete tileEls[i];
-    toCell.appendChild(el);
-    tileEls[oldBlank] = el;
-    flip(el, fromCell, toCell);
-
-    sndSlide();
-    moves += 1;
-    updateMovesHud();
-    updateCorrectness();
-    updateMovable();
-    checkWin();
+    commitSlide(i, tileCellEl(i));
   }
 
   function updateMovesHud() {

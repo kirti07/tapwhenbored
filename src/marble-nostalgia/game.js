@@ -349,31 +349,25 @@ import { recordPlay } from "../shared/ui/progress.js";
     updateHud();
   }
 
+  /* One marble left is the win; out of moves is still a finished round, and
+     four marbles left is a real result for the global board too. Recorded
+     before the end card's delay, so a player who closes the tab on it still
+     keeps the sticker. */
   function checkEnd() {
     var n = marbleCount();
-    if (n === 1) {
-      ended = true;
-      /* One marble left is the win. Recorded before the 500ms celebration so a
-         player who closes the tab on it still keeps the sticker. */
-      recordPlay("marble-nostalgia", n, true);
-      if (best == null || n < best) writeBest(n);
+    var won = n === 1;
+    if (!won && anyMovesLeft()) return;
+    ended = true;
+    recordPlay("marble-nostalgia", n, true);
+    if (best == null || n < best) writeBest(n);
+    if (won) {
       var lastKey = Object.keys(marbleEls)[0];
       if (lastKey) marbleEls[lastKey].classList.add("win-glow");
-      setTimeout(function () {
-        showOverlay("SOLVED", "1 marble left");
-        showGlobalBest(1);
-      }, 500);
-    } else if (!anyMovesLeft()) {
-      ended = true;
-      /* Out of moves is still a finished round, and four marbles left is a real
-         result — the game submits it to the global board too. */
-      recordPlay("marble-nostalgia", n, true);
-      if (best == null || n < best) writeBest(n);
-      setTimeout(function () {
-        showOverlay("NO MORE MOVES", n + " marbles left");
-        showGlobalBest(n);
-      }, 200);
     }
+    setTimeout(function () {
+      showOverlay(won ? "SOLVED" : "NO MORE MOVES", won ? "1 marble left" : n + " marbles left");
+      showGlobalBest(n);
+    }, won ? 500 : 200);
   }
 
   // Fewest marbles left wins, so a perfect game scores 1 and the record

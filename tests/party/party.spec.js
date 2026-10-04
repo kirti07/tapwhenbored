@@ -129,6 +129,12 @@ test("a party: pick a game, join by link and by code, end the round, podium, rem
 
   // What next, on the same screen: Share for everyone, rematch for the host.
   await expect(riya.locator("#shareBtn")).toBeVisible();
+  // Share says who won and links the setup page, not this room.
+  await riya.evaluate(() => { navigator.share = (d) => { window.shared = d; return Promise.resolve(); }; });
+  await riya.click("#shareBtn");
+  const shared = await riya.evaluate(() => window.shared);
+  expect(shared.text).toMatch(/^.+ won ".+" — Flip It on Tap Party\. Start your own:$/);
+  expect(shared.url).toMatch(/\/party\/\?from=share$/);
   await expect(riya.locator("#hostOwn")).toBeVisible();
   await expect(host.locator("#hostActions")).toBeVisible();
   await expect(riya.locator("#hostActions")).toBeHidden();
@@ -468,6 +474,8 @@ test("Sounds Sus: secret cards, clues, an innocent voted out, the spy caught in 
   const [host] = phones;
   await host.click("#startBtn");
   for (const p of phones) await expect(screen(p, "game")).toBeVisible({ timeout: 20_000 });
+  // The title card said the vote's length: a flat 30 s, however many play.
+  await expect(host.locator("#titleChip")).toHaveText("30 sec to vote");
 
   // Everyone peeks: three see the word, one sees SPY.
   const seen = [];
@@ -516,8 +524,13 @@ test("Sounds Sus: secret cards, clues, an innocent voted out, the spy caught in 
 test("lobby: How to play for every game, opens and closes, gone once the host starts", async ({ browser }) => {
   test.setTimeout(120_000);
   const errors = [];
-  // Every game's room has its own bar.
-  for (const [slug, title] of [["flip-it", "Flip It"], ["slide-n-order", "Slide N Order"], ["doodle-on", "Doodle On"], ["humour-me", "Humour Me"]]) {
+  // Every game's room has its own bar, and its sheet says who can play.
+  for (const [slug, title, players] of [
+    ["flip-it", "Flip It", "2–10 players"],
+    ["slide-n-order", "Slide N Order", "2–10 players"],
+    ["doodle-on", "Doodle On", "4–12 players"],
+    ["humour-me", "Humour Me", "4–12 players"],
+  ]) {
     const p = await phone(browser, errors, slug);
     await p.goto("/party/");
     await p.fill("#setupName", "Aman");
@@ -526,6 +539,7 @@ test("lobby: How to play for every game, opens and closes, gone once the host st
     await expect(p.getByRole("button", { name: `How to play ${title}` })).toBeVisible();
     await p.getByRole("button", { name: `How to play ${title}` }).click();
     await expect(p.locator(".ht-sheet .ht-title")).toHaveText(title);
+    await expect(p.locator(".ht-chip").first()).toHaveText(players);
     await expect(p.locator(".ht-steps li").first()).toBeVisible();
     await p.context().close();
   }
@@ -539,7 +553,9 @@ test("lobby: How to play for every game, opens and closes, gone once the host st
   await bar.click();
   await expect(sheet).toBeVisible();
   await expect(sheet.locator(".ht-steps li")).toHaveCount(4);
+  await expect(sheet.locator(".ht-chip").first()).toHaveText("4–12 players");
   await expect(sheet).toContainText("Never the word itself, and not a clue so easy it gives the word away.");
+  await expect(sheet).toContainText("You have 45 seconds; tap Done");
   await expect(bar).toHaveAttribute("aria-expanded", "true");
   // Four ways out, each handing focus back to the bar.
   await riya.keyboard.press("Escape");

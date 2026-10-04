@@ -111,6 +111,7 @@ export const GAMES = {
     cap: 45,
     min: 4,
     max: 12,
+    vote: 30000,
   },
 };
 
@@ -128,6 +129,7 @@ const BUZZER_MS = 2000;           // a doodle handed in this close to 0:00
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 10;
 export const MAX_MOVES = 10000;
+export const MAX_ANSWER = 100; // Humour Me's characters
 
 /* Faces, by index: the API stores the number, never a string from a phone. */
 export const FACES = ["🐼", "🐧", "🦖", "🐝", "🦉", "🦊", "🐸", "🐙", "🤖", "🐱", "🦄", "🔥"];
@@ -274,8 +276,9 @@ const ABOUT = [
   ["{name}'s new invention", "Which invention would {name} make?"],
 ];
 
-/** mulberry32: the same stream from the same seed on every phone. */
-function stream(seed) {
+/** mulberry32: the same stream from the same seed on every phone, and on
+ *  the server (Sounds Sus's speaking order). */
+export function stream(seed) {
   var a = seed >>> 0;
   return function () {
     a = (a + 0x6d2b79f5) >>> 0;
