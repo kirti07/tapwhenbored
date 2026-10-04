@@ -6,7 +6,7 @@
 //        create | join | ping | start | result | end | kick | rematch
 //        | title | vote                       Doodle On
 //        | answer                             Humour Me
-//        | card | ready | said | accuse | call | lap   Sounds Sus
+//        | card | ready | said | accuse | call | lap | guess   Sounds Sus
 //   POST /api/party/          a raw JPEG, with { type: "doodle", ... } in
 //                             the x-party header — no base64 on party Wi-Fi
 //
@@ -44,6 +44,7 @@
 //   l:{n} q:{n} HSETNX   Sounds Sus: when the host started lap n / its vote
 //   o:{n}:{seat} HSETNX  Sounds Sus: the seat said its clue in lap n
 //   b:{n}:{seat} HSET    Sounds Sus: { to, at }, the seat's vote in lap n
+//   sg          HSETNX   Sounds Sus: 1 if the caught spy guessed the word, else 0
 //   u ps        HSET     what earlier rooms of this party already used: the
 //                        phrases and words { game: [index] }, and the names
 //                        of players who were the spy — never leave the server
@@ -165,7 +166,7 @@ function parseRoom(code, flat) {
   const picks = {};
   const titles = {};
   const answers = {};
-  const sus = { ready: {}, lapAt: {}, call: {}, said: {}, ballots: {} };
+  const sus = { ready: {}, lapAt: {}, call: {}, said: {}, ballots: {}, guess: f.sg == null ? null : f.sg === "1" };
   for (const [k, v] of Object.entries(f)) {
     const lap = /^(o|b):(\d+):(\d+)$/.exec(k);
     if (lap) {
@@ -541,6 +542,14 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
 
     async lap(body, ctx) {
       return susWrite(ctx, `l:${susNow(ctx, "out").lap + 1}`, now());
+    },
+
+    /* The caught spy guessed out loud; anyone else, who all hold the word,
+       says whether it was it. The first answer counts. */
+    async guess(body, ctx) {
+      susNow(ctx, "guess");
+      if (ctx.seat === ctx.found.spy) reject(403, "not yours to judge");
+      return susWrite(ctx, "sg", body.right === true ? 1 : 0);
     },
 
     /* The host calls time once at least half the room is done, so one player

@@ -38,7 +38,7 @@ export function render(screen, c) {
 
 function draw(screen, c, s) {
   const { room, me, el, isHost } = c;
-  const out = !s.alive.includes(me.seat) && s.phase !== "card";
+  const out = !s.alive.includes(me.seat) && s.phase !== "card" && s.phase !== "guess";
   const who = (seat) => room.players.find((p) => p.seat === seat);
   const name = (seat) => (seat === me.seat ? "You" : who(seat).name);
   const faceOf = (seat) => c.face(who(seat).emoji);
@@ -52,12 +52,13 @@ function draw(screen, c, s) {
   screen.textContent = "";
 
   // The bar: the lap and phase, the clock, and a count that fits the phase.
-  const label = { card: "Your card", talk: `Lap ${s.lap} · clues`, vote: `Lap ${s.lap} · vote`, out: `Lap ${s.lap} · result` }[s.phase];
+  const label = { card: "Your card", talk: `Lap ${s.lap} · clues`, vote: `Lap ${s.lap} · vote`, out: `Lap ${s.lap} · result`, guess: "Last chance" }[s.phase];
   const [k, v] = {
     card: ["Ready", `${(s.ready || []).length} / ${s.alive.length}`],
     talk: ["Still in", String(s.alive.length)],
     vote: ["Voted", `${(s.voted || []).length} / ${s.alive.length}`],
     out: ["Still in", String(s.alive.length)],
+    guess: ["Spy", "Caught"],
   }[s.phase];
   const bar = el("div", "partybar arc-screen");
   const left = el("span", "pb-round");
@@ -157,6 +158,24 @@ function draw(screen, c, s) {
     else screen.append(el("p", "party-wait", "Waiting for the host…"));
   }
 
+  // Caught: the spy guesses the word out loud, and anyone else — they all
+  // hold the word — says whether that was it.
+  if (s.phase === "guess") {
+    const spy = s.laps[s.laps.length - 1].out;
+    const mine = spy === me.seat;
+    const head = el("div", "ss-now");
+    head.append(el("p", "ss-k arc-pix", "Spy caught"), el("span", "ss-face is-spy", faceOf(spy)),
+      el("p", "ss-big", mine ? "You're caught" : `${name(spy)} is the spy`),
+      el("p", "ss-hint", mine ? "One last chance: guess the word, out loud. Get it and you still win." : `Last chance: ${name(spy)} guesses the word, out loud.`));
+    screen.appendChild(head);
+    if (mine) screen.append(el("p", "party-wait", "Waiting for the room to judge…"));
+    else {
+      screen.append(el("p", "ss-hint", `The word is ${card.word || "…"}. Did they say it?`),
+        button("They got it", "arc-btn--ghost", () => act("guess", { right: true })),
+        button("Wrong guess", "arc-btn--primary", () => act("guess", { right: false })));
+    }
+  }
+
   screen.appendChild(err);
   if (isHost) {
     screen.append(button("End game", "arc-btn--ghost ss-end", () => {
@@ -192,7 +211,7 @@ export function final(box, c) {
   box.appendChild(reveal);
   if (last) box.append(el("p", "arc-label", `Lap ${room.sus.laps.length} vote`),
     votesList(c, last.votes, nameOf, (seat) => face(room.players.find((p) => p.seat === seat).emoji)));
-  const h = { room: "The room wins.", spy: "The spy wins.", host: "Game ended.", left: "The spy left." }[o.by];
-  const sub = { room: `Caught in lap ${room.sus.lap}.`, spy: "Only two of you were left.", host: "The host ended it. Nobody wins.", left: "Nobody wins this one." }[o.by];
+  const h = { room: "The room wins.", spy: "The spy wins.", guess: "The spy wins.", host: "Game ended.", left: "The spy left." }[o.by];
+  const sub = { room: `Caught in lap ${room.sus.lap}.`, spy: "Only two of you were left.", guess: "Caught, but guessed the word.", host: "The host ended it. Nobody wins.", left: "Nobody wins this one." }[o.by];
   return [h, sub];
 }

@@ -674,10 +674,32 @@ test.describe("Sounds Sus", () => {
     await p.as(0, { type: "lap" });
     await p.as(0, { type: "call" });
     await lap(api, p, Object.fromEntries([0, 1, 2, 3].map((s) => [s, s === spy ? a : spy])));
+    // Caught: one guess, judged by anyone but the spy; the word stays secret.
+    const caught = await api.get(p.code);
+    expect(caught.body.room.sus).toMatchObject({ phase: "guess", lap: 2 });
+    expect(JSON.stringify(caught.body)).not.toContain(word);
+    expect((await p.as(spy, { type: "guess", right: true })).body.error).toBe("not yours to judge");
+    await p.as(a, { type: "guess", right: false });
+    expect((await p.as(b, { type: "guess", right: true })).body.error).toBe("not now"); // the first answer counts
     const room = await p.room();
     expect(room.sus.over).toEqual({ by: "room", spy, word });
     expect(R.derive(room, api.clock.now()).phase).toBe("final");
     expect((await p.as(0, { type: "rematch" })).status).toBe(200);
+  });
+
+  test("a caught spy who guesses the word wins; nobody judging in time, the room does", async () => {
+    for (const [judge, by] of [[true, "guess"], [null, "room"]]) {
+      const api = setup();
+      const { p, spy } = await dealt(api);
+      api.clock.advance(20_000);
+      await p.as(0, { type: "call" });
+      const other = [0, 1, 2, 3].find((s) => s !== spy);
+      await lap(api, p, Object.fromEntries([0, 1, 2, 3].map((s) => [s, s === spy ? other : spy])));
+      expect((await sus(p)).phase).toBe("guess");
+      if (judge != null) await p.as(other, { type: "guess", right: judge });
+      else api.clock.advance(60_000);
+      expect((await sus(p)).over).toMatchObject({ by, spy });
+    }
   });
 
   test("two left and one is the spy: the spy wins; the host can end it any time", async () => {
