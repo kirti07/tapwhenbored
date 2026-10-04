@@ -25,11 +25,8 @@ jobs:
 
       - run: npm ci
 
-      # Structural checks first: they are fast, and they catch the class of
-      # mistake that would otherwise surface as a confusing test failure.
-      - name: Validate repository
-        run: npm run validate
-
+      # `build` validates the repository first: fast, and it catches the class
+      # of mistake that would otherwise surface as a confusing test failure.
       - name: Production build
         run: npm run build
 

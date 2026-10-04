@@ -23,7 +23,9 @@ if (!existsSync(distDir)) {
 const gz = (file) => gzipSync(readFileSync(file), { level: 9 }).length;
 const kb = (n) => (n / 1024).toFixed(1).padStart(6) + " kB";
 
-/** Every /static/* file a page references, followed one level into imports. */
+/** Every /static/* file a page's HTML references: its entry script, the
+ *  chunks it modulepreloads and its stylesheets. A chunk fetched later by
+ *  import() (word-steps' dictionary, party's game modules) is not counted. */
 function pageAssets(htmlPath) {
   const html = readFileSync(htmlPath, "utf8");
   const refs = new Set(

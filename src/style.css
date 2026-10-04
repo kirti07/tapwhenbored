@@ -1,6 +1,6 @@
-/* The homepage (also loaded by /account/ and /wall/): a sticker wall on warm
- * paper. Card colours come from the registry as inline custom properties, so
- * the validator checks them.
+/* The homepage (also loaded by /account/, /wall/ and /party/): a sticker wall
+ * on warm paper. Card colours come from the registry as inline custom
+ * properties, so the validator checks them.
  *
  * Shared files: tokens.css (faces and tokens), base.css (resets, the `hidden`
  * guard, the skip link) and arcade.css (the cabinet chrome). Body copy stays on
@@ -37,9 +37,7 @@
   --cool: var(--arc-cool);
 
   --shadow-s: var(--arc-shadow);
-  --shadow-m: var(--arc-shadow);
 
-  --r-l: 20px;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
@@ -53,8 +51,7 @@
 
 /* ----------------------------------------------------------------- base -- */
 
-* { box-sizing: border-box; }
-
+/* box-sizing, overflow-x and the `hidden` rule come from base.css. */
 html { -webkit-text-size-adjust: 100%; }
 
 body {
@@ -66,7 +63,6 @@ body {
   font-size: 15px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -88,10 +84,6 @@ button { font: inherit; color: inherit; }
 }
 
 .num { font-variant-numeric: tabular-nums; }
-
-/* `hidden` must actually hide: any class that sets its own `display` outranks
-   the UA rule, and script hides things with `el.hidden` all over the site. */
-[hidden] { display: none !important; }
 
 .wrap { max-width: 1060px; margin: 0 auto; padding: 0 16px; }
 
@@ -253,12 +245,9 @@ button { font: inherit; color: inherit; }
 /* ---------------------------------------------------------- the cabinets --
  *
  * A shelf card is a machine: a lit marquee in the game's colour over a sunk
- * screen holding its glyph. The card keeps the sticker it always had — the
- * glyph is the game's identity and eight pieces of unrelated artwork is the
- * thing this page deliberately does not do — and gains the frame around it.
- *
- * The marquee, its bulbs and its accent all come from arcade.css. The only
- * thing here is how a card is put together.
+ * screen holding the game's sticker, which is its identity. The marquee, its
+ * bulbs and its accent come from arcade.css; this is how a card is put
+ * together.
  */
 .card .arc-marquee .arc-pix {
   font-size: 10px;
@@ -278,9 +267,8 @@ button { font: inherit; color: inherit; }
  * and the holder are the two things that arrive late, and the panel must not
  * grow under the reader when they do.
  */
-/* A flex column, not a block one: the sort reorders these with `order`, which
-   a block child ignores. Nothing is ever removed from the DOM, so a row keeps
-   its identity for a screen reader across a re-sort. */
+/* One row per game, in registry order. Values fill in place and nothing is
+   removed from the DOM, so a row keeps its identity for a screen reader. */
 .roll {
   margin: 0;
   padding: 6px 6px 8px;
@@ -373,7 +361,7 @@ button { font: inherit; color: inherit; }
  * is built from the same .arc-screen-bar and .arc-screen-foot, so an unscoped
  * rule here would collapse the boards page itself.
  *
- * `right now` goes with the rows: with no scores on screen there is nothing for
+ * `all time` goes with the rows: with no scores on screen there is nothing for
  * it to qualify. The foot's honesty line goes for the same reason — it
  * disclaims scores, and /wall/ still carries its own next to the ones it shows.
  */
@@ -483,7 +471,7 @@ button { font: inherit; color: inherit; }
     border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
     box-shadow:
       0 10px 0 -4px color-mix(in srgb, var(--arc-accent) 40%, transparent),
-      var(--shadow-m);
+      var(--shadow-s);
   }
 }
 
@@ -495,13 +483,12 @@ button { font: inherit; color: inherit; }
 }
 
 .card .arc-marquee { min-height: 40px; padding: 10px 12px 8px; }
+/* Size and line height: `.card .arc-marquee .arc-pix` above. */
 .card .card-n {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 10px;
   font-weight: 700;
   letter-spacing: -0.01em;
-  line-height: 1.3;
 }
 
 /* The glyph well: sunk, wide, and tinted with the game's own accent. */

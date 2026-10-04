@@ -230,8 +230,7 @@ import { recordPlay } from "../shared/ui/progress.js";
       var tile = document.createElement("button");
       tile.type = "button";
       tile.className = "tile tile-active";
-      tile.textContent = draft[i];
-      tile.setAttribute("aria-label", "Change letter " + (i + 1) + ", currently " + draft[i]);
+      setTile(tile, i, draft[i]);
       if (!hasEditedOnce && state.history.length === 1) {
         tile.classList.add("hint-bounce");
         tile.style.animationDelay = (i * 0.12) + "s";
@@ -337,10 +336,15 @@ import { recordPlay } from "../shared/ui/progress.js";
     if (!pickerTile || pickerIndex < 0) return;
     var changed = draft[pickerIndex] !== letter;
     draft[pickerIndex] = letter;
-    pickerTile.textContent = letter;
-    pickerTile.setAttribute("aria-label", "Change letter " + (pickerIndex + 1) + ", currently " + letter);
+    setTile(pickerTile, pickerIndex, letter);
     closeLetterPicker();
     if (changed) attemptCommit();
+  }
+
+  /** An active tile's letter, and the label that reads it out. */
+  function setTile(tile, i, letter) {
+    tile.textContent = letter;
+    tile.setAttribute("aria-label", "Change letter " + (i + 1) + ", currently " + letter);
   }
 
   // ---------- game actions ----------
@@ -350,10 +354,7 @@ import { recordPlay } from "../shared/ui/progress.js";
     if (revertTimer) clearTimeout(revertTimer);
     revertTimer = setTimeout(function () {
       setDraft(prev);
-      tiles.forEach(function (t, i) {
-        t.textContent = draft[i];
-        t.setAttribute("aria-label", "Change letter " + (i + 1) + ", currently " + draft[i]);
-      });
+      tiles.forEach(function (t, i) { setTile(t, i, draft[i]); });
       revertTimer = null;
     }, 450);
   }
@@ -371,9 +372,11 @@ import { recordPlay } from "../shared/ui/progress.js";
 
     var prev = state.history[state.history.length - 1];
     if (word === prev) { hideHintNow(); return; }
-    if (diffCount(word, prev) !== 1) { showHint("Change exactly one letter"); sndError(); revertTiles(tiles, prev); return; }
-    if (state.history.indexOf(word) !== -1) { showHint("Already used that word"); sndError(); revertTiles(tiles, prev); return; }
-    if (!DICTIONARY[word]) { showHint("Not a word we know"); sndError(); revertTiles(tiles, prev); return; }
+    var refused = diffCount(word, prev) !== 1 ? "Change exactly one letter"
+      : state.history.indexOf(word) !== -1 ? "Already used that word"
+      : !DICTIONARY[word] ? "Not a word we know"
+      : null;
+    if (refused) { showHint(refused); sndError(); revertTiles(tiles, prev); return; }
 
     if (revertTimer) { clearTimeout(revertTimer); revertTimer = null; }
     hideHintNow();

@@ -129,6 +129,12 @@ test("a party: pick a game, join by link and by code, end the round, podium, rem
 
   // What next, on the same screen: Share for everyone, rematch for the host.
   await expect(riya.locator("#shareBtn")).toBeVisible();
+  // Share says who won and links the setup page, not this room.
+  await riya.evaluate(() => { navigator.share = (d) => { window.shared = d; return Promise.resolve(); }; });
+  await riya.click("#shareBtn");
+  const shared = await riya.evaluate(() => window.shared);
+  expect(shared.text).toMatch(/^.+ won ".+" — Flip It on Tap Party\. Start your own:$/);
+  expect(shared.url).toMatch(/\/party\/\?from=share$/);
   await expect(riya.locator("#hostOwn")).toBeVisible();
   await expect(host.locator("#hostActions")).toBeVisible();
   await expect(riya.locator("#hostActions")).toBeHidden();
@@ -271,6 +277,46 @@ test("a Doodle On party: draw, name it, vote anonymously, the reveal", async ({ 
   expect(errors).toEqual([]);
 });
 
+test("a Doodle On party where every page comes back blank still reaches the final", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const errors = [];
+
+  const host = await phone(browser, errors, "host");
+  await host.goto("/party/");
+  await host.fill("#setupName", "Aman");
+  await host.locator("#setupPick .pick--doodle-on").click();
+  await host.click("#setupGo");
+  await expect(screen(host, "lobby")).toBeVisible();
+  const code = new URL(host.url()).searchParams.get("r");
+  const phones = [host];
+  for (const name of ["Riya", "Dev", "Kabir"]) {
+    const p = await phone(browser, errors, name);
+    await p.goto(`/party/?r=${code}`);
+    await p.fill("#joinName", name);
+    await p.click("#joinForm button[type=submit]");
+    await expect(screen(p, "lobby")).toBeVisible();
+    phones.push(p);
+  }
+  await host.click("#startBtn");
+
+  // Everyone taps Done without drawing a line.
+  await Promise.all(phones.map(async (p) => {
+    await expect(screen(p, "play")).toBeVisible({ timeout: 20_000 });
+    const frame = p.frameLocator("iframe.round-frame");
+    await expect(frame.locator("html")).toHaveAttribute("data-party", "on");
+    await p.waitForTimeout(400);
+    await frame.locator("#doneBtn").click();
+  }));
+
+  for (const p of phones) await expect(screen(p, "final")).toBeVisible({ timeout: 20_000 });
+  await expect(host.locator("#podH")).toHaveText("Nobody drew anything.");
+  await expect(host.locator("#topDoodle")).toBeHidden();
+  await expect(host.locator("#restDoodles")).toBeHidden();
+  await expect(host.locator("#resList .res-row")).toHaveCount(4);
+
+  expect(errors).toEqual([]);
+});
+
 test("setup: the games first, grouped by kind; the face and the party name stay optional", async ({ browser }) => {
   const errors = [];
   const host = await phone(browser, errors, "host");
@@ -347,6 +393,33 @@ async function room4(browser, errors, pick) {
   return phones;
 }
 
+test("Humour Me with 9 players: the title card counts the longer vote", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const errors = [];
+  const host = await phone(browser, errors, "host");
+  await host.goto("/party/");
+  await host.fill("#setupName", "Aman");
+  await host.locator("#setupPick .pick--humour-me").click();
+  await host.click("#setupGo");
+  await expect(screen(host, "lobby")).toBeVisible();
+  const code = new URL(host.url()).searchParams.get("r");
+  for (let n = 1; n < 9; n++) {
+    const p = await phone(browser, errors, `P${n}`);
+    await p.goto(`/party/?r=${code}`);
+    await p.fill("#joinName", `P${n}`);
+    await p.click("#joinForm button[type=submit]");
+    await expect(screen(p, "lobby")).toBeVisible();
+  }
+  await expect(host.locator("#startBtn")).toHaveText("Start · 9 players");
+  await host.click("#startBtn");
+
+  // Two more seconds for each entry past eight.
+  await expect(screen(host, "title")).toBeVisible();
+  await expect(host.locator("#titleChip")).toHaveText("32 sec to vote");
+  await expect(host.locator("#titleFoot")).toHaveText("9 players ready");
+  expect(errors).toEqual([]);
+});
+
 test("Humour Me: everyone finishes the phrase, votes anonymously, the reveal, play again", async ({ browser }) => {
   test.setTimeout(120_000);
   const errors = [];
@@ -401,6 +474,8 @@ test("Sounds Sus: secret cards, clues, an innocent voted out, the spy caught in 
   const [host] = phones;
   await host.click("#startBtn");
   for (const p of phones) await expect(screen(p, "game")).toBeVisible({ timeout: 20_000 });
+  // The title card said the vote's length: a flat 30 s, however many play.
+  await expect(host.locator("#titleChip")).toHaveText("30 sec to vote");
 
   // Everyone peeks: three see the word, one sees SPY.
   const seen = [];
@@ -449,8 +524,13 @@ test("Sounds Sus: secret cards, clues, an innocent voted out, the spy caught in 
 test("lobby: How to play for every game, opens and closes, gone once the host starts", async ({ browser }) => {
   test.setTimeout(120_000);
   const errors = [];
-  // Every game's room has its own bar.
-  for (const [slug, title] of [["flip-it", "Flip It"], ["slide-n-order", "Slide N Order"], ["doodle-on", "Doodle On"], ["humour-me", "Humour Me"]]) {
+  // Every game's room has its own bar, and its sheet says who can play.
+  for (const [slug, title, players] of [
+    ["flip-it", "Flip It", "2–10 players"],
+    ["slide-n-order", "Slide N Order", "2–10 players"],
+    ["doodle-on", "Doodle On", "4–12 players"],
+    ["humour-me", "Humour Me", "4–12 players"],
+  ]) {
     const p = await phone(browser, errors, slug);
     await p.goto("/party/");
     await p.fill("#setupName", "Aman");
@@ -459,6 +539,7 @@ test("lobby: How to play for every game, opens and closes, gone once the host st
     await expect(p.getByRole("button", { name: `How to play ${title}` })).toBeVisible();
     await p.getByRole("button", { name: `How to play ${title}` }).click();
     await expect(p.locator(".ht-sheet .ht-title")).toHaveText(title);
+    await expect(p.locator(".ht-chip").first()).toHaveText(players);
     await expect(p.locator(".ht-steps li").first()).toBeVisible();
     await p.context().close();
   }
@@ -472,7 +553,9 @@ test("lobby: How to play for every game, opens and closes, gone once the host st
   await bar.click();
   await expect(sheet).toBeVisible();
   await expect(sheet.locator(".ht-steps li")).toHaveCount(4);
+  await expect(sheet.locator(".ht-chip").first()).toHaveText("4–12 players");
   await expect(sheet).toContainText("Never the word itself, and not a clue so easy it gives the word away.");
+  await expect(sheet).toContainText("You have 45 seconds; tap Done");
   await expect(bar).toHaveAttribute("aria-expanded", "true");
   // Four ways out, each handing focus back to the bar.
   await riya.keyboard.press("Escape");

@@ -6,32 +6,46 @@
  * `derive(room, now)` works out where the party is from those alone. The API
  * runs it to decide whether a result is on time; each phone runs it to decide
  * which screen to show. Same code, same inputs, so they cannot disagree.
+ * Sounds Sus is the exception: its laps depend on who the spy is, so the
+ * server works them out and sends them as `room.sus`.
  *
  * Everything here is a pure function of a normalised room:
  *
  *   { code, name, seed, scale, game, cap, start, endedAt, next, host,
+ *     prompt,                                Humour Me: the phrase's index
  *     players: [{ seat, name, emoji, joinedAt, kickedAt }],
- *     results: { [seat]: { ms, moves, at } },
- *     votes: { [seat]: at },                 Doodle On: who voted, and when
- *     doodles?: [tag], tally?: [{ tag, seat, votes, title }] }
+ *     results: { [seat]: { ms, moves, at, blank? } },
+ *     votes: { [seat]: at },                 votes games: who voted, and when
+ *     doodles?: [tag], answers?: [{ tag, text }],
+ *     tally?: [{ tag, seat, votes, title, text }],
+ *     sus?: { phase, lap, ... } }            Sounds Sus: see sounds-sus.js
  *
- * A Doodle On result has no moves: it marks that the seat drew. Who drew
- * which doodle stays on the server until the final phase, when `tally` says.
+ * A Doodle On or Humour Me result has no moves: it marks that the seat handed
+ * something in (`blank` if a Doodle On page was empty). Who made which entry
+ * stays on the server until the final phase, when `tally` says.
  *
  * `scale` shrinks every duration (1 in production; the tests run faster).
  * No DOM, no storage, no network here.
  */
 
-/* The games a party can be, and the time limits a host may pick. `kind` and
- * `pitch` are what the setup screen says about each: the puzzles are a race,
- * the social games are for laughs. `min` and `max` are how many players a
- * game takes (MIN_PLAYERS / MAX_PLAYERS when absent); `ballot`, the fewest
- * entries a vote needs.
- * `party` games have no page of their own: they live only in /party/, drawn
- * by a module the party page loads when the room picks one. Presets,
- * not a free number: a limit is fair only if most of the room can finish, and
- * the server checks every result against it. Flip It is pinned to Medium —
- * Easy's 3–4-move boards clear in under two seconds and tie the room. */
+/* The games a party can be.
+ *
+ *   title         the game's name
+ *   kind, pitch   what the setup screen says: puzzles race, social games laugh
+ *   rule, win     the title card's rules
+ *   by            how a round is ranked: time, moves, votes or spy
+ *   level         the difficulty a party plays (Flip It)
+ *   caps, cap     the time limits a host may pick, and the default. Presets,
+ *                 not a free number: a limit is fair only if most of the room
+ *                 can finish, and the server checks every result against it
+ *   min, max      players (MIN_PLAYERS / MAX_PLAYERS when absent)
+ *   ballot        the fewest entries a vote needs
+ *   vote, grace   overrides for VOTE_MS and GRACE_MS
+ *   party         no page of its own: drawn by a module /party/ loads when
+ *                 the room picks the game
+ *
+ * Flip It's level is Medium: Easy's 3–4-move boards clear in under two
+ * seconds and tie the room. */
 export const GAMES = {
   "flip-it": {
     title: "Flip It",
@@ -97,6 +111,7 @@ export const GAMES = {
     cap: 45,
     min: 4,
     max: 12,
+    vote: 30000,
   },
 };
 
@@ -107,13 +122,14 @@ export const TITLE_MS = 5000;     // title card, the last three seconds a 3-2-1
 export const GRACE_MS = 3000;     // a result in flight when the clock hits 0:00
 export const MIN_SOLVE_MS = 2000; // anything faster is not a solve
 export const AWAY_MS = 20000;     // a host silent this long hands over (PRD)
-export const VOTE_MS = 20000;     // Doodle On's vote (PRD)
+export const VOTE_MS = 20000;     // a vote, unless the game sets `vote`
 export const SETTLE_MS = 3000;    // once everyone has voted, time to change a mind
-export const BUZZER_MS = 2000;    // a doodle handed in this close to 0:00
+const BUZZER_MS = 2000;           // a doodle handed in this close to 0:00
 
-export const MIN_PLAYERS = 2;
-export const MAX_PLAYERS = 10;
+const MIN_PLAYERS = 2;
+const MAX_PLAYERS = 10;
 export const MAX_MOVES = 10000;
+export const MAX_ANSWER = 100; // Humour Me's characters
 
 /* Faces, by index: the API stores the number, never a string from a phone. */
 export const FACES = ["🐼", "🐧", "🦖", "🐝", "🦉", "🦊", "🐸", "🐙", "🤖", "🐱", "🦄", "🔥"];
@@ -166,9 +182,9 @@ export function drew(room, playAt) {
  * player is done, when the host ends it, or at the cap plus the grace
  * window — whichever comes first.
  *
- * Doodle On then votes, when there are two doodles to choose between: for
- * VOTE_MS, or until SETTLE_MS after the last vote once everyone has voted.
- * `voteEnd` equals `endAt` for every other round.
+ * A votes game then votes, when it has `ballot` entries to choose between:
+ * for voteMs(), or until SETTLE_MS after the last vote once everyone has
+ * voted. `voteEnd` equals `endAt` for every other round.
  */
 export function timetable(room) {
   var s = room.scale;
@@ -260,8 +276,9 @@ const ABOUT = [
   ["{name}'s new invention", "Which invention would {name} make?"],
 ];
 
-/** mulberry32: the same stream from the same seed on every phone. */
-function stream(seed) {
+/** mulberry32: the same stream from the same seed on every phone, and on
+ *  the server (Sounds Sus's speaking order). */
+export function stream(seed) {
   var a = seed >>> 0;
   return function () {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -293,7 +310,7 @@ export function doodleRound(room) {
 
 /* Times compare at a tenth of a second: closer than that is a tie, and ties
  * share the higher place. Slide N Order ranks moves first, time second;
- * Doodle On ranks on votes alone. */
+ * the votes games rank on votes alone. */
 const tenths = (ms) => Math.round(ms / 100);
 function keyOf(by, r, votes) {
   if (by === "votes") return [-votes];
@@ -306,8 +323,8 @@ function compareKeys(a, b) {
 
 /**
  * The round's table: every eligible player, finishers first in order, each
- * with a place (null for didn't finish). Doodle On rows carry `votes`, which
- * are known only once the final snapshot brings the tally.
+ * with a place (null for didn't finish). Votes-game rows carry `votes`,
+ * which are known only once the final snapshot brings the tally.
  */
 export function placements(room) {
   var by = GAMES[room.game].by;

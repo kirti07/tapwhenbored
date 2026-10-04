@@ -27,28 +27,17 @@ export const WORDS = [
 
 const CARD_MS = 20000; // to peek and tap Hide & ready
 const DISCUSS_MS = 60000; // after the last clue
-const VOTE_MS = 30000;
-
-/** mulberry32, as in rules.js: the same order from the same seed. */
-function stream(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+const VOTE_MS = R.GAMES["sounds-sus"].vote;
 
 /** Lap `n`'s speaking order: shuffled, with the spy never first. */
 function orderOf(seats, seed, n, spy) {
-  const rand = stream(seed + n);
+  const rand = R.stream(seed + n);
   const out = seats.slice();
   for (let i = out.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
     [out[i], out[j]] = [out[j], out[i]];
   }
-  if (out[0] === spy && out.length > 1) [out[0], out[1]] = [out[1], out[0]];
+  if (out[0] === spy) [out[0], out[1]] = [out[1], out[0]];
   return out;
 }
 

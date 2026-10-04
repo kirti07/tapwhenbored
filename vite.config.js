@@ -136,7 +136,7 @@ function partyApi(env) {
  * on Vercel's edge, so Vite would warn about it once per page and leave it
  * alone. Injecting post-order means vite:build-html has already scanned the
  * document, so the tag is never parsed for asset resolution at all — and it
- * lives in one place instead of being duplicated across eight files.
+ * lives in one place instead of being duplicated across every page.
  */
 function vercelInsights() {
   return {
@@ -162,7 +162,7 @@ function vercelInsights() {
  * Google's instruction is to paste its snippet into every page immediately
  * after <head>. Both halves of that are declined on purpose.
  *
- * One place instead of eleven, for the same reason as the Vercel tag above.
+ * One place instead of one per page, for the same reason as the Vercel tag.
  * Pasting a plain <script src> into the pages would also fail
  * scripts/validate-games.js, which rejects a non-module <script src> in a game
  * page because Vite would neither bundle nor emit it (§4).
@@ -278,23 +278,15 @@ function themeBootstrap() {
 }
 
 /**
- * Markup that every page draws the same way, kept in one file each.
+ * Markup that many pages draw the same way, kept in one file each so copies
+ * cannot drift: the sticker sprite, the theme button, and the end card's two
+ * exits. None is a runtime concern, so they are substituted into the HTML at
+ * build time, like the shelf. A dropped marker fails silently, so
+ * scripts/validate-games.js checks every game still has both end-card ones.
  *
- * The sprite was 50 identical lines in three documents and the theme button four
- * lines in eleven, which had already drifted into three variants — the games'
- * copy was missing the `aria-hidden` the others had. Neither is a runtime
- * concern, so neither belongs in a module: they are substituted into the HTML
- * at build time, exactly like the shelf and the slots.
- *
- * The end card's two exits joined them for the same reason and before any drift
- * had happened: both carry an inline SVG, both go into all eight games, and the
- * repo already held two divergent copies of a close glyph at different stroke
- * widths. A marker that is dropped fails silently, so scripts/validate-games.js
- * checks that every game still has both.
- *
- * The button's class differs by page family (`.iconbtn` on the homepage and the
- * book, `.icon-btn` in the game shells), so that one bit is a parameter — the
- * only partial that takes one.
+ * The theme button's class differs by page family (`.iconbtn` on the home,
+ * account, wall and party pages, `.icon-btn` in the games), so that one bit is
+ * a parameter — the only partial that takes one.
  */
 const PARTIALS = {
   "theme-btn": "scripts/theme-button.html",
@@ -354,9 +346,8 @@ function sharedMarkup() {
 }
 
 /**
- * Fills the homepage's game shelf and its WebSite/hasPart JSON-LD from the
- * registry, replacing what used to be seven hand-maintained card blocks and a
- * parallel hand-maintained list of the same seven games.
+ * Fills registry-driven markup: the homepage's game shelf, high score roll and
+ * WebSite/hasPart JSON-LD, the account page's rows and the wall's cabinet tabs.
  *
  * Build-time rather than a runtime render, because this is indexable content
  * and essential structured data: ARCHITECTURE.md §28 requires it be static in
@@ -396,8 +387,7 @@ function homepageFromRegistry() {
    * Names and units are emitted here because they are indexable content (§28);
    * the holder and the score arrive from the board and start as "Unsigned" and
    * a dash, both already at their final size so neither arrival moves the
-   * panel. The row number is baked in now that the roll has no sort able to
-   * reorder it. */
+   * panel. The roll never re-sorts, so the row number is baked in. */
   const rollRow = (g, i) => `        <li class="roll-row arc" data-slug="${g.slug}" style="${vars(g)}">
           <span class="roll-no" aria-hidden="true">${i + 1}</span>
           <span class="roll-g">${escapeHtml(g.title)}</span>
@@ -648,9 +638,9 @@ function pwa(env) {
 /**
  * Warns — never fails — when a production build has no Supabase credentials.
  *
- * Vite only exposes VITE_-prefixed vars to client code, so a build that still
- * uses the old unprefixed names succeeds, every game works, and both
- * leaderboards silently read "unavailable" forever. This makes that loud.
+ * They reach client code only through `define` (below), so a build without
+ * them still succeeds, every game works, and every leaderboard silently reads
+ * "unavailable" forever. This makes that loud.
  * It warns rather than fails because gameplay must not depend on the
  * leaderboard (ARCHITECTURE.md §26).
  */

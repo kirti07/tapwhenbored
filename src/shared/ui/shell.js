@@ -93,7 +93,7 @@ function setInert(target, value) {
  * class rather than adding one.
  */
 export function bindOverlay(el, opts) {
-  if (!el) return { isOpen: function () { return false; } };
+  if (!el) return;
   opts = opts || {};
 
   var inertRoot = opts.inertRoot || stageBehindTopbar();
@@ -104,22 +104,13 @@ export function bindOverlay(el, opts) {
   el.setAttribute("role", "dialog");
   el.setAttribute("aria-modal", "true");
   if (opts.label) el.setAttribute("aria-label", opts.label);
-  else if (opts.labelledBy) el.setAttribute("aria-labelledby", opts.labelledBy);
   if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex", "-1");
-
-  function primary() {
-    if (typeof opts.primary === "function") return opts.primary();
-    if (opts.primary) return opts.primary;
-    var items = focusable(el);
-    return items.length ? items[0] : el;
-  }
 
   function onKeydown(e) {
     if (!open) return;
     if (e.key === "Escape") {
       /* Dismiss the card, not the game: the finished board is worth seeing. */
-      if (opts.onEscape) opts.onEscape();
-      else close();
+      close();
       return;
     }
     trap(el, e);
@@ -139,7 +130,7 @@ export function bindOverlay(el, opts) {
     document.addEventListener("keydown", onKeydown, true);
     /* Wait a frame: focusing mid-transition scrolls the page in some browsers. */
     requestAnimationFrame(function () {
-      if (open) focusSafely(primary());
+      if (open) focusSafely(opts.primary);
     });
   }
 
@@ -160,12 +151,6 @@ export function bindOverlay(el, opts) {
 
   new MutationObserver(sync).observe(el, { attributes: true, attributeFilter: ["class"] });
   sync();
-
-  return {
-    isOpen: function () { return open; },
-    refresh: sync,
-    close: close,
-  };
 }
 
 /**
@@ -237,7 +222,7 @@ export function initHowto(opts) {
 
 /**
  * The share confirmation line: a polite live region that hides itself again.
- * Exported for games with their own share logic (word-steps, doodle-on).
+ * Exported for pages with their own share logic (doodle-on, party).
  */
 export function createNote(note) {
   var timer = 0;
@@ -255,13 +240,7 @@ export function createNote(note) {
     timer = setTimeout(function () { note.classList.remove("show"); }, 2400);
   }
 
-  function hide() {
-    if (!note) return;
-    clearTimeout(timer);
-    note.classList.remove("show");
-  }
-
-  return { show: show, hide: hide };
+  return { show: show };
 }
 
 /**
@@ -276,8 +255,7 @@ export function initShare(opts) {
   var note = opts.note;
   if (!btn) return;
 
-  var confirmNote = createNote(note);
-  var confirm = confirmNote.show;
+  var confirm = createNote(note).show;
 
   function shareUrl() {
     if (opts.url) return opts.url();
@@ -306,13 +284,11 @@ export function initShare(opts) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard
         .writeText(payload)
-        .then(function () { confirm(opts.copiedText || "Link copied"); })
+        .then(function () { confirm("Link copied"); })
         /* Never claim a copy that did not happen. */
         .catch(function () { confirm("Press and hold to copy"); });
       return;
     }
     confirm("Press and hold to copy");
   });
-
-  return { confirm: confirm };
 }

@@ -10,7 +10,6 @@
 :root {
   --bg: #fdf3d9;
   --paper: #fffcf2;
-  --paper-edge: #f2e2ad;
   --ink: #262b3d;
   --ink-soft: #767b8c;
   --line: #f2e2ad;
@@ -70,17 +69,8 @@ html, body {
 }
 
 
+/* shell.css's button, plus a fade as Undo and Restart turn disabled. */
 .icon-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 1.5px solid var(--line);
-  background: transparent;
-  color: var(--ink);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
   transition: background 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
 }
 
@@ -378,24 +368,6 @@ html, body {
   transform: translate(-50%, -50%) scale(1);
 }
 
-/* ---- seo info ---- */
-
-.seo-info summary {
-  cursor: pointer;
-  letter-spacing: 0.06em;
-  font-weight: 600;
-  list-style: none;
-}
-.seo-info summary::-webkit-details-marker { display: none; }
-.seo-info summary::after { content: " ▾"; }
-.seo-info[open] summary::after { content: " ▴"; }
-.seo-info p {
-  margin: 4px 0 0;
-  line-height: 1.5;
-  text-align: left;
-}
-
-
 /* ---- solved overlay ---- */
 
 .overlay {
@@ -526,19 +498,6 @@ html, body {
   color: var(--accent-dark);
 }
 
-.share-note {
-  margin: 0;
-  font-size: clamp(11px, 1.5svh, 13px);
-  color: var(--ink-soft);
-  letter-spacing: 0.06em;
-  opacity: 0;
-  transition: opacity 0.25s ease;
-}
-
-.share-note.show {
-  opacity: 1;
-}
-
 .next-puzzle {
   display: flex;
   align-items: center;
@@ -576,7 +535,6 @@ html, body {
 :root[data-theme="dark"] {
   --bg: #0d0e1a;
   --paper: #14132a;
-  --paper-edge: #2c2850;
   --ink: #f0eefa;
   --ink-soft: #9b96c4;
   --line: #2c2850;
@@ -618,32 +576,20 @@ html, body {
 @media (max-height: 480px) {
   .stage { padding-top: 1.4svh; padding-bottom: 1.2svh; }
   .overlay-exit { top: 1.4svh; }
-  .subtitle, .seo-info { display: none; }
   .back-link { margin-bottom: 0.3svh; }
   .howto-link { padding-top: 0.4svh; }
 }
 
-/* Key height.
- *
- * The letter sheet is a keyboard — ten keys to a row, so the width of a key is
- * fixed by the viewport and cannot reach 44px without dropping to seven
- * columns and abandoning the QWERTY layout the player already knows.
- *
- * Every phone keyboard solves this the same way and so does this one: keys stay
- * narrow and get tall. 32x44 is a comfortable, familiar target, and because the
- * rows are a flex column the extra height also increases the vertical pitch, so
- * neighbouring keys move further apart rather than closer together.
- *
- * The sheet grows by about 36px. liftAboveSheet() measures the sheet at open
- * time rather than assuming a height, so the active row still clears it. */
+/* Key height. Ten keys to a QWERTY row can't be 44px wide, so like every phone
+ * keyboard the keys stay narrow and get tall, which also spreads the rows
+ * apart. liftAboveSheet() measures the sheet when it opens, so the taller
+ * sheet still clears the active row. */
 .letter-btn {
   min-height: 44px;
 }
 
-/* 30x30, and it closes the sheet covering the board. */
-.letter-close {
-  position: relative;
-}
+/* 30x30, and it closes the sheet covering the board. Already absolute, so it
+   anchors the 44px hit area. */
 .letter-close::after {
   content: "";
   position: absolute;

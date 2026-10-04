@@ -1,12 +1,8 @@
 // Shared fixtures for the specs that seed or block browser storage.
 //
-// These were three differently-shaped copies across home.spec.js,
-// account.spec.js and a11y.spec.js, and one of them carried a real bug: the
-// date helpers built their day with `toISOString().slice(0, 10)`, which is
-// **UTC**, while the code under test uses the player's local date
-// (src/shared/ui/day.js). In any timezone that is not UTC the two disagree for
-// part of every day — and the specs most likely to break are precisely the
-// daily-reset ones, which is the behaviour they exist to prove.
+// Days are the player's local date, as src/shared/ui/day.js uses, never UTC
+// (`toISOString()`): in any other timezone the two disagree for part of every
+// day, and the specs that break are exactly the daily-reset ones.
 //
 // `DAY()` below matches `localDay()` exactly. It has to.
 

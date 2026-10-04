@@ -25,7 +25,7 @@
   "@type": "WebApplication",
   "name": "Tap Party",
   "url": "https://www.tapwhenbored.com/party/",
-  "description": "A free party game for 2–12 people in the same room. The host picks Flip It, Slide N Order or Doodle On and a time limit; everyone joins by QR code and plays the same board — or draws the same prompt and votes — on their own phone.",
+  "description": "A free party game for 2–12 people in the same room. The host picks Flip It, Slide N Order, Doodle On, Humour Me or Sounds Sus; everyone joins by QR code and, on their own phone, races the same board, draws the same prompt, finishes the same phrase or hunts for the spy.",
   "applicationCategory": "GameApplication",
   "operatingSystem": "Any (web browser)",
   "image": "https://www.tapwhenbored.com/assets/party-og.jpg",
@@ -170,7 +170,7 @@
 
     <!-- 05 · Title card: same on every phone, on the server's clock. -->
     <section class="scr title-card" data-screen="title" hidden>
-      <p class="title-round arc-pix" id="titleRound">Get ready</p>
+      <p class="title-round arc-pix">Get ready</p>
       <h1 class="title-game arc-pix" id="titleGame"></h1>
       <p class="title-rule" id="titleRule"></p>
       <p class="title-chips"><span class="title-chip arc-pix" id="titleCap"></span><span class="title-chip arc-pix" id="titleChip">Same board for all</span></p>
@@ -180,7 +180,7 @@
 
     <!-- 06 · Playing a round: the party bar over the real game page. -->
     <section class="scr play" data-screen="play" hidden>
-      <div class="partybar arc-screen" id="partybar">
+      <div class="partybar arc-screen">
         <span class="pb-round"><span class="pb-r arc-pix">Tap Party</span><span class="pb-g arc-pix" id="pbGame"></span></span>
         <span class="pb-clock arc-mono" id="pbClock" role="timer"></span>
         <span class="pb-done"><span class="pb-k arc-pix">Done</span><span class="arc-mono" id="pbDone"></span></span>
@@ -213,7 +213,7 @@
       </div>
     </section>
 
-    <!-- D3 · Doodle On's vote: every doodle, no names. -->
+    <!-- D3 · The vote (Doodle On, Humour Me): every entry, no names. -->
     <section class="scr vote" data-screen="vote" hidden>
       <div class="partybar arc-screen">
         <span class="pb-round"><span class="pb-r arc-pix">Vote</span><span class="pb-g arc-pix" id="voteGame"></span></span>
@@ -221,7 +221,7 @@
         <span class="pb-done"><span class="pb-k arc-pix">Voted</span><span class="arc-mono" id="voteDone"></span></span>
       </div>
       <h1 class="vote-h" id="voteH"></h1>
-      <p class="party-p vote-p" id="voteP">Anonymous. You can't vote for your own.</p>
+      <p class="party-p vote-p">Anonymous. You can't vote for your own.</p>
       <ul class="vote-grid" id="voteGrid"></ul>
       <p class="party-err" id="voteErr" role="alert"></p>
       <div id="voteSlot"></div>
@@ -292,16 +292,16 @@
     <summary>What is Tap Party?</summary>
     <p>
       Tap Party is a free party game for 2 to 12 people in the same room, played on
-      everyone's own phone. One person starts a party and picks the game — Flip It, the
-      lights-out puzzle, Slide N Order, the 15-puzzle, or Doodle On, the drawing game — and
-      a time limit — or Humour Me, where everyone finishes the same phrase and the room
-      votes for the funniest, or Sounds Sus, where everyone knows a secret word except the
-      spy, and the room votes players out until the spy is caught. Everyone else scans the QR code or types the four-letter room code, adds
-      a name and a face, and the room races the same board at the same moment. In Doodle On
-      everyone turns the same shape into the same idea, then votes, anonymously, on the
-      best one. Finish early and you watch the
-      others come in; the results reveal together, with a podium and a few awards. Go
-      again with the same group in one tap, or switch games. No app, no account, no signup.
+      everyone's own phone. One person starts a party and picks the game; everyone else
+      scans the QR code or types the four-letter room code and adds a name and a face.
+      In Flip It, the lights-out puzzle, and Slide N Order, the 15-puzzle, the room races
+      the same board at the same moment against a time limit the host picks. In Doodle On
+      everyone turns the same shape into the same idea, then votes, anonymously, for the
+      best one. In Humour Me everyone finishes the same phrase and the room votes for the
+      funniest. In Sounds Sus everyone knows a secret word except the spy, and the room
+      votes players out until the spy is caught. The results reveal together on every
+      phone. Go again with the same group in one tap, or switch games. No app, no account,
+      no signup.
     </p>
   </details>
 </div>

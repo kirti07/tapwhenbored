@@ -5,8 +5,6 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
 import { getJSON, setJSON, get as getPref, set as setPref } from "../shared/ui/prefs.js";
 import { recordPlay } from "../shared/ui/progress.js";
 import { getName, clean } from "../shared/ui/player.js";
-/* Was a local formatter that zero-padded the minutes, so a nine-second solve
-   read "00:09". The site now spells a duration one way. */
 import { formatDuration as formatTime } from "../shared/ui/format.js";
 
 (function () {
@@ -77,7 +75,7 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   var themeBtn = document.getElementById("themeBtn");
 
   var level = readLevel();
-  var size = LEVELS[level].sizes[0]; // the dealt board decides; this is a seed
+  var size = 0;          // set by load(), from the dealt board
   var state = null;      // Uint8Array, 1 = lit
   var startState = null; // the board Reset returns to
   var seed = 0;          // what built this board; a challenge link carries it
@@ -97,10 +95,8 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   // ---------- storage (all of it optional, none of it load-bearing) ----------
 
   function readLevel() {
-    try {
-      var v = getPref(LEVEL_KEY, null);
-      return LEVEL_ORDER.indexOf(v) !== -1 ? v : DEFAULT_LEVEL;
-    } catch (e) { return DEFAULT_LEVEL; }
+    var v = getPref(LEVEL_KEY, null);
+    return LEVEL_ORDER.indexOf(v) !== -1 ? v : DEFAULT_LEVEL;
   }
 
   function writeLevel(v) {
@@ -108,10 +104,8 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   }
 
   function readRecent() {
-    try {
-      var v = getJSON(RECENT_KEY, null);
-      return Array.isArray(v) ? v.slice(-RECENT_MAX) : [];
-    } catch (e) { return []; }
+    var v = getJSON(RECENT_KEY, null);
+    return Array.isArray(v) ? v.slice(-RECENT_MAX) : [];
   }
 
   function pushRecent(sig) {
@@ -121,10 +115,8 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   }
 
   function readBests() {
-    try {
-      var v = getJSON(BEST_KEY, null);
-      return v && typeof v === "object" ? v : {};
-    } catch (e) { return {}; }
+    var v = getJSON(BEST_KEY, null);
+    return v && typeof v === "object" ? v : {};
   }
 
   function writeBests() {
@@ -670,9 +662,6 @@ import { formatDuration as formatTime } from "../shared/ui/format.js";
   function track(name) {
     try { window.gtag("event", name, { game: "flip-it" }); } catch (e) { /* analytics never matters */ }
   }
-
-  // ---------- sound toggle ----------
-
 
   // ---------- how to play ----------
   initHowto({ btn: howtoBtn, sheet: howtoSheet, backdrop: howtoBackdrop });

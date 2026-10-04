@@ -16,7 +16,7 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     // bubble count is never a fixed number — it's derived from screen area
     // (bigger screen = more room = more bubbles) and grows as you play, up to
     // maxDensityMultiplier. That cap exists only so bubbles stay big enough to
-    // tap accurately and phones don't choke — not an arbitrary "15".
+    // tap accurately and phones don't choke.
     areaPerBubble: 9000,
     densityGrowthPerTap: 0.006,
     maxDensityMultiplier: 3.2,
@@ -224,18 +224,21 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     '<path d="M11 7 L13.2 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/>' +
     '<circle cx="13.6" cy="2.6" r="1.5" fill="currentColor"/></svg>';
 
+  function calmMul() { return state.calmMode ? 0.35 : 1; }
+
   function createBubble(kind) {
     const isBomb = kind === "bomb";
     const isUnstable = kind === "unstable";
     const isNeutral = kind === "neutral";
-    // bombs are sized exactly like other bubbles — no free tell there.
-    // The only tell is a slower, faintly wobbly drift.
+    // bombs are the same size as other bubbles; they show as a dark shell
+    // with a bomb icon (style.css) and drift slower, with a faint wobble.
     const size = rand(CONFIG.minSize, CONFIG.maxSize);
     const pos = pickSpawnPos(size);
-    const calmMul = state.calmMode ? 0.35 : 1;
     const progressMul = 1 + Math.min(1, state.taps / 500) * 0.2;
     const angle = rand(0, Math.PI * 2);
-    const speed = rand(...CONFIG.speedRange) * calmMul * progressMul * (isBomb ? CONFIG.bombSpeedMul : 1);
+    // Kept without the calm factor, so toggling Calm can rescale it exactly.
+    const baseSpeed = rand(...CONFIG.speedRange) * progressMul * (isBomb ? CONFIG.bombSpeedMul : 1);
+    const speed = baseSpeed * calmMul();
 
     const el = document.createElement("div");
     // safe bubbles are always purple (c2), unstable bubbles are always
@@ -255,12 +258,7 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     hi.className = "highlight";
     el.appendChild(shell);
     el.appendChild(hi);
-    if (isBomb) {
-      const icon = document.createElement("div");
-      icon.className = "bomb-icon";
-      icon.innerHTML = BOMB_ICON_SVG;
-      el.appendChild(icon);
-    }
+    if (isBomb) addBombIcon(el);
     playfield.appendChild(el);
 
     const bubble = {
@@ -271,6 +269,7 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
       size,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
+      baseSpeed,
       isBomb,
       isUnstable,
       isNeutral,
@@ -355,18 +354,20 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     return gained;
   }
 
-  function popNormal(b, mul) {
-    b.dead = true;
-    const cx = b.x + b.size / 2;
-    const cy = b.y + b.size / 2;
+  /** Scores a tap on `b`, floats the points over it and plays the pop. */
+  function scoreAt(b, mul) {
     const gained = scoreTap(mul);
-
     const label = state.combo >= 3 ? `+${gained} ×${state.combo}` : `+${gained}`;
-    showFloatText(cx, cy, label);
-    showBurstRing(cx, cy, b.size);
-    b.el.classList.add("popping");
+    showFloatText(b.x + b.size / 2, b.y + b.size / 2, label);
     ensureAudio();
     playPop(state.combo);
+  }
+
+  function popNormal(b, mul) {
+    b.dead = true;
+    scoreAt(b, mul);
+    showBurstRing(b.x + b.size / 2, b.y + b.size / 2, b.size);
+    b.el.classList.add("popping");
     bubbles = bubbles.filter((x) => x !== b);
     removeBubbleEl(b, 300);
     updateStats();
@@ -381,14 +382,7 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     b.isUnstable = Math.random() < CONFIG.neutralResolveUnstableChance;
     b.el.classList.remove(...NEUTRAL_COLOR_CLASSES);
     b.el.classList.add(b.isUnstable ? "c4" : "c2");
-
-    const cx = b.x + b.size / 2;
-    const cy = b.y + b.size / 2;
-    const gained = scoreTap(CONFIG.neutralValueMul);
-    const label = state.combo >= 3 ? `+${gained} ×${state.combo}` : `+${gained}`;
-    showFloatText(cx, cy, label);
-    ensureAudio();
-    playPop(state.combo);
+    scoreAt(b, CONFIG.neutralValueMul);
     updateStats();
   }
 
@@ -431,10 +425,14 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     b.isBomb = true;
     b.el.classList.remove("c2", "c4");
     b.el.classList.add("bomb");
+    addBombIcon(b.el);
+  }
+
+  function addBombIcon(el) {
     const icon = document.createElement("div");
     icon.className = "bomb-icon";
     icon.innerHTML = BOMB_ICON_SVG;
-    b.el.appendChild(icon);
+    el.appendChild(icon);
   }
 
   function triggerUnstable(b) {
@@ -627,8 +625,8 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
   // The overlays and the sheet sit *inside* .app rather than beside it, so the
   // things to freeze are named individually instead of one wrapper.
   //
-  // The top bar is deliberately NOT in this list: its "Games" link is the only
-  // way off the page on a phone, where the cards have no close button.
+  // The top bar is deliberately NOT in this list: its "Games" link must stay
+  // reachable while a card is up.
   const behindOverlay = [
     document.querySelector(".hud"),
     document.getElementById("playfield"),
@@ -679,14 +677,12 @@ import { initToggle as initThemeToggle } from "../shared/ui/theme.js";
     state.calmMode = !state.calmMode;
     setPref("calm", state.calmMode);
     syncToggle(motionToggle, state.calmMode);
-    const mul = state.calmMode ? 0.35 : 1;
     for (const b of bubbles) {
       const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
       if (speed > 0) {
-        const norm = 1 / speed;
-        const base = rand(...CONFIG.speedRange) * mul;
-        b.vx = b.vx * norm * base;
-        b.vy = b.vy * norm * base;
+        const scale = (b.baseSpeed * calmMul()) / speed;
+        b.vx *= scale;
+        b.vy *= scale;
       }
     }
   });

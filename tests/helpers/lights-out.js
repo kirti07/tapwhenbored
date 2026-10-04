@@ -1,8 +1,6 @@
-// A Lights Out solver for the specs, independent of the game's own.
-//
-// Moved out of flip-it.spec.js when the challenge spec needed to clear a board
-// too. It stays a second implementation on purpose: a test that asked the game
-// for the answer would only prove the game agrees with itself.
+// A Lights Out solver for the specs, independent of the game's own on purpose:
+// a test that asked the game for the answer would only prove the game agrees
+// with itself.
 
 /** matrixFor(n)[i] = the tiles that pressing tile i toggles. */
 function matrixFor(n) {
@@ -24,8 +22,9 @@ function matrixFor(n) {
 
 /**
  * The minimum-weight solution of Ax = b over GF(2): the fewest taps that clear
- * `lit`, as a list of tile indices. Returns null if the board cannot be
- * cleared, which is the case these tests most want to be able to detect.
+ * `lit`, as `{ weight, picks }` — how many taps, and the tile indices. Returns
+ * null if the board cannot be cleared, which is the case these tests most want
+ * to be able to detect.
  */
 export function solve(n, lit) {
   const N = n * n;

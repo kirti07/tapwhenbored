@@ -75,8 +75,7 @@ test("a fresh board is dealt, lit, and waiting", async ({ page }) => {
   expect(board.some((v) => v === 1)).toBe(true);
 
   await expect(page.locator("#movesVal")).toHaveText("0");
-  // 0:00, not 00:00 — flip-it was the only game that zero-padded its minutes,
-  // and it now spells a duration the way the rest of the site does.
+  // 0:00, not 00:00: the site writes a duration one way (format.js).
   await expect(page.locator("#timeVal")).toHaveText("0:00");
   await expect(page.locator("#overlay")).not.toHaveClass(/show/);
 });

@@ -171,14 +171,10 @@ import { getName, clean } from "../shared/ui/player.js";
     updateMovable();
   }
 
-  /* Where a tile is, asked of the game state rather than of the DOM.
-   *
-   * `tileEls` is already the authoritative index -> element map and is updated
-   * in the same breath as `tiles` on every slide. The old data-index attribute
-   * was a second copy of that fact living on the node, rewritten mid-slide,
-   * and then parsed back out on pointerdown and on keydown — so a missed
-   * attribute write would have produced a tile that moved the wrong way rather
-   * than a visible glitch. Sixteen entries; the scan costs nothing. */
+  /* Where a tile is, asked of the game state rather than of the DOM:
+   * `tileEls` is the index -> element map, updated with `tiles` on every
+   * slide, so there is no second copy on the node to drift. Sixteen entries;
+   * the scan costs nothing. */
   function indexOfTileEl(el) {
     for (var k in tileEls) {
       if (tileEls[k] === el) return parseInt(k, 10);
@@ -194,7 +190,6 @@ import { getName, clean } from "../shared/ui/player.js";
     btn.setAttribute("aria-label", "Tile " + value);
     tileCellEl(i).appendChild(btn);
     tileEls[i] = btn;
-    return btn;
   }
 
   function updateCorrectness() {
@@ -359,7 +354,9 @@ import { getName, clean } from "../shared/ui/player.js";
     fallbackTimer = setTimeout(done, duration + 60); // safety net if transitionend doesn't fire
   }
 
-  function commitSlide(i) {
+  /** Moves tile `i` into the blank and counts the move. The keyboard passes
+   *  the cell it left, to animate from; a pointer has already carried it. */
+  function commitSlide(i, fromCell) {
     var el = tileEls[i];
     if (!el) return; // stale settle callback from a state that no longer exists
     var toCell = tileCellEl(blankIndex);
@@ -372,6 +369,7 @@ import { getName, clean } from "../shared/ui/player.js";
     delete tileEls[i];
     toCell.appendChild(el);
     tileEls[oldBlank] = el;
+    if (fromCell) flip(el, fromCell, toCell);
 
     sndSlide();
     moves += 1;
@@ -382,29 +380,10 @@ import { getName, clean } from "../shared/ui/player.js";
   }
 
   function slideTile(i) {
-    var fromCell = tileCellEl(i);
-    var toCell = tileCellEl(blankIndex);
     var el = tileEls[i];
-    var oldBlank = blankIndex;
-
-    el.classList.remove("movable"); // the bounce animation would fight the FLIP transform below
+    el.classList.remove("movable"); // the bounce animation would fight the FLIP transform
     el.classList.remove("bounce");
-
-    tiles[oldBlank] = tiles[i];
-    tiles[i] = null;
-    blankIndex = i;
-
-    delete tileEls[i];
-    toCell.appendChild(el);
-    tileEls[oldBlank] = el;
-    flip(el, fromCell, toCell);
-
-    sndSlide();
-    moves += 1;
-    updateMovesHud();
-    updateCorrectness();
-    updateMovable();
-    checkWin();
+    commitSlide(i, tileCellEl(i));
   }
 
   function updateMovesHud() {
@@ -600,7 +579,7 @@ import { getName, clean } from "../shared/ui/player.js";
     activePointerId = null;
   });
   tilesGrid.addEventListener("keydown", function (e) {
-    if (e.key !== "Enter" && e.key !== " " && e.key !== "Spacebar") return;
+    if (e.key !== "Enter" && e.key !== " ") return;
     var tileEl = e.target.closest(".tile");
     if (!tileEl) return;
     e.preventDefault(); // stop the browser's own click-on-activate; we handle it here
@@ -631,7 +610,7 @@ import { getName, clean } from "../shared/ui/player.js";
     var raw = params.get("seed") || "";
     if (params.get("party") !== "1" || window.self === window.top) return null;
     if (!/^[0-9a-z]{1,7}$/.test(raw) || parseInt(raw, 36) > 0xffffffff) return null;
-    return { seed: parseInt(raw, 36), level: params.get("level") };
+    return { seed: parseInt(raw, 36) };
   }
 
   function joinRound(onGo) {

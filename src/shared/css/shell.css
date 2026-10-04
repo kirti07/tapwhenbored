@@ -1,8 +1,8 @@
-/* The page shell for games using the standard template: top bar, back link,
- * subtitle, icon buttons and SEO disclosure. Per-game rules stay in each game.
+/* The page shell every game imports: top bar, back link, subtitle, icon
+ * buttons, SEO disclosure and the share confirmation. Per-game rules stay in
+ * each game, after the import, so they win.
  *
- * Requires --ink, --ink-soft and --line. bubble-tap does not import this;
- * see ARCHITECTURE.md §16. */
+ * Requires --ink, --ink-soft and --line. */
 
 .topbar {
   display: flex;
@@ -41,18 +41,17 @@
   color: var(--ink-soft);
 }
 
+/* 11px is the floor for text a player is expected to read. */
 .seo-info {
   flex-shrink: 0;
   align-self: center;
   max-width: 90vw;
   margin-top: 0.6svh;
-  font-size: 9px;
+  font-size: 11px;
   color: var(--ink-soft);
   text-align: center;
 }
 
-/* word-steps adds an opacity transition and re-declares this after the import,
-   so its own version wins there. */
 /* Icon glyph size; games may override it. */
 .icon-btn svg { width: 20px; height: 20px; }
 
@@ -133,7 +132,6 @@
   min-height: 44px;
 }
 
-/* 11px is the floor for text a player is expected to read. */
 .seo-info summary {
   position: relative;
   min-height: 44px;
@@ -141,11 +139,26 @@
   align-items: center;
   justify-content: center;
   font-size: 11px;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  list-style: none;
 }
+.seo-info summary::-webkit-details-marker { display: none; }
+.seo-info summary::after { content: " ▾"; }
+.seo-info[open] summary::after { content: " ▴"; }
+.seo-info p { margin: 4px 0 0; line-height: 1.5; text-align: left; }
 
-.seo-info {
-  font-size: 11px;
+/* "Link copied": hidden until initShare() adds .show. */
+.share-note {
+  margin: 0;
+  font-size: clamp(11px, 1.5svh, 13px);
+  color: var(--ink-soft);
+  letter-spacing: 0.06em;
+  opacity: 0;
+  transition: opacity 0.25s ease;
 }
+.share-note.show { opacity: 1; }
 
 /* Hover only where hover exists: touch leaves a synthesised hover stuck on. */
 @media (hover: hover) and (pointer: fine) {

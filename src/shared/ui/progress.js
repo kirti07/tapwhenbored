@@ -1,4 +1,4 @@
-/* Today's play record for the sticker book, which empties at local midnight.
+/* Today's play record for the player card, which empties at local midnight.
  * "Finished" means reached an end state, not won (bubble-tap and doodle-on
  * cannot win). One key per game so two open tabs cannot clobber each other.
  * Old days are never swept; they simply stop counting.

@@ -66,6 +66,38 @@ test("tapping an edge tile either clears a bomb or is a safe move", async ({ pag
   }
 });
 
+test("a safe tile moves straight up one cell, or stays where it is", async ({ page }) => {
+  // The how-to sheet promises exactly this, so hold the game to it: whatever a
+  // tap reveals, a tile that survives it ends either where it was or one cell
+  // directly above. The hive re-centres and rescales as its shape changes, so
+  // each position is taken relative to another tile, in hex heights.
+  const layout = () =>
+    page.locator("#board").evaluate((board) => ({
+      hexH: parseFloat(getComputedStyle(board).getPropertyValue("--hex-h")),
+      at: Object.fromEntries(
+        [...board.querySelectorAll(".tile")].map((el) => [el.dataset.id, el.style.translate.split(" ").map(parseFloat)]),
+      ),
+    }));
+  const rel = (l, id, ref) => [0, 1].map((i) => (l.at[id][i] - l.at[ref][i]) / l.hexH);
+
+  for (let n = 0; n < 6; n++) {
+    if (await page.locator("#overlay.show").count()) break;
+    const tile = tappable(page).first();
+    const id = await tile.getAttribute("data-id");
+    const before = await layout();
+    await tile.click();
+    await page.waitForTimeout(500);
+    const after = await layout();
+    if (!after.at[id]) continue; // a bomb
+    const ref = Object.keys(after.at).find((k) => k !== id && before.at[k]);
+    const [x0, y0] = rel(before, id, ref);
+    const [x1, y1] = rel(after, id, ref);
+    expect(Math.abs(x1 - x0), "moved sideways").toBeLessThan(0.02);
+    const up = y0 - y1;
+    expect(Math.abs(up) < 0.02 || Math.abs(up - 1) < 0.02, `moved up by ${up} cells`).toBe(true);
+  }
+});
+
 test("New hive produces a fresh board and resets the clock", async ({ page }) => {
   const seconds = async () => {
     const [m, s] = (await page.locator("#timeVal").innerText()).split(":");

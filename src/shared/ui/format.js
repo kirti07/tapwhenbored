@@ -1,5 +1,5 @@
-/* How a score is written down, everywhere a score is shown. Whole seconds by
- * choice, so close times can print the same. Running clocks are out of scope.
+/* How a score or a clock is written down, everywhere one is shown. Whole
+ * seconds by choice, so close times can print the same.
  */
 
 /** Milliseconds as m:ss; "--:--" before a run has a time. */

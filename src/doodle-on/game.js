@@ -27,9 +27,8 @@ import { recordPlay } from "../shared/ui/progress.js";
   }
   var PALETTE_RGB = PALETTE.map(hexToRgb);
 
-  /* Kept from the original game: the rainbow cycling by drawn distance is this
-     game's signature, so it survives the redesign as what the first swatch
-     produces rather than as the only thing the pencil can do. */
+  /* The rainbow, cycling by drawn distance, is this game's signature: it is
+     what the first swatch draws. */
   function colorForDistance(dist) {
     var n = PALETTE_RGB.length;
     var t = (dist / STOP_DIST) % n;
@@ -94,10 +93,9 @@ import { recordPlay } from "../shared/ui/progress.js";
 
   var dpr = 1, cssW = 0, cssH = 0;
   var drawing = false, activePointerId = null, lastRaw = null;
-  /* Cumulative across the whole round, not per stroke. Resetting it on every
-     pointerdown (as the one-stroke version did) would restart the rainbow's
-     hue on each lift; keeping it running is what makes the palette read as a
-     single marker being carried across the drawing. */
+  /* Cumulative across the whole round, not per stroke, so the rainbow reads
+     as one marker carried across the drawing rather than restarting its hue
+     on each lift. */
   var totalDist = 0;
 
   var deadline = 0, timerHandle = null, lastShown = -1, lastBeep = -1;
@@ -461,12 +459,10 @@ import { recordPlay } from "../shared/ui/progress.js";
     }
   }
 
-  /* Held while the tab is hidden and while the how-to sheet is open. No other
-     game here touches visibilitychange, but this is the only one where being
-     away costs the player something: a backgrounded interval fires late but
-     still fires, so without this you come back to a finished round. Reading
-     the rules must not burn the clock either. Counted, because both can hold
-     it at once. */
+  /* Held while the tab is hidden and while the how-to sheet is open: a
+     backgrounded interval fires late but still fires, so without this you
+     come back to a finished round, and reading the rules must not burn the
+     clock either. Counted, because both can hold it at once. */
   function holdTimer() {
     // A party round runs on the party's clock, which does not stop for anyone.
     if (phase !== "playing" || party) return;

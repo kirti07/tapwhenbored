@@ -13,7 +13,6 @@
   --ink: #262b3d;
   --ink-soft: #767b8c;
   --line: #cfe6f0;
-  --danger: #171512;
   --accent: #4fb6e0;
   --accent-dark: #2e93bd;
   color-scheme: light;
@@ -58,21 +57,15 @@ html, body {
 /* Shell owns the row; this game centres it, pads it, and puts the back link
    beside the title rather than above it.
 
-   Lifted above the end and pause cards, which are opaque and cover the whole
-   of `.app` (`.overlay`, below, is z-index 9). Taking `.topbar` out of the
-   inert list was necessary but not sufficient here: the "Games" link was no
-   longer switched off, it was simply buried under an opaque card, and at the
-   time neither card had a close button. The end card has one now — which is
-   why the bar stops hit-testing while that card is up, further down: sitting
-   above the card, its empty right-hand strip would otherwise swallow the tap
-   meant for the X underneath. `.app` and `.overlay` paint the identical
-   background, so the bar on top of a card looks exactly as it does on the
-   board.
+   Lifted above the end and pause cards (`.overlay`, z-index 9), which are
+   opaque and cover `.app`, so the "Games" link is never buried under one.
+   `.app` and `.overlay` paint the same background, so the bar looks the same
+   over a card. While the end card is up the bar stops hit-testing (further
+   down), so its empty strip can't swallow the tap meant for the card's X.
 
-   Deliberately 10 and not 11: the settings panel and the how-to backdrop are
-   also 10 and come later in the document, so they still draw over the bar.
-   Those two are bottom sheets with a scrim, and dismissing the scrim before
-   leaving the page is how the other seven games behave. */
+   10, not 11: the settings panel and the how-to backdrop are also 10 and come
+   later, so those scrimmed sheets still draw over the bar, as in the other
+   games. */
 .topbar {
   align-items: center;
   padding: 18px 20px 10px;
@@ -94,11 +87,6 @@ html, body {
   letter-spacing: 0.06em;
   white-space: nowrap;
 }
-/* Gated: on a touch screen a tap leaves a false hover behind that sticks
-   until the next tap somewhere else. */
-@media (hover: hover) and (pointer: fine) {
-  .back-link:hover { color: var(--ink); }
-}
 
 .title {
   margin: 0;
@@ -108,10 +96,9 @@ html, body {
   letter-spacing: 0.32em;
 }
 
-/* Square and smaller than the shell's 44px circle: three of these sit in a
-   14px-padded top bar on a 320px screen, and at 44px they would overlap and
-   steal each other's taps. The a11y suite exempts this game's topbar icons
-   from the width floor for exactly this reason, and holds them to 44 tall. */
+/* Square and smaller than the shell's 44px circle, to fit this game's compact
+   bars on a 320px screen. The a11y suite exempts this game's topbar icons
+   from the width floor for that reason, and holds them to 44 tall. */
 .icon-btn {
   width: 36px;
   height: 36px;
@@ -251,7 +238,7 @@ html, body {
   filter: blur(1px);
 }
 
-/* bombs are always obviously visible — a dark shell, skull icon, and a
+/* bombs are always obviously visible — a dark shell, bomb icon, and a
    soft ambient glow, all present from the moment a bomb spawns. This is a
    deliberate choice: the game's tension comes from navigating around a
    visible hazard, not from spotting a disguised one. */
@@ -398,24 +385,12 @@ html, body {
 }
 .legend-item:first-child { border-left: none; padding-left: 0; }
 
-.seo-info {
-  padding: 0 20px 8px;
-  font-size: 9px;
-  color: var(--ink-soft);
-}
-.seo-info summary {
-  cursor: pointer;
-  letter-spacing: 0.08em;
-  font-weight: 600;
-  list-style: none;
-}
-.seo-info summary::-webkit-details-marker { display: none; }
-.seo-info summary::after { content: " ▾"; }
-.seo-info[open] summary::after { content: " ▴"; }
+/* The rest of the disclosure comes from shell.css. */
+.seo-info { padding: 0 20px 8px; }
+.seo-info summary { letter-spacing: 0.08em; }
 .seo-info p {
-  margin: 4px 0 0;
-  line-height: 1.5;
   max-width: 640px;
+  text-align: center;
 }
 
 .bomb-glyph {
@@ -525,10 +500,9 @@ html, body {
 #gameOverOverlay .overlay-exit { pointer-events: auto; }
 
 /* Not a `.stage` padding box, and not a 44px circle either: this bar pads
-   18px/20px and its icons are 36px squares — 30px on a phone — because three
-   44px targets would overlap in a 14px-padded bar on a 320px screen. The exit
-   is one of those icons, so it takes their box and their offsets, and picks up
-   the 44px `::after` hit area they all share (below). */
+   18px/20px and its icons are 36px squares, 30px on a phone. The exit is one
+   of those icons, so it takes their box and their offsets, and picks up the
+   44px `::after` hit area they all share (below). */
 #gameOverOverlay .overlay-exit {
   top: 18px;
   right: 20px;
@@ -545,7 +519,7 @@ html, body {
    stops hit-testing while the end card is up; the "Games" link opts back in,
    because taking that away is the bug the z-index was chosen to avoid.
    Keyed on #gameOverOverlay: the pause card is not an end card and keeps its
-   whole top bar, mute button included. */
+   whole top bar. */
 html:has(#gameOverOverlay:not(.hidden)) .topbar { pointer-events: none; }
 html:has(#gameOverOverlay:not(.hidden)) .topbar .back-link { pointer-events: auto; }
 html:has(#gameOverOverlay:not(.hidden)) .top-actions { visibility: hidden; }
@@ -671,7 +645,6 @@ html:has(#gameOverOverlay:not(.hidden)) .top-actions { visibility: hidden; }
 
   .seo-info {
     padding: 0 14px max(6px, env(safe-area-inset-bottom));
-    font-size: 8px;
   }
 }
 
@@ -773,28 +746,21 @@ html:has(#gameOverOverlay:not(.hidden)) .top-actions { visibility: hidden; }
   margin: 6px 0 0;
   font-size: 11px;
   letter-spacing: 0.12em;
-  color: var(--ink-soft, #7a736a);
   text-transform: uppercase;
-  opacity: 0;
-  transition: opacity 0.25s ease;
 }
-.share-note.show { opacity: 1; }
 
 @media (prefers-reduced-motion: reduce) {
   .share-note { transition: opacity 0.12s linear; }
 }
 
 /* Tap targets: a centred pseudo-element grows the reachable area to 44px
-   while the compact look of the bar is untouched. */
-.icon-btn,
-.back-link,
-.howto-link {
+   while the compact look of the bar is untouched. shell.css does the same
+   for the back link and How to play. */
+.icon-btn {
   position: relative;
 }
 
 .icon-btn::after,
-.back-link::after,
-.howto-link::after,
 .overlay-exit::after {
   content: "";
   position: absolute;
@@ -805,19 +771,7 @@ html:has(#gameOverOverlay:not(.hidden)) .top-actions { visibility: hidden; }
   height: 44px;
 }
 
-.seo-info summary {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  font-size: 11px;
-}
-
-.seo-info { font-size: 11px; }
-
 /* Phone landscape: vertical space is scarcest, so the playfield wins. */
 @media (max-height: 480px) {
-  .subtitle,
-  .seo-info { display: none; }
-
   .legend { display: none; }
 }

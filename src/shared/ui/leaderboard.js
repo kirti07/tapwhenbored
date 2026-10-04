@@ -154,7 +154,7 @@ export async function fetchStanding({ slug, period = "day", day = localDay() }) 
  * ("ok", "not_found", "busy", "denied", "blocked", "bad_name", "bad_email"),
  * "refused" from a database without the v2 functions, or "offline", "error"
  * or "unavailable". Never rejects. Tries `<name>_v2` and falls back to the
- * boolean original until the v2 SQL is deployed (ARCHITECTURE.md §19).
+ * boolean original until the v2 SQL is deployed (ARCHITECTURE.md §27).
  */
 async function write(name, body) {
   if (!isLeaderboardAvailable()) return "unavailable";
@@ -188,7 +188,8 @@ export async function savePlayer({ name, email, notifyDisplaced, notifyStreak } 
   if (email !== undefined) body.p_email = email;
   if (notifyDisplaced !== undefined) body.p_notify_displaced = notifyDisplaced;
   if (notifyStreak !== undefined) body.p_notify_streak = notifyStreak;
-  // The server nudges a streak reminder at 8pm local, so it needs the zone.
+  // Stored with the reminder preference, so a streak reminder could reach the
+  // player in their evening. Nothing sends one yet.
   try {
     body.p_tz = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
   } catch { /* no Intl, no reminder */ }
@@ -207,15 +208,14 @@ export async function deletePlayer() {
 
 /**
  * Renders a game's global-best line on its end card. The game supplies
- * wording and `isRecord` (direction stays game-side, §27); `standing` is
- * optional wording for a board rank.
+ * wording and `isRecord` (direction stays game-side, §27).
  *
  * `el` is `#globalBest`; visibility is its `hidden` attribute only, so callers
  * must not also toggle a class. Resolves with the board's answer; never rejects.
  */
 export function renderGlobalBest(
   el,
-  { slug, score, isRecord, label, recordLabel, pending, unavailable, standing },
+  { slug, score, isRecord, label, recordLabel, pending, unavailable },
 ) {
   // Nothing to put on the line, so do not show one at all. A build with no
   // credentials must read as a missing line, never as an error (§27), and an
@@ -238,14 +238,7 @@ export function renderGlobalBest(
     }
 
     const record = isRecord(score, best);
-    if (record) {
-      el.textContent = recordLabel;
-    } else if (standing && typeof answer.rank === "number") {
-      // A board place beats repeating a record you did not beat.
-      el.textContent = standing(answer.rank, answer.total, best);
-    } else {
-      el.textContent = label(best);
-    }
+    el.textContent = record ? recordLabel : label(best);
     el.classList.toggle("new-global", record);
     return answer;
   });
