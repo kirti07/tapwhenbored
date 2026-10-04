@@ -255,3 +255,21 @@ test("every game says what kind it is and what it is, for the setup screen", () 
     expect(g.pitch.length).toBeGreaterThan(10);
   }
 });
+
+test("Humour Me: one blank per phrase; where a phrase has {name}, it is someone in the round", async () => {
+  const { PROMPTS, phraseFor } = await import("../../src/party/games/humour-prompts.js");
+  for (const p of PROMPTS) expect(p.split("___"), p).toHaveLength(2);
+  const twice = PROMPTS.findIndex((p) => p.split("{name}").length === 3);
+  const r = room(4, "humour-me", 45);
+  r.players[2].name = "$& Riya";
+  const names = new Set();
+  for (let seed = 1; seed <= 40; seed++) {
+    const text = phraseFor({ ...r, seed, prompt: twice });
+    expect(text).not.toContain("{name}");
+    const [name] = r.players.map((p) => p.name).filter((n) => text.startsWith(n));
+    expect(text, "the same player both times").toBe(PROMPTS[twice].replaceAll("{name}", () => name));
+    names.add(name);
+  }
+  expect(names.size, "the seed picks different players").toBeGreaterThan(1);
+  expect(phraseFor({ ...r, prompt: 0 })).toBe(PROMPTS[0]);
+});

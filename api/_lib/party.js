@@ -5,7 +5,7 @@
 //   POST /api/party/          { type, ... } → a fresh, uncached snapshot
 //        create | join | ping | start | result | end | kick | rematch
 //        | title | vote                       Doodle On
-//        | answer                             Humour Me
+//        | answer | skip                      Humour Me
 //        | card | ready | said | accuse | call | lap | guess   Sounds Sus
 //   POST /api/party/          a raw JPEG, with { type: "doodle", ... } in
 //                             the x-party header — no base64 on party Wi-Fi
@@ -39,6 +39,8 @@
 //   v:{seat}    HSET     Doodle On, Humour Me: { tag, at }, this seat's vote
 //   a:{seat}    HSETNX   Humour Me: the seat's answer
 //   pi          HSETNX   Humour Me: the phrase, an index into PROMPTS
+//   pi{n}       HSETNX   Humour Me: { i, at }, the host's nth skip — a new
+//                        phrase, and the round starts again at `at`
 //   spy w       HSETNX   Sounds Sus: the spy's seat and the word — secrets
 //   y:{seat}    HSETNX   Sounds Sus: when the seat tapped Hide & ready
 //   l:{n} q:{n} HSETNX   Sounds Sus: when the host started lap n / its vote
@@ -69,7 +71,7 @@ const MAX_NAME = 24;
 const MAX_PARTY_NAME = 40;
 const MAX_TITLE = 40;
 const MAX_IMAGE = 16384; // a 256 px JPEG of a doodle is ~8 KB
-const HOST_ONLY = ["start", "end", "kick", "rematch", "call", "lap"];
+const HOST_ONLY = ["start", "end", "kick", "rematch", "call", "lap", "skip"];
 // Not rate-limited: a seat's own presence, its one result, doodle or answer,
 // and its votes and Sounds Sus turns. A party shares one Wi-Fi address, and
 // twelve phones pinging every 10 s would otherwise spend the whole per-minute
@@ -134,7 +136,7 @@ function clientKey(request) {
 
 /**
  * A room hash as `{ room, tokens, pings, secret, picks, titles, answers, sus,
- * spy, word, used, spies }`. `room` is built field by field — an allowlist —
+ * spy, word, dealt, used, spies }`. `room` is built field by field — an allowlist —
  * so a token hash, a ping time, the secret, who voted for what, who wrote
  * what or who the spy is cannot reach a snapshot by accident. It is exactly
  * the shape src/party/rules.js works on.
@@ -156,6 +158,8 @@ function parseRoom(code, flat) {
     endedAt: f.ended ? Number(f.ended) : null,
     next: f.next || null,
     prompt: f.pi != null ? Number(f.pi) : null,
+    promptAt: null,
+    skips: 0,
     host: Number(f.h || 0),
     players: [],
     results: {},
@@ -200,11 +204,18 @@ function parseRoom(code, flat) {
     } else room.results[seat] = JSON.parse(v);
   }
   room.players.sort((a, b) => a.seat - b.seat);
+  // Humour Me: the phrase in play is the last one dealt.
+  const dealt = room.prompt == null ? [] : [room.prompt];
+  for (let n = 1; f[`pi${n}`]; n++) {
+    const skip = JSON.parse(f[`pi${n}`]);
+    dealt.push(skip.i);
+    Object.assign(room, { prompt: skip.i, promptAt: skip.at, skips: n });
+  }
   const spy = f.spy != null ? Number(f.spy) : null;
   const word = f.w != null ? Number(f.w) : null;
   const parse = (v, empty) => (v ? JSON.parse(v) : empty);
   return {
-    room, tokens, pings, secret: f.k || "", picks, titles, answers, sus, spy, word,
+    room, tokens, pings, secret: f.k || "", picks, titles, answers, sus, spy, word, dealt,
     used: parse(f.u, {}), spies: parse(f.ps, []),
   };
 }
@@ -507,6 +518,19 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
       return { room: next, tag: await tagOf(found.secret, seat) };
     },
 
+    /* Humour Me: the host swaps a phrase that doesn't suit the room, until
+       someone has answered. The round starts again with the new one; HSETNX
+       on the skip's number, so a double tap skips once. */
+    async skip(body, { code, room, found }) {
+      if (room.game !== "humour-me") reject(400, "wrong game");
+      const phase = R.derive(room, now()).phase;
+      if ((phase !== "title" && phase !== "play") || Object.keys(room.results).length) reject(409, "too late");
+      if (room.skips >= R.GAMES[room.game].skips) reject(409, "no skips left");
+      const i = fresh(PROMPTS.length, [...(found.used[room.game] || []), ...found.dealt]);
+      const skip = JSON.stringify({ i, at: now() });
+      return { room: await write(code, [["HSETNX", roomKey(code), `pi${room.skips + 1}`, skip]]) };
+    },
+
     /* Sounds Sus: this seat's own card, and nobody else's. */
     async card(body, { room, seat, found }) {
       if (room.game !== "sounds-sus" || room.start == null) reject(409, "no card yet");
@@ -580,8 +604,8 @@ export function createHandler({ store, now = Date.now, scale = 1, limits = { pos
       const host = room.players.find((p) => p.seat === seat);
       // What this party has used so far, so the next room deals something new.
       const used = { ...found.used };
-      const dealt = room.game === "humour-me" ? room.prompt : room.game === "sounds-sus" ? found.word : null;
-      if (dealt != null) used[room.game] = [...(used[room.game] || []), dealt];
+      const dealt = room.game === "humour-me" ? found.dealt : room.game === "sounds-sus" && found.word != null ? [found.word] : [];
+      if (dealt.length) used[room.game] = [...(used[room.game] || []), ...dealt];
       const spies = found.spy == null ? found.spies : [...found.spies, room.players.find((p) => p.seat === found.spy)?.name];
       const made = await openRoom(room.name, host, choice, ["u", JSON.stringify(used), "ps", JSON.stringify(spies)]);
       const after = await write(code, [["HSETNX", roomKey(code), "next", made.code]]);

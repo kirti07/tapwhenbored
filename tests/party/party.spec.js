@@ -433,6 +433,16 @@ test("Humour Me: everyone finishes the phrase, votes anonymously, the reveal, pl
   for (const p of phones) await expect(p.locator(".hm-phrase")).toBeVisible({ timeout: 20_000 });
   await expect(host.locator(".hm-phrase")).toContainText(phrase.trim().slice(0, 10));
 
+  // The phrase doesn't suit the room: only the host can skip it, and the
+  // round starts again on a new one, title card and all.
+  await expect(riya.getByRole("button", { name: /Skip phrase/ })).toBeHidden();
+  await host.getByRole("button", { name: "Skip phrase" }).click();
+  for (const p of phones) await expect(screen(p, "title")).toBeVisible({ timeout: 20_000 });
+  const next = (await host.locator("#titleRule").textContent()).replace("______", "");
+  expect(next).not.toBe(phrase);
+  for (const p of phones) await expect(p.locator(".hm-phrase")).toContainText(next.trim().slice(0, 10), { timeout: 20_000 });
+  await expect(host.getByRole("button", { name: "Skip phrase" })).toBeHidden(); // once a round
+
   const lines = ["my emotional support traffic jam", EVIL, "a very good dog needed me", "I was here first"];
   // The host answers last: their answer opens the vote, and must still be
   // marked as theirs.
